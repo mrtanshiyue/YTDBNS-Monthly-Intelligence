@@ -6,6 +6,8 @@ const app=read('public/app.js');
 const css=read('public/v54.css');
 const acceptance=read('public/v54-acceptance.css');
 const js=read('public/v54.js');
+const browserAcceptance=read('scripts/mobile-responsive-acceptance.mjs');
+const pkg=JSON.parse(read('package.json'));
 const failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message)};
 
@@ -45,6 +47,16 @@ expect(!app.includes('<text class="chart-xlabel"'),'chart X labels regressed int
 expect(js.includes("if(width<=340) return 4")&&js.includes("if(width<=430) return 5")&&js.includes("if(width<=620) return 6"),'viewport-aware chart label density missing');
 expect(js.includes("keep.add(Math.round(i*(labels.length-1)/(limit-1)))"),'chart label sampling missing');
 expect(js.includes("#periodPopover")&&js.includes("#viewPopover"),'mobile overlay lock does not cover period/view overlays');
+
+expect(pkg.devDependencies?.['playwright-core'],'playwright-core devDependency missing');
+expect(pkg.scripts?.['check:mobile:static']==='node scripts/mobile-responsive-static-check.mjs','check:mobile:static package script missing');
+expect(pkg.scripts?.['check:mobile']==='node scripts/mobile-responsive-acceptance.mjs','check:mobile package script missing');
+expect(browserAcceptance.includes("from 'playwright-core'"),'browser acceptance must use playwright-core');
+expect(browserAcceptance.includes('CHROMIUM_PATH')&&browserAcceptance.includes('executablePath'),'browser acceptance system Chromium resolution missing');
+expect(!browserAcceptance.includes("from 'playwright'"),'bundled Playwright dependency reintroduced');
+expect(browserAcceptance.includes('[data-quick="current"]'),'Quick period click coverage missing');
+expect(browserAcceptance.includes('#applyMonth')&&browserAcceptance.includes('#applyCustom'),'Month/Custom Period apply coverage missing');
+expect(browserAcceptance.includes('#detailDrawer')&&browserAcceptance.includes('#panelModal'),'Detail/Panel overlay coverage missing');
 
 const navItems=(index.match(/class="nav-item/g)||[]).length;
 expect(navItems===9,`expected 9 primary nav items, found ${navItems}`);
