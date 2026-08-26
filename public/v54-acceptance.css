@@ -29,6 +29,17 @@
     flex:0 0 44px!important;
   }
 
+  /* Legacy mobile CSS hides the entire period-control wrapper. Restore the existing control so
+     Search / Period / Refresh / Import all remain reachable without duplicating business DOM. */
+  body.studio-v54 .period-control{
+    display:block!important;
+    width:44px!important;
+    min-width:44px!important;
+    height:44px!important;
+    min-height:44px!important;
+    flex:0 0 44px!important;
+  }
+
   /* Legacy command palette uses left:50% + translateX(-50%). The mobile sheet uses left/right
      viewport bounds, so the old horizontal transform must be removed explicitly. */
   body.studio-v54 .command-palette{
