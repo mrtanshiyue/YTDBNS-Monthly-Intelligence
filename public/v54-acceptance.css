@@ -136,6 +136,17 @@
 }
 
 @media(max-width:340px){
+  /* Keep all four required global header actions at the 44px touch-target gate on the narrowest phones. */
+  body.studio-v54 .search-command,
+  body.studio-v54 .period-main,
+  body.studio-v54 .circle-btn,
+  body.studio-v54 .import-button{
+    width:44px!important;
+    min-width:44px!important;
+    height:44px!important;
+    min-height:44px!important;
+  }
+
   body.studio-v54 .page-heading h1{font-size:19px!important}
   body.studio-v54 .table-wrap>.data-table{min-width:640px!important}
   body.studio-v54 .context-rail,
