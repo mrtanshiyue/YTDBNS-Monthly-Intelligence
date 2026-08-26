@@ -217,6 +217,18 @@ for(const [name,width,height] of cases){
     assert(await inViewport(page,'#importDrawer',3),'import drawer exceeds viewport after transition',name);
     const closeRect=await rect(page,'#drawerClose');
     if(mobile) assert(closeRect.width>=44&&closeRect.height>=44,`import close target under 44px: ${JSON.stringify(closeRect)}`,name);
+    const importInternals=await page.evaluate(()=>{
+      const drawer=document.getElementById('importDrawer').getBoundingClientRect();
+      const body=document.querySelector('#importDrawer .drawer-body');
+      const foot=document.querySelector('#importDrawer .drawer-foot');
+      const drop=document.getElementById('dropzone');
+      const br=body.getBoundingClientRect(),fr=foot.getBoundingClientRect(),dr=drop.getBoundingClientRect();
+      return {bodyOverflowY:getComputedStyle(body).overflowY,bodyInside:br.left>=drawer.left-2&&br.right<=drawer.right+2&&br.top>=drawer.top-2&&br.bottom<=drawer.bottom+2,footInside:fr.left>=drawer.left-2&&fr.right<=drawer.right+2&&fr.top>=drawer.top-2&&fr.bottom<=drawer.bottom+2,dropInside:dr.left>=drawer.left-2&&dr.right<=drawer.right+2&&dr.top>=drawer.top-2&&dr.bottom<=drawer.bottom+2};
+    });
+    assert(['auto','scroll'].includes(importInternals.bodyOverflowY),`import drawer body does not own vertical scrolling: ${JSON.stringify(importInternals)}`,name);
+    assert(importInternals.bodyInside,'import drawer body exceeds drawer geometry',name);
+    assert(importInternals.footInside,'import drawer footer is not fully reachable inside drawer',name);
+    assert(importInternals.dropInside,'import dropzone exceeds drawer geometry',name);
     await page.locator('#drawerClose').click();
 
     await page.locator('#commandButton').click();
@@ -226,6 +238,8 @@ for(const [name,width,height] of cases){
       const commandRect=await rect(page,'#commandPalette');
       if(mobile) assert(Math.abs(commandRect.x-(width-commandRect.right))<=4,`command palette is not horizontally viewport-bound: ${JSON.stringify(commandRect)}`,name);
       assert(commandRect.transform==='none',`command palette still has transform after open transition: ${commandRect.transform}`,name);
+      const commandResults=await rect(page,'#commandResults');
+      assert(['auto','scroll'].includes(commandResults.overflowY),`command results do not own vertical scrolling: ${JSON.stringify(commandResults)}`,name);
       await page.locator('#commandInput').fill('广告');
       await page.keyboard.press('Escape').catch(()=>{});
     }else{
@@ -249,6 +263,8 @@ for(const [name,width,height] of cases){
       await page.waitForTimeout(320);
       assert(await page.locator('#detailDrawer').isVisible(),'detail drawer did not open',name);
       assert(await inViewport(page,'#detailDrawer',3),'detail drawer exceeds viewport',name);
+      const detailBody=await rect(page,'#detailBody');
+      assert(['auto','scroll'].includes(detailBody.overflowY),`detail drawer body does not own vertical scrolling: ${JSON.stringify(detailBody)}`,name);
       if(mobile){
         const detailClose=await rect(page,'#detailClose');
         assert(detailClose.width>=44&&detailClose.height>=44,`detail close target under 44px: ${JSON.stringify(detailClose)}`,name);
@@ -265,6 +281,8 @@ for(const [name,width,height] of cases){
       await page.waitForTimeout(260);
       assert(await page.locator('#panelModal').isVisible(),'panel modal did not open',name);
       assert(await inViewport(page,'#panelModal',3),'panel modal exceeds viewport',name);
+      const panelBody=await rect(page,'#panelModalBody');
+      assert(['auto','scroll'].includes(panelBody.overflowY),`panel modal body does not own vertical scrolling: ${JSON.stringify(panelBody)}`,name);
       if(mobile){
         const panelClose=await rect(page,'#panelModalClose');
         assert(panelClose.width>=44&&panelClose.height>=44,`panel close target under 44px: ${JSON.stringify(panelClose)}`,name);
