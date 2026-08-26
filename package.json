@@ -1,0 +1,16 @@
+{
+  "name": "ytdbns-monthly-intelligence",
+  "version": "4.14.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create ytdbns-monthly-db",
+    "db:migrate:local": "wrangler d1 migrations apply ytdbns-monthly-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply ytdbns-monthly-db --remote",
+    "r2:create": "wrangler r2 bucket create ytdbns-monthly-raw-reports"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
