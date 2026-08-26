@@ -20,12 +20,16 @@ expect(css.includes('env(safe-area-inset-bottom,0px)'),'safe-area bottom inset m
 expect(css.includes('height:100dvh!important'),'full-height mobile drawer rule missing');
 expect(css.includes('body.studio-v54 .period-popover{')&&css.includes('position:fixed!important'),'mobile period sheet rule missing');
 expect(css.includes('overflow-x:auto!important'),'internal horizontal scrolling missing');
+expect(css.includes('@media(max-width:860px) and (max-height:520px) and (orientation:landscape)'),'compact landscape shell must stay inside mobile breakpoint');
+expect(!css.includes('@media(max-width:960px) and (max-height:520px) and (orientation:landscape){\n  :root'),'932px landscape must not inherit mobile shell heights');
 
 expect(acceptance.includes('body.studio-v54 .section-status{')&&acceptance.includes('display:flex!important'),'mobile Compare/View controls not restored');
 expect(acceptance.includes('.freshness')&&acceptance.includes('.grain-chip{display:none!important}'),'low-priority mobile status chips not suppressed');
 expect(acceptance.includes('min-width:720px!important'),'readable mobile table intrinsic width missing');
 expect(acceptance.includes('.global-actions>.period-control')&&acceptance.includes('display:block!important'),'mobile Period wrapper restore missing');
 expect(acceptance.includes('backdrop-filter:none!important')&&acceptance.includes('-webkit-backdrop-filter:none!important'),'mobile Period fixed containing-block fix missing');
+expect(acceptance.includes('background:rgba(250,250,252,.97)!important'),'mobile header readability fallback missing after blur removal');
+expect(acceptance.includes('var(--v54-safe-top) - var(--v54-safe-bottom) - 20px'),'View popover safe-area top protection missing');
 expect(acceptance.includes('body.studio-v54 .search-command')&&acceptance.includes('width:44px!important')&&acceptance.includes('height:44px!important'),'narrow-phone global action touch-target override missing');
 
 expect(app.includes('class="chart-xlabel"'),'V4.14 HTML chart X labels missing from chart renderer');
