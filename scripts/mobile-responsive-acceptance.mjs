@@ -77,7 +77,9 @@ for(const [name,width,height] of cases){
   await page.waitForSelector('body.studio-v54',{timeout:15000});
   await page.waitForSelector('#content .metric-card, #content .executive-card, #content .panel',{timeout:15000});
 
-  const doc=await page.evaluate(()=>({innerWidth,scrollWidth:document.documentElement.scrollWidth,bodyScrollWidth:document.body.scrollWidth}));
+  const doc=await page.evaluate(()=>({innerWidth,innerHeight,scrollWidth:document.documentElement.scrollWidth,bodyScrollWidth:document.body.scrollWidth}));
+  assert(Math.abs(doc.innerWidth-width)<=1,`actual viewport width ${doc.innerWidth} does not match requested ${width}`,name);
+  assert(Math.abs(doc.innerHeight-height)<=1,`actual viewport height ${doc.innerHeight} does not match requested ${height}`,name);
   assert(doc.scrollWidth<=doc.innerWidth+1,`document horizontal overflow ${doc.scrollWidth}>${doc.innerWidth}`,name);
   assert(doc.bodyScrollWidth<=doc.innerWidth+1,`body horizontal overflow ${doc.bodyScrollWidth}>${doc.innerWidth}`,name);
 
@@ -166,7 +168,6 @@ for(const [name,width,height] of cases){
     assert(compareBefore!==compareAfter,'Compare aria-pressed did not toggle',name);
     await page.locator('#compareToggle').click();
 
-    // Period Quick: click the existing current-period action and confirm the sheet closes via setRange().
     await ensurePeriodOpen(page);
     assert(await page.locator('.period-pane[data-pane="quick"]').isVisible(),'Quick period pane unavailable',name);
     const quickCurrent=page.locator('.period-pane[data-pane="quick"] [data-quick="current"]').first();
@@ -176,7 +177,6 @@ for(const [name,width,height] of cases){
       assert(!(await page.locator('#periodPopover').isVisible()),'Quick period action did not close the sheet',name);
     }
 
-    // Month: apply the currently selected month without changing data.
     await ensurePeriodOpen(page);
     const monthTab=page.locator('.period-tab[data-mode="month"]');
     if(await monthTab.count()){
@@ -187,7 +187,6 @@ for(const [name,width,height] of cases){
       assert(!(await page.locator('#periodPopover').isVisible()),'Month apply did not close the sheet',name);
     }
 
-    // Custom: re-apply the known June read-only range. This changes only dashboard query state.
     await ensurePeriodOpen(page);
     const customTab=page.locator('.period-tab[data-mode="custom"]');
     if(await customTab.count()){
@@ -242,7 +241,6 @@ for(const [name,width,height] of cases){
       failures.push(`${name}: view popover did not open`);
     }
 
-    // Detail drawer: existing rich-clickable cards use the production detail contract.
     await page.locator('#mainNav .nav-item[data-page="overview"]').click();
     await page.waitForTimeout(160);
     const detailTrigger=page.locator('.rich-clickable').first();
@@ -261,7 +259,6 @@ for(const [name,width,height] of cases){
       failures.push(`${name}: no visible detail drawer trigger`);
     }
 
-    // Panel modal: enhancements.js adds one focus button to every .panel.
     const focusButton=page.locator('.panel-rich-btn[data-act="focus"]').first();
     if(await focusButton.count()&&await focusButton.isVisible()){
       await focusButton.click();
