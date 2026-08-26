@@ -30,7 +30,7 @@ async function rect(page,selector){
   return page.locator(selector).evaluate(el=>{
     const r=el.getBoundingClientRect();
     const s=getComputedStyle(el);
-    return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom,display:s.display,visibility:s.visibility,position:s.position,overflowX:s.overflowX};
+    return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom,display:s.display,visibility:s.visibility,position:s.position,overflowX:s.overflowX,transform:s.transform};
   });
 }
 
@@ -66,17 +66,36 @@ for(const [name,width,height,touch] of cases){
     assert(targetSizes.every(([,h])=>h>=44),`nav touch target under 44px: ${JSON.stringify(targetSizes)}`,name);
     assert(await page.locator('#compareToggle').isVisible(),'compare control unavailable on mobile',name);
     assert(await page.locator('#viewMenuBtn').isVisible(),'view settings unavailable on mobile',name);
+
+    for(const selector of ['#commandButton','#periodButton','#refreshBtn','#topImportBtn']){
+      assert(await page.locator(selector).isVisible(),`${selector} unavailable on mobile`,name);
+      const actionRect=await rect(page,selector);
+      assert(actionRect.width>=44&&actionRect.height>=44,`${selector} touch target under 44px: ${JSON.stringify(actionRect)}`,name);
+      assert(await inViewport(page,selector,2),`${selector} exceeds viewport`,name);
+    }
+
+    const globalRect=await rect(page,'.global-nav');
+    const sectionRect=await rect(page,'.section-nav');
+    assert(sectionRect.y>=globalRect.bottom-1,`section header overlaps global header: ${JSON.stringify({globalRect,sectionRect})}`,name);
   }else{
     assert(nav.position!=='fixed','desktop nav unexpectedly uses mobile fixed rail',name);
   }
 
   for(const pageName of ['overview','finance','charges','ads','products','inventory','returns','history','data']){
     await page.locator(`#mainNav .nav-item[data-page="${pageName}"]`).click();
-    await page.waitForTimeout(40);
+    await page.waitForTimeout(mobile?220:40);
     const active=await page.locator(`#mainNav .nav-item[data-page="${pageName}"]`).evaluate(el=>el.classList.contains('active'));
     assert(active,`navigation did not activate ${pageName}`,name);
     const currentOverflow=await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1);
     assert(currentOverflow,`document overflow after navigating to ${pageName}`,name);
+    if(mobile){
+      const activeVisible=await page.locator(`#mainNav .nav-item[data-page="${pageName}"]`).evaluate(el=>{
+        const r=el.getBoundingClientRect();
+        const n=document.getElementById('mainNav').getBoundingClientRect();
+        return r.right>n.left&&r.left<n.right;
+      });
+      assert(activeVisible,`active nav item not visible after switching to ${pageName}`,name);
+    }
   }
 
   await page.locator('#mainNav .nav-item[data-page="ads"]').click();
@@ -84,46 +103,73 @@ for(const [name,width,height,touch] of cases){
   const chart=await page.locator('.chart-xlabels').first().evaluate(layer=>{
     const labels=[...layer.querySelectorAll('.chart-xlabel')];
     const visible=labels.filter(el=>getComputedStyle(el).display!=='none');
-    return {total:labels.length,visible:visible.length,first:labels.length?getComputedStyle(labels[0]).display!=='none':false,last:labels.length?getComputedStyle(labels.at(-1)).display!=='none':false};
+    return {total:labels.length,visible:visible.length,first:labels.length?getComputedStyle(labels[0]).display!=='none':false,last:labels.length?getComputedStyle(labels.at(-1)).display!=='none':false,htmlLayer:layer instanceof HTMLElement};
   });
+  assert(chart.htmlLayer,'chart X labels are not in the HTML overlay layer',name);
   assert(chart.first&&chart.last,'chart sampling must keep first and last HTML labels',name);
   if(width<=340) assert(chart.visible<=4,`expected <=4 chart labels, got ${chart.visible}`,name);
   else if(width<=430) assert(chart.visible<=5,`expected <=5 chart labels, got ${chart.visible}`,name);
   else if(width<=620) assert(chart.visible<=6,`expected <=6 chart labels, got ${chart.visible}`,name);
 
-  await page.locator('#mainNav .nav-item[data-page="products"]').click();
-  const tableCount=await page.locator('.table-wrap>.data-table').count();
-  if(tableCount){
-    const table=await page.locator('.table-wrap').first().evaluate(w=>({client:w.clientWidth,scroll:w.scrollWidth,doc:document.documentElement.scrollWidth,inner:innerWidth}));
-    if(mobile) assert(table.scroll>=table.client,`table viewport invalid ${JSON.stringify(table)}`,name);
-    assert(table.doc<=table.inner+1,`table caused document overflow ${JSON.stringify(table)}`,name);
+  for(const tablePage of ['ads','products','charges','inventory']){
+    await page.locator(`#mainNav .nav-item[data-page="${tablePage}"]`).click();
+    await page.waitForTimeout(120);
+    const tableCount=await page.locator('.table-wrap>.data-table').count();
+    if(tableCount){
+      const table=await page.locator('.table-wrap').first().evaluate(w=>({client:w.clientWidth,scroll:w.scrollWidth,doc:document.documentElement.scrollWidth,inner:innerWidth,overflow:getComputedStyle(w).overflowX}));
+      if(mobile){
+        assert(table.scroll>=table.client,`${tablePage} table viewport invalid ${JSON.stringify(table)}`,name);
+        assert(['auto','scroll'].includes(table.overflow),`${tablePage} table does not own horizontal scrolling: ${JSON.stringify(table)}`,name);
+      }
+      assert(table.doc<=table.inner+1,`${tablePage} table caused document overflow ${JSON.stringify(table)}`,name);
+    }
   }
 
   if(mobile){
+    const compareBefore=await page.locator('#compareToggle').getAttribute('aria-pressed');
+    await page.locator('#compareToggle').click();
+    const compareAfter=await page.locator('#compareToggle').getAttribute('aria-pressed');
+    assert(compareBefore!==compareAfter,'Compare aria-pressed did not toggle',name);
+    await page.locator('#compareToggle').click();
+
     await page.locator('#periodButton').click();
+    await page.waitForTimeout(240);
     assert(await page.locator('#periodPopover').isVisible(),'period popover did not open',name);
     assert(await inViewport(page,'#periodPopover',3),'period popover exceeds viewport',name);
+    const periodVsNav=await page.evaluate(()=>{
+      const p=document.getElementById('periodPopover').getBoundingClientRect();
+      const n=document.getElementById('mainNav').getBoundingClientRect();
+      return {periodBottom:p.bottom,navTop:n.top,clear:p.bottom<=n.top+3};
+    });
+    assert(periodVsNav.clear,`period popover overlaps bottom navigation: ${JSON.stringify(periodVsNav)}`,name);
     await page.keyboard.press('Escape').catch(()=>{});
     await page.evaluate(()=>document.getElementById('periodPopover')?.classList.remove('show'));
 
     await page.locator('#topImportBtn').click();
+    await page.waitForTimeout(360);
     assert(await page.locator('#importDrawer').isVisible(),'import drawer did not open',name);
     const importRect=await rect(page,'#importDrawer');
     assert(importRect.width<=width+2,`import drawer wider than viewport: ${importRect.width}`,name);
     assert(importRect.height<=height+2,`import drawer taller than viewport: ${importRect.height}`,name);
+    assert(await inViewport(page,'#importDrawer',3),'import drawer exceeds viewport after transition',name);
+    const closeRect=await rect(page,'#drawerClose');
+    assert(closeRect.width>=44&&closeRect.height>=44,`import close target under 44px: ${JSON.stringify(closeRect)}`,name);
     await page.locator('#drawerClose').click();
 
     await page.locator('#commandButton').click();
-    await page.waitForTimeout(60);
+    await page.waitForTimeout(300);
     if(await page.locator('#commandPalette').isVisible()){
       assert(await inViewport(page,'#commandPalette',3),'command palette exceeds viewport',name);
+      const commandRect=await rect(page,'#commandPalette');
+      assert(Math.abs(commandRect.x-(width-commandRect.right))<=4,`command palette is not horizontally viewport-bound: ${JSON.stringify(commandRect)}`,name);
+      assert(commandRect.transform==='none',`command palette still has transform after open transition: ${commandRect.transform}`,name);
       await page.keyboard.press('Escape').catch(()=>{});
     }else{
       failures.push(`${name}: command palette did not open`);
     }
 
     await page.locator('#viewMenuBtn').click();
-    await page.waitForTimeout(40);
+    await page.waitForTimeout(220);
     if(await page.locator('#viewPopover').isVisible()){
       assert(await inViewport(page,'#viewPopover',3),'view popover exceeds viewport',name);
       await page.evaluate(()=>document.getElementById('viewPopover')?.classList.remove('show','open','active'));
