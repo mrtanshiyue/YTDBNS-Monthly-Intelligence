@@ -1,9 +1,23 @@
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-core';
+import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const baseURL=process.env.ACCEPTANCE_URL||'http://127.0.0.1:4173/';
 const artifacts=process.env.ACCEPTANCE_ARTIFACTS||'artifacts/mobile-responsive';
+const browserCandidates=[
+  process.env.CHROMIUM_PATH,
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+].filter(Boolean);
+const executablePath=browserCandidates.find(existsSync);
+if(!executablePath){
+  throw new Error(`No system Chromium/Chrome found. Set CHROMIUM_PATH. Checked: ${browserCandidates.join(', ')}`);
+}
+
 const cases=[
   ['mobile-320x568',320,568,false],
   ['mobile-360x800',360,800,false],
@@ -20,7 +34,7 @@ const cases=[
 ];
 
 await fs.mkdir(artifacts,{recursive:true});
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,executablePath,args:['--no-sandbox','--disable-dev-shm-usage']});
 const failures=[];
 const results=[];
 
@@ -39,6 +53,14 @@ async function inViewport(page,selector,tolerance=2){
     const r=el.getBoundingClientRect();
     return r.left>=-tol&&r.top>=-tol&&r.right<=innerWidth+tol&&r.bottom<=innerHeight+tol;
   },tolerance);
+}
+
+async function ensurePeriodOpen(page){
+  if(!(await page.locator('#periodPopover').isVisible())){
+    await page.locator('#periodButton').click();
+    await page.waitForTimeout(160);
+  }
+  assert(await page.locator('#periodPopover').isVisible(),'period popover did not open','period-helper');
 }
 
 for(const [name,width,height,touch] of cases){
@@ -143,36 +165,47 @@ for(const [name,width,height,touch] of cases){
     assert(compareBefore!==compareAfter,'Compare aria-pressed did not toggle',name);
     await page.locator('#compareToggle').click();
 
-    // Period: Quick -> Month -> Custom -> Apply. Use the existing current month and a read-only date range.
-    await page.locator('#periodButton').click();
-    await page.waitForTimeout(240);
-    assert(await page.locator('#periodPopover').isVisible(),'period popover did not open',name);
-    assert(await inViewport(page,'#periodPopover',3),'period popover exceeds viewport',name);
-    if(mobile){
-      const periodVsNav=await page.evaluate(()=>{
-        const p=document.getElementById('periodPopover').getBoundingClientRect();
-        const n=document.getElementById('mainNav').getBoundingClientRect();
-        return {periodBottom:p.bottom,navTop:n.top,clear:p.bottom<=n.top+3};
-      });
-      assert(periodVsNav.clear,`period popover overlaps bottom navigation: ${JSON.stringify(periodVsNav)}`,name);
+    // Period Quick: click the existing current-period action and confirm the sheet closes via setRange().
+    await ensurePeriodOpen(page);
+    assert(await page.locator('.period-pane[data-pane="quick"]').isVisible(),'Quick period pane unavailable',name);
+    const quickCurrent=page.locator('.period-pane[data-pane="quick"] [data-quick="current"]').first();
+    if(await quickCurrent.count()){
+      await quickCurrent.click();
+      await page.waitForTimeout(240);
+      assert(!(await page.locator('#periodPopover').isVisible()),'Quick period action did not close the sheet',name);
     }
+
+    // Month: apply the currently selected month without changing data.
+    await ensurePeriodOpen(page);
     const monthTab=page.locator('.period-tab[data-mode="month"]');
     if(await monthTab.count()){
       await monthTab.click();
       assert(await page.locator('.period-pane[data-pane="month"]').isVisible(),'Month period pane unavailable',name);
       await page.locator('#applyMonth').click();
-      await page.waitForTimeout(220);
+      await page.waitForTimeout(240);
+      assert(!(await page.locator('#periodPopover').isVisible()),'Month apply did not close the sheet',name);
     }
-    await page.locator('#periodButton').click();
-    await page.waitForTimeout(120);
+
+    // Custom: re-apply the known June read-only range. This changes only dashboard query state.
+    await ensurePeriodOpen(page);
     const customTab=page.locator('.period-tab[data-mode="custom"]');
     if(await customTab.count()){
       await customTab.click();
       assert(await page.locator('.period-pane[data-pane="custom"]').isVisible(),'Custom period pane unavailable',name);
       await page.locator('#dateFrom').fill('2026-06-01');
       await page.locator('#dateTo').fill('2026-06-30');
+      assert(await inViewport(page,'#periodPopover',3),'Custom period sheet exceeds viewport',name);
+      if(mobile){
+        const periodVsNav=await page.evaluate(()=>{
+          const p=document.getElementById('periodPopover').getBoundingClientRect();
+          const n=document.getElementById('mainNav').getBoundingClientRect();
+          return {periodBottom:p.bottom,navTop:n.top,clear:p.bottom<=n.top+3};
+        });
+        assert(periodVsNav.clear,`period popover overlaps bottom navigation: ${JSON.stringify(periodVsNav)}`,name);
+      }
       await page.locator('#applyCustom').click();
-      await page.waitForTimeout(240);
+      await page.waitForTimeout(260);
+      assert(!(await page.locator('#periodPopover').isVisible()),'Custom apply did not close the sheet',name);
     }
 
     await page.locator('#topImportBtn').click();
@@ -251,11 +284,11 @@ for(const [name,width,height,touch] of cases){
 }
 
 await browser.close();
-await fs.writeFile(path.join(artifacts,'results.json'),JSON.stringify({baseURL,results,failures},null,2));
+await fs.writeFile(path.join(artifacts,'results.json'),JSON.stringify({baseURL,executablePath,results,failures},null,2));
 
 if(failures.length){
   console.error('\nMOBILE RESPONSIVE ACCEPTANCE FAILED');
   failures.forEach(x=>console.error(`- ${x}`));
   process.exit(1);
 }
-console.log(`MOBILE RESPONSIVE ACCEPTANCE PASS (${cases.length} viewports)`);
+console.log(`MOBILE RESPONSIVE ACCEPTANCE PASS (${cases.length} viewports, ${executablePath})`);
