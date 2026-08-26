@@ -451,7 +451,7 @@ body.studio-v54 .table-wrap{
   body.studio-v54 .drawer-foot>*{width:100%!important;flex:0 0 auto!important}
 }
 
-@media(max-width:960px) and (max-height:520px) and (orientation:landscape){
+@media(max-width:860px) and (max-height:520px) and (orientation:landscape){
   :root{
     --v54-mobile-top:50px;
     --v54-mobile-section:48px;
