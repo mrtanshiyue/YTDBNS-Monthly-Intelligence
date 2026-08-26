@@ -13,17 +13,6 @@
 body.studio-v54 .chart-xlabels{min-width:0}
 body.studio-v54 .chart-xlabel{white-space:nowrap}
 
-/* Tables keep their semantic structure. Horizontal scrolling belongs to the table viewport,
-   never to the document. */
-body.studio-v54 .table-wrap{
-  max-width:100%;
-  overflow-x:auto!important;
-  overscroll-behavior-inline:contain;
-  -webkit-overflow-scrolling:touch;
-  touch-action:pan-x pan-y;
-  scrollbar-gutter:stable;
-}
-
 @media(max-width:860px){
   html,body{max-width:100%;overflow-x:hidden!important}
   body.studio-v54{
@@ -31,6 +20,17 @@ body.studio-v54 .table-wrap{
     --v54-safe-right:env(safe-area-inset-right,0px);
     --v54-safe-bottom:env(safe-area-inset-bottom,0px);
     --v54-safe-left:env(safe-area-inset-left,0px);
+  }
+
+  /* Tables keep their semantic structure. Horizontal scrolling belongs to the table viewport,
+     never to the document. This behavior is mobile-only so desktop remains a true no-op. */
+  body.studio-v54 .table-wrap{
+    max-width:100%;
+    overflow-x:auto!important;
+    overscroll-behavior-inline:contain;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-x pan-y;
+    scrollbar-gutter:stable;
   }
 
   /* ---------- Mobile global shell ---------- */
