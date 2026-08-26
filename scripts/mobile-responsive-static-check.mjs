@@ -63,6 +63,10 @@ expect(!browserAcceptance.includes("['desktop-1440x900',1440,900,true]")&&!brows
 expect(browserAcceptance.includes("['tablet-768x1024',768,1024]")&&browserAcceptance.includes("['tablet-820x1180',820,1180]"),'tablet acceptance cases missing');
 expect(browserAcceptance.includes('innerWidth,innerHeight'),'browser acceptance must capture actual viewport dimensions');
 expect(browserAcceptance.includes('actual viewport width')&&browserAcceptance.includes('actual viewport height'),'browser acceptance must reject viewport emulation drift');
+expect(browserAcceptance.includes('importInternals')&&browserAcceptance.includes('bodyOverflowY')&&browserAcceptance.includes('footInside')&&browserAcceptance.includes('dropInside'),'Import internal-scroll/footer/dropzone acceptance missing');
+expect(browserAcceptance.includes("rect(page,'#commandResults')")&&browserAcceptance.includes('command results do not own vertical scrolling'),'Command results internal-scroll acceptance missing');
+expect(browserAcceptance.includes("rect(page,'#detailBody')")&&browserAcceptance.includes('detail drawer body does not own vertical scrolling'),'Detail body internal-scroll acceptance missing');
+expect(browserAcceptance.includes("rect(page,'#panelModalBody')")&&browserAcceptance.includes('panel modal body does not own vertical scrolling'),'Panel body internal-scroll acceptance missing');
 
 const navItems=(index.match(/class="nav-item/g)||[]).length;
 expect(navItems===9,`expected 9 primary nav items, found ${navItems}`);
