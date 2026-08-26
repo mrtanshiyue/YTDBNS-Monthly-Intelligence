@@ -29,6 +29,13 @@
     flex:0 0 44px!important;
   }
 
+  /* backdrop-filter establishes a containing block for fixed descendants in Chromium. Removing
+     it on the compact mobile header keeps the Period sheet viewport-bound instead of header-bound. */
+  body.studio-v54 .global-nav{
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+
   /* Legacy mobile CSS hides the entire period-control wrapper. Use an intentionally stronger
      selector so the existing control remains reachable after all legacy responsive layers. */
   html body.studio-v54 .global-nav .global-nav-inner .global-actions>.period-control{
