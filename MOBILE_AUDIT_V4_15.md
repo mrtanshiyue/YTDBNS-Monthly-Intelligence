@@ -21,6 +21,8 @@ Scope: responsive presentation and interaction only. No D1/R2/API/business-logic
 - **FIXED — Command Palette inherits legacy `translateX(-50%)`.** The open mobile state explicitly resolves to `transform:none`.
 - **FIXED — Short landscape View Settings clips above the viewport.** The View sheet now caps its height to available `100dvh`, subtracting both safe-area top/bottom and the bottom navigation, with internal vertical scrolling.
 - **FIXED — 932px landscape accidentally inherits partial mobile-shell sizing.** Compact shell height rules are now scoped to `<=860px`; 932px landscape keeps the desktop shell while low-height chart/overlay protections may still apply.
+- **FIXED — Desktop no-op leakage.** Early V4.15 table/chart helpers and an explicit `>860px` navigation override were capable of touching 1440/1920 styles. DOM-affecting V4.15 CSS is now contained inside responsive breakpoints; desktop regression widths no longer receive V4.15 table/touch/chart helper overrides.
+- **FIXED — Browser acceptance was not reproducible from a clean checkout.** The script imported undeclared `playwright`. It now uses lightweight `playwright-core` with an explicit system Chromium/Chrome resolver and package scripts for static/browser acceptance.
 
 ## P2
 
@@ -28,6 +30,7 @@ Scope: responsive presentation and interaction only. No D1/R2/API/business-logic
 - Landscape mode uses reduced shell heights only inside the mobile breakpoint and retains low-height overlay/chart protections.
 - Secondary tab rails horizontally scroll without creating document-level horizontal overflow.
 - Mobile header blur removal uses a near-opaque background to avoid content bleed-through while preserving Period fixed-position correctness.
+- Static invariants now enforce the mobile-only CSS boundary, system-Chromium acceptance dependency, Period Quick/Month/Custom coverage, and Detail/Panel overlay coverage.
 
 ## Chromium evidence collected during hardening
 
@@ -73,9 +76,22 @@ Landscape: 844x390, 932x430.
 
 Desktop regression: 1440x900, 1920x1080.
 
+The browser acceptance script now additionally verifies:
+
+- All nine page-switch contracts and active-navigation discoverability.
+- Search / Period / Refresh / Import mobile touch targets.
+- Period Quick, Month and Custom Apply flows using read-only dashboard ranges.
+- Compare `aria-pressed` state transition.
+- Ads / Products / Charges / Inventory / Returns table containment.
+- Import Drawer geometry without invoking the destructive Commit action.
+- Command Palette final `transform:none`, View Settings, Detail Drawer and Panel Modal geometry.
+- V4.14 HTML X-axis label architecture plus viewport sampling.
+- 932x430 outer/inner shell consistency so desktop shell cannot partially inherit mobile heights.
+- Console/page errors.
+
 ## Final merge gate — still pending
 
-PR #1 remains Draft until the **final exact-head** matrix is rerun after the shared safe-area/landscape refinements and all of the following are true:
+PR #1 remains Draft until the **final exact-head** matrix is rerun after the shared safe-area/landscape/desktop-no-op refinements and all of the following are true:
 
 - P0 = 0.
 - Mobile navigation PASS.
@@ -83,9 +99,10 @@ PR #1 remains Draft until the **final exact-head** matrix is rerun after the sha
 - Overlay clipping = 0.
 - Table internal scrolling PASS.
 - Search / Period / Refresh / Import mobile actions PASS.
+- Period Quick / Month / Custom PASS.
 - Compare `aria-pressed` PASS.
 - Command Palette PASS with final `transform:none`.
-- Import Drawer PASS.
+- Import Drawer PASS without data commit.
 - Detail Drawer / Panel Modal PASS.
 - V4.14 HTML chart label architecture and sampling PASS.
 - 320 / 390 / 430 / landscape / tablet PASS.
@@ -99,4 +116,4 @@ Only after this final exact-head gate should the PR be marked Ready and consider
 - Keep V4.14 chart X-axis labels in the HTML layer; do not move them back into SVG text.
 - Keep all nine page-switch click contracts and existing API/D1/R2 behavior.
 - Do not create or alter Cloudflare D1/R2 resources during mobile hardening.
-- Desktop visual system remains unchanged above the mobile breakpoint.
+- Desktop visual system remains unchanged above the responsive breakpoint except the explicitly tested low-height 932px landscape protections.
