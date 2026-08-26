@@ -13,7 +13,7 @@
     "r2:create": "wrangler r2 bucket create ytdbns-monthly-raw-reports"
   },
   "devDependencies": {
-    "playwright-core": "^1.62.1",
+    "playwright-core": "1.62.1",
     "wrangler": "^4.0.0"
   }
 }
