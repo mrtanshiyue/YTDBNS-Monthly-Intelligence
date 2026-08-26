@@ -48,7 +48,7 @@ expect(js.includes("if(width<=340) return 4")&&js.includes("if(width<=430) retur
 expect(js.includes("keep.add(Math.round(i*(labels.length-1)/(limit-1)))"),'chart label sampling missing');
 expect(js.includes("#periodPopover")&&js.includes("#viewPopover"),'mobile overlay lock does not cover period/view overlays');
 
-expect(pkg.devDependencies?.['playwright-core'],'playwright-core devDependency missing');
+expect(pkg.devDependencies?.['playwright-core']==='1.62.1','playwright-core acceptance version must be pinned to 1.62.1');
 expect(pkg.scripts?.['check:mobile:static']==='node scripts/mobile-responsive-static-check.mjs','check:mobile:static package script missing');
 expect(pkg.scripts?.['check:mobile']==='node scripts/mobile-responsive-acceptance.mjs','check:mobile package script missing');
 expect(browserAcceptance.includes("from 'playwright-core'"),'browser acceptance must use playwright-core');
