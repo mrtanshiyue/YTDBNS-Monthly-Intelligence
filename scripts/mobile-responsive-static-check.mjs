@@ -17,8 +17,10 @@ expect(index.indexOf('./v54.js')>index.indexOf('./v53.js'),'v54.js must load aft
 const mobileMediaIndex=css.indexOf('@media(max-width:860px){');
 const firstTableRuleIndex=css.indexOf('body.studio-v54 .table-wrap{');
 expect(mobileMediaIndex>=0,'primary mobile media block missing');
+expect(!css.slice(0,mobileMediaIndex).includes('body.studio-v54'),'desktop DOM overrides detected before mobile breakpoint');
 expect(firstTableRuleIndex>mobileMediaIndex,'table hardening must remain mobile-only for desktop no-op');
-expect(!css.slice(0,mobileMediaIndex).includes('body.studio-v54 .table-wrap{'),'desktop-scoped table hardening detected before mobile breakpoint');
+expect(!css.includes('@media(min-width:861px)'),'explicit >860 V4.15 styling violates desktop no-op');
+expect(css.includes('body.studio-v54 .chart-xlabels{min-width:0}')&&css.indexOf('body.studio-v54 .chart-xlabels{min-width:0}')>mobileMediaIndex,'chart label helper must stay inside mobile breakpoint');
 expect(css.includes('body.studio-v54 .global-links{')&&css.includes('display:flex!important'),'mobile primary nav restore missing');
 expect(css.includes('position:fixed!important')&&css.includes('bottom:0!important'),'mobile bottom nav rail missing');
 expect(css.includes('env(safe-area-inset-bottom,0px)'),'safe-area bottom inset missing');
