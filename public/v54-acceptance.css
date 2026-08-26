@@ -20,6 +20,7 @@
     padding-inline:10px!important;
     flex:0 0 auto!important;
   }
+  body.studio-v54 .compare-toggle>span:not(.compare-dot){display:inline!important}
   body.studio-v54 .view-menu-btn{
     min-width:44px!important;
     width:44px!important;
@@ -27,6 +28,14 @@
     height:44px!important;
     flex:0 0 44px!important;
   }
+
+  /* Legacy command palette uses left:50% + translateX(-50%). The mobile sheet uses left/right
+     viewport bounds, so the old horizontal transform must be removed explicitly. */
+  body.studio-v54 .command-palette{
+    transform:translateY(-8px) scale(.985)!important;
+    transform-origin:top center!important;
+  }
+  body.studio-v54 .command-palette.show{transform:none!important}
 
   /* Complex data tables should scroll horizontally at a readable intrinsic width rather than squeeze columns. */
   body.studio-v54 .table-wrap>.data-table{
