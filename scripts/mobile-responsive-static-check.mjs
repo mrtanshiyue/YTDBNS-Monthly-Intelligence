@@ -31,6 +31,8 @@ expect(css.includes('body.studio-v54 .period-popover{')&&css.includes('position:
 expect(css.includes('overflow-x:auto!important'),'internal horizontal scrolling missing');
 expect(css.includes('@media(max-width:860px) and (max-height:520px) and (orientation:landscape)'),'compact landscape shell must stay inside mobile breakpoint');
 expect(!css.includes('@media(max-width:960px) and (max-height:520px) and (orientation:landscape){\n  :root'),'932px landscape must not inherit mobile shell heights');
+expect(css.includes('padding:calc(16px + var(--v54-safe-top))'),'drawer/detail headers must preserve top safe-area inset');
+expect(css.includes('calc(12px + var(--v54-safe-bottom))'),'Import footer must preserve Home Indicator safe-area inset');
 
 expect(acceptance.includes('body.studio-v54 .section-status{')&&acceptance.includes('display:flex!important'),'mobile Compare/View controls not restored');
 expect(acceptance.includes('.freshness')&&acceptance.includes('.grain-chip{display:none!important}'),'low-priority mobile status chips not suppressed');
