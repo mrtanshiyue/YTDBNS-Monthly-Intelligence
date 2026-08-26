@@ -67,7 +67,7 @@ for(const [name,width,height] of cases){
   const mobile=width<=860;
   const compactLandscape=width>860&&width<=960&&height<=520;
   const deviceLike=mobile||compactLandscape;
-  const overlayAcceptance=deviceLike;
+  const overlayAcceptance=true;
   const context=await browser.newContext({viewport:{width,height},isMobile:deviceLike,hasTouch:deviceLike,deviceScaleFactor:1});
   const page=await context.newPage();
   const consoleErrors=[];
@@ -94,7 +94,7 @@ for(const [name,width,height] of cases){
     assert(await page.locator('#compareToggle').isVisible(),'compare control unavailable on mobile',name);
     assert(await page.locator('#viewMenuBtn').isVisible(),'view settings unavailable on mobile',name);
 
-    for(const selector of ['#commandButton','#periodButton','#refreshBtn','#topImportBtn']){
+    for(const selector of ['#commandButton','#periodButton','#refreshBtn','#topImportBtn','#compareToggle','#viewMenuBtn']){
       assert(await page.locator(selector).isVisible(),`${selector} unavailable on mobile`,name);
       const actionRect=await rect(page,selector);
       assert(actionRect.width>=44&&actionRect.height>=44,`${selector} touch target under 44px: ${JSON.stringify(actionRect)}`,name);
@@ -121,8 +121,9 @@ for(const [name,width,height] of cases){
     await page.waitForTimeout(mobile?220:40);
     const active=await page.locator(`#mainNav .nav-item[data-page="${pageName}"]`).evaluate(el=>el.classList.contains('active'));
     assert(active,`navigation did not activate ${pageName}`,name);
-    const currentOverflow=await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1);
-    assert(currentOverflow,`document overflow after navigating to ${pageName}`,name);
+    const currentOverflow=await page.evaluate(()=>({doc:document.documentElement.scrollWidth<=innerWidth+1,body:document.body.scrollWidth<=innerWidth+1}));
+    assert(currentOverflow.doc,`document overflow after navigating to ${pageName}`,name);
+    assert(currentOverflow.body,`body overflow after navigating to ${pageName}`,name);
     if(mobile){
       const activeVisible=await page.locator(`#mainNav .nav-item[data-page="${pageName}"]`).evaluate(el=>{
         const r=el.getBoundingClientRect();
@@ -131,6 +132,14 @@ for(const [name,width,height] of cases){
       });
       assert(activeVisible,`active nav item not visible after switching to ${pageName}`,name);
     }
+  }
+
+  await page.locator('#refreshBtn').click();
+  await page.waitForTimeout(160);
+  const refreshToast=page.locator('#toastStack .toast').last();
+  assert(await refreshToast.count()>0&&await refreshToast.isVisible(),'Refresh action did not produce confirmation',name);
+  if(await refreshToast.count()){
+    assert((await refreshToast.innerText()).includes('已刷新'),'Refresh confirmation text missing',name);
   }
 
   await page.locator('#mainNav .nav-item[data-page="ads"]').click();
@@ -151,14 +160,16 @@ for(const [name,width,height] of cases){
     await page.locator(`#mainNav .nav-item[data-page="${tablePage}"]`).click();
     await page.waitForTimeout(120);
     const tableCount=await page.locator('.table-wrap>.data-table').count();
-    if(tableCount){
-      const table=await page.locator('.table-wrap').first().evaluate(w=>({client:w.clientWidth,scroll:w.scrollWidth,doc:document.documentElement.scrollWidth,inner:innerWidth,overflow:getComputedStyle(w).overflowX}));
-      if(mobile){
-        assert(table.scroll>=table.client,`${tablePage} table viewport invalid ${JSON.stringify(table)}`,name);
-        assert(['auto','scroll'].includes(table.overflow),`${tablePage} table does not own horizontal scrolling: ${JSON.stringify(table)}`,name);
-      }
-      assert(table.doc<=table.inner+1,`${tablePage} table caused document overflow ${JSON.stringify(table)}`,name);
+    assert(tableCount>0,`${tablePage} required data table missing`,name);
+    if(!tableCount) continue;
+    const table=await page.locator('.table-wrap').first().evaluate(w=>({client:w.clientWidth,scroll:w.scrollWidth,doc:document.documentElement.scrollWidth,body:document.body.scrollWidth,inner:innerWidth,overflow:getComputedStyle(w).overflowX}));
+    if(mobile){
+      assert(table.scroll>=table.client,`${tablePage} table viewport invalid ${JSON.stringify(table)}`,name);
+      assert(['auto','scroll'].includes(table.overflow),`${tablePage} table does not own horizontal scrolling: ${JSON.stringify(table)}`,name);
+      if(width<=430) assert(table.scroll>table.client+1,`${tablePage} narrow-phone table has no real internal horizontal scroll range: ${JSON.stringify(table)}`,name);
     }
+    assert(table.doc<=table.inner+1,`${tablePage} table caused document overflow ${JSON.stringify(table)}`,name);
+    assert(table.body<=table.inner+1,`${tablePage} table caused body overflow ${JSON.stringify(table)}`,name);
   }
 
   if(overlayAcceptance){
@@ -171,6 +182,7 @@ for(const [name,width,height] of cases){
     await ensurePeriodOpen(page);
     assert(await page.locator('.period-pane[data-pane="quick"]').isVisible(),'Quick period pane unavailable',name);
     const quickCurrent=page.locator('.period-pane[data-pane="quick"] [data-quick="current"]').first();
+    assert(await quickCurrent.count()>0,'Quick current-period action missing',name);
     if(await quickCurrent.count()){
       await quickCurrent.click();
       await page.waitForTimeout(240);
@@ -179,6 +191,7 @@ for(const [name,width,height] of cases){
 
     await ensurePeriodOpen(page);
     const monthTab=page.locator('.period-tab[data-mode="month"]');
+    assert(await monthTab.count()>0,'Month period tab missing',name);
     if(await monthTab.count()){
       await monthTab.click();
       assert(await page.locator('.period-pane[data-pane="month"]').isVisible(),'Month period pane unavailable',name);
@@ -189,6 +202,7 @@ for(const [name,width,height] of cases){
 
     await ensurePeriodOpen(page);
     const customTab=page.locator('.period-tab[data-mode="custom"]');
+    assert(await customTab.count()>0,'Custom period tab missing',name);
     if(await customTab.count()){
       await customTab.click();
       assert(await page.locator('.period-pane[data-pane="custom"]').isVisible(),'Custom period pane unavailable',name);
@@ -243,6 +257,7 @@ for(const [name,width,height] of cases){
       const commandResults=await rect(page,'#commandResults');
       assert(['auto','scroll'].includes(commandResults.overflowY),`command results do not own vertical scrolling: ${JSON.stringify(commandResults)}`,name);
       await page.locator('#commandInput').fill('广告');
+      assert((await page.locator('#commandInput').inputValue())==='广告','command input did not accept search text',name);
       await page.keyboard.press('Escape').catch(()=>{});
     }else{
       failures.push(`${name}: command palette did not open`);
@@ -252,6 +267,10 @@ for(const [name,width,height] of cases){
     await page.waitForTimeout(220);
     if(await page.locator('#viewPopover').isVisible()){
       assert(await inViewport(page,'#viewPopover',3),'view popover exceeds viewport',name);
+      if(mobile){
+        const viewRect=await rect(page,'#viewPopover');
+        assert(['auto','scroll'].includes(viewRect.overflowY),`mobile view popover does not own vertical scrolling: ${JSON.stringify(viewRect)}`,name);
+      }
       await page.evaluate(()=>document.getElementById('viewPopover')?.classList.remove('show','open','active'));
     }else{
       failures.push(`${name}: view popover did not open`);
@@ -295,9 +314,12 @@ for(const [name,width,height] of cases){
     }
   }
 
+  const finalOverflow=await page.evaluate(()=>({doc:document.documentElement.scrollWidth<=innerWidth+1,body:document.body.scrollWidth<=innerWidth+1}));
+  assert(finalOverflow.doc,'document overflow after full interaction sequence',name);
+  assert(finalOverflow.body,'body overflow after full interaction sequence',name);
   assert(consoleErrors.length===0,`console/page errors: ${consoleErrors.join(' | ')}`,name);
   await page.screenshot({path:path.join(artifacts,`${name}.png`),fullPage:true});
-  results.push({name,width,height,mobile,compactLandscape,deviceLike,chart,consoleErrors});
+  results.push({name,width,height,mobile,compactLandscape,deviceLike,overlayAcceptance,chart,consoleErrors});
   await context.close();
 }
 
