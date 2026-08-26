@@ -1,0 +1,106 @@
+name: Import YTDBNS V4.14 source tree
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-v414.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  import-v414:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Expand and validate authoritative V4.14 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP='YTDBNS_Monthly_Intelligence_V4_14_Chart_Typography_Fix.zip'
+          test -f "$ZIP"
+          rm -rf .v414-import
+          mkdir -p .v414-import
+          unzip -q "$ZIP" -d .v414-import
+
+          APP_DIR="$(find .v414-import -type f -name package.json -printf '%h\n' | head -n 1)"
+          test -n "$APP_DIR"
+          test -f "$APP_DIR/public/index.html"
+          test -f "$APP_DIR/src/worker.js"
+          test -f "$APP_DIR/wrangler.jsonc"
+          test -d "$APP_DIR/migrations"
+
+          node -e "const p=require('./' + process.argv[1] + '/package.json'); if(p.version!=='4.14.0') process.exit(1)" "$APP_DIR"
+
+          # Import the complete application tree while retaining deployment handoff metadata.
+          rsync -a "$APP_DIR"/ ./
+
+          # Preserve the real Cloudflare binding contract; never deploy the package placeholder.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('wrangler.jsonc')
+          s = p.read_text()
+          s = s.replace('REPLACE_WITH_D1_DATABASE_ID', 'daad1ce7-a13a-49a5-8581-14294b153147')
+          p.write_text(s)
+          required = [
+              '"name": "ytdbns-monthly-intelligence"',
+              '"binding": "DB"',
+              '"database_name": "ytdbns-monthly-db"',
+              '"database_id": "daad1ce7-a13a-49a5-8581-14294b153147"',
+              '"binding": "RAW_REPORTS"',
+              '"bucket_name": "ytdbns-monthly-raw-reports"',
+              '"directory": "./public/"',
+          ]
+          out = p.read_text()
+          missing = [x for x in required if x not in out]
+          if missing:
+              raise SystemExit(f'wrangler binding contract failed: {missing}')
+          if 'REPLACE_WITH_D1_DATABASE_ID' in out:
+              raise SystemExit('D1 placeholder remains')
+          PY
+
+          # Static integrity: every local stylesheet/script referenced by index.html must exist.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path('public')
+          html = (root/'index.html').read_text(errors='strict')
+          refs = re.findall(r'(?:src|href)=["\']([^"\']+)["\']', html)
+          local = []
+          for ref in refs:
+              if ref.startswith(('http://','https://','//','#','data:')):
+                  continue
+              ref = ref.split('?',1)[0].split('#',1)[0]
+              if not ref or ref == '/':
+                  continue
+              local.append(ref.lstrip('/'))
+          missing = sorted({r for r in local if not (root/r).exists()})
+          if missing:
+              raise SystemExit(f'missing public assets: {missing}')
+          print(f'Validated {len(set(local))} local index assets; missing=0')
+          PY
+
+          find public src -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          grep -q 'chart-xlabels' public/js/trend-chart.js
+          grep -q 'chart-xlabel' public/js/trend-chart.js
+
+          rm -rf .v414-import
+          rm -f "$ZIP"
+          rm -f .github/workflows/import-v414.yml
+
+      - name: Commit exact V4.14 source tree to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Import complete YTDBNS Monthly Intelligence V4.14 application'
+          git push origin HEAD:main
