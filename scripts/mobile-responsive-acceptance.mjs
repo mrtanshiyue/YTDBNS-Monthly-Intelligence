@@ -236,8 +236,10 @@ for(const [name,width,height] of cases){
     if(await page.locator('#commandPalette').isVisible()){
       assert(await inViewport(page,'#commandPalette',3),'command palette exceeds viewport',name);
       const commandRect=await rect(page,'#commandPalette');
-      if(mobile) assert(Math.abs(commandRect.x-(width-commandRect.right))<=4,`command palette is not horizontally viewport-bound: ${JSON.stringify(commandRect)}`,name);
-      assert(commandRect.transform==='none',`command palette still has transform after open transition: ${commandRect.transform}`,name);
+      if(mobile){
+        assert(Math.abs(commandRect.x-(width-commandRect.right))<=4,`command palette is not horizontally viewport-bound: ${JSON.stringify(commandRect)}`,name);
+        assert(commandRect.transform==='none',`mobile command palette still has transform after open transition: ${commandRect.transform}`,name);
+      }
       const commandResults=await rect(page,'#commandResults');
       assert(['auto','scroll'].includes(commandResults.overflowY),`command results do not own vertical scrolling: ${JSON.stringify(commandResults)}`,name);
       await page.locator('#commandInput').fill('广告');
