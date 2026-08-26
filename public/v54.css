@@ -9,10 +9,6 @@
   --v54-touch:44px;
 }
 
-/* Preserve the V4.14 chart implementation: X labels stay in the HTML layer. */
-body.studio-v54 .chart-xlabels{min-width:0}
-body.studio-v54 .chart-xlabel{white-space:nowrap}
-
 @media(max-width:860px){
   html,body{max-width:100%;overflow-x:hidden!important}
   body.studio-v54{
@@ -21,6 +17,10 @@ body.studio-v54 .chart-xlabel{white-space:nowrap}
     --v54-safe-bottom:env(safe-area-inset-bottom,0px);
     --v54-safe-left:env(safe-area-inset-left,0px);
   }
+
+  /* Preserve the V4.14 chart implementation: X labels stay in the HTML layer. */
+  body.studio-v54 .chart-xlabels{min-width:0}
+  body.studio-v54 .chart-xlabel{white-space:nowrap}
 
   /* Tables keep their semantic structure. Horizontal scrolling belongs to the table viewport,
      never to the document. This behavior is mobile-only so desktop remains a true no-op. */
@@ -464,9 +464,4 @@ body.studio-v54 .chart-xlabel{white-space:nowrap}
   body.studio-v54 .nav-item{height:44px!important;min-height:44px!important}
   body.studio-v54 .content{padding-top:12px!important}
   body.studio-v54 .command-palette{top:calc(6px + var(--v54-safe-top))!important;max-height:calc(100dvh - var(--v54-safe-top) - var(--v54-safe-bottom) - 12px)!important}
-}
-
-@media(min-width:861px){
-  /* Explicit desktop no-op boundary: v54 is intentionally a mobile hardening layer. */
-  body.studio-v54 .global-links{scroll-snap-type:none}
 }
