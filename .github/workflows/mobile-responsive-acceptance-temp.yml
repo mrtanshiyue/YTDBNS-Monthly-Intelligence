@@ -1,0 +1,72 @@
+name: Mobile Responsive Acceptance Temp
+
+on:
+  push:
+    branches:
+      - feat/v4.15-mobile-responsive-hardening
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install declared dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Locate system Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in /usr/bin/google-chrome /usr/bin/google-chrome-stable /usr/bin/chromium /usr/bin/chromium-browser; do
+            if [ -x "$p" ]; then
+              echo "CHROMIUM_PATH=$p" >> "$GITHUB_ENV"
+              "$p" --version
+              exit 0
+            fi
+          done
+          echo "No supported system Chromium/Chrome found" >&2
+          exit 1
+
+      - name: Static responsive invariants
+        run: npm run check:mobile:static
+
+      - name: Start isolated static server
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --directory public >/tmp/ytdbns-mobile-http.log 2>&1 &
+          echo $! > /tmp/ytdbns-mobile-http.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/ytdbns-mobile-http.log || true
+          exit 1
+
+      - name: Exact-head Chromium viewport matrix
+        env:
+          ACCEPTANCE_URL: http://127.0.0.1:4173/
+          ACCEPTANCE_ARTIFACTS: artifacts/mobile-responsive
+        run: npm run check:mobile
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-responsive-acceptance-evidence
+          path: artifacts/mobile-responsive
+          if-no-files-found: ignore
+          retention-days: 3
