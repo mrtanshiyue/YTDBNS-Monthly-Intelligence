@@ -1,0 +1,106 @@
+/* V4.15 candidate — Mobile acceptance refinements.
+   Loaded after v54.css. Presentation-only overrides for issues found during mobile audit. */
+
+@media(max-width:860px){
+  /* Keep high-value context actions available on mobile without restoring the full desktop status bar. */
+  body.studio-v54 .section-status{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:6px!important;
+    min-width:0!important;
+    margin-left:auto!important;
+    white-space:nowrap!important;
+  }
+  body.studio-v54 .section-status .freshness,
+  body.studio-v54 .section-status .grain-chip{display:none!important}
+  body.studio-v54 .compare-toggle{
+    min-height:44px!important;
+    height:44px!important;
+    padding-inline:10px!important;
+    flex:0 0 auto!important;
+  }
+  body.studio-v54 .view-menu-btn{
+    min-width:44px!important;
+    width:44px!important;
+    min-height:44px!important;
+    height:44px!important;
+    flex:0 0 44px!important;
+  }
+
+  /* Complex data tables should scroll horizontally at a readable intrinsic width rather than squeeze columns. */
+  body.studio-v54 .table-wrap>.data-table{
+    width:100%!important;
+    min-width:720px!important;
+    table-layout:auto!important;
+  }
+  body.studio-v54 .table-wrap>.data-table th,
+  body.studio-v54 .table-wrap>.data-table td{
+    white-space:nowrap!important;
+  }
+  body.studio-v54 .table-wrap>.data-table .table-primary{
+    white-space:nowrap!important;
+  }
+
+  /* Preserve the V4.14 HTML X-axis layer and give the plot enough vertical room on touch devices. */
+  body.studio-v54 .chart-wrap{
+    width:100%!important;
+    min-width:0!important;
+    height:260px!important;
+    overflow:hidden!important;
+  }
+  body.studio-v54 .chart-xlabels{
+    width:100%!important;
+    min-width:0!important;
+  }
+  body.studio-v54 .chart-xlabel{
+    bottom:0!important;
+    font-size:11px!important;
+    line-height:15px!important;
+  }
+  body.studio-v54 .legend{
+    max-width:100%!important;
+    flex-wrap:wrap!important;
+    gap:8px 14px!important;
+    padding-top:6px!important;
+  }
+
+  /* Prevent long heading/subtitle combinations from forcing the section bar wider than the viewport. */
+  body.studio-v54 .page-heading{
+    flex:1 1 auto!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+  body.studio-v54 .page-heading h1{max-width:100%!important}
+}
+
+@media(max-width:390px){
+  /* Very narrow phones: keep two context controls, but compress Compare to its state dot. */
+  body.studio-v54 .compare-toggle{
+    width:44px!important;
+    min-width:44px!important;
+    padding:0!important;
+    justify-content:center!important;
+  }
+  body.studio-v54 .compare-toggle>span:not(.compare-dot){display:none!important}
+  body.studio-v54 .section-nav-inner{gap:6px!important}
+  body.studio-v54 .page-heading h1{font-size:20px!important}
+
+  body.studio-v54 .metric-grid{grid-template-columns:minmax(0,1fr)!important}
+  body.studio-v54 .metric-card{min-height:112px!important}
+  body.studio-v54 .metric-value{font-size:27px!important}
+  body.studio-v54 .table-wrap>.data-table{min-width:680px!important}
+}
+
+@media(max-width:340px){
+  body.studio-v54 .page-heading h1{font-size:19px!important}
+  body.studio-v54 .table-wrap>.data-table{min-width:640px!important}
+}
+
+@media(max-width:960px) and (max-height:520px) and (orientation:landscape){
+  body.studio-v54 .chart-wrap{height:220px!important}
+  body.studio-v54 .panel-modal-body,
+  body.studio-v54 .command-results,
+  body.studio-v54 .drawer-body,
+  body.studio-v54 .detail-body{overscroll-behavior:contain!important}
+}
