@@ -89,6 +89,19 @@ The browser acceptance script now additionally verifies:
 - 932x430 outer/inner shell consistency so desktop shell cannot partially inherit mobile heights.
 - Console/page errors.
 
+## Hosted-runner infrastructure evidence
+
+A temporary feature-branch-only workflow was created solely to attempt the final exact-head Chromium matrix, then removed immediately after the result was classified.
+
+- Workflow run: `32962806116`.
+- Test commit: `f872f8e9cbb61ab849fc86b0e755f330bdaf5cd3`.
+- Job: `chromium-matrix` / `98158682596`.
+- GitHub reported `runner_id=0`, empty runner name and `steps=[]`.
+- The job completed in about four seconds without executing Checkout, Node setup, static checks or Chromium.
+- Conclusion: this is the same hosted-runner infrastructure failure previously observed, not a product or acceptance failure.
+- The temporary `.github/workflows/mobile-responsive-acceptance-temp.yml` file was deleted on the next feature-branch commit so PR scope contains no permanent workflow or false-red CI asset.
+- Do not use this historical run as evidence against V4.15 and do not repeatedly recreate the same hosted-runner workflow unless repository runner availability materially changes.
+
 ## Final merge gate — still pending
 
 PR #1 remains Draft until the **final exact-head** matrix is rerun after the shared safe-area/landscape/desktop-no-op refinements and all of the following are true:
