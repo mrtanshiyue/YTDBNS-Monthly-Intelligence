@@ -24,6 +24,9 @@ expect(css.includes('overflow-x:auto!important'),'internal horizontal scrolling 
 expect(acceptance.includes('body.studio-v54 .section-status{')&&acceptance.includes('display:flex!important'),'mobile Compare/View controls not restored');
 expect(acceptance.includes('.freshness')&&acceptance.includes('.grain-chip{display:none!important}'),'low-priority mobile status chips not suppressed');
 expect(acceptance.includes('min-width:720px!important'),'readable mobile table intrinsic width missing');
+expect(acceptance.includes('.global-actions>.period-control')&&acceptance.includes('display:block!important'),'mobile Period wrapper restore missing');
+expect(acceptance.includes('backdrop-filter:none!important')&&acceptance.includes('-webkit-backdrop-filter:none!important'),'mobile Period fixed containing-block fix missing');
+expect(acceptance.includes('body.studio-v54 .search-command')&&acceptance.includes('width:44px!important')&&acceptance.includes('height:44px!important'),'narrow-phone global action touch-target override missing');
 
 expect(app.includes('class="chart-xlabel"'),'V4.14 HTML chart X labels missing from chart renderer');
 expect(app.includes('class="chart-xlabels"'),'V4.14 HTML chart X label layer missing');
@@ -36,6 +39,10 @@ const navItems=(index.match(/class="nav-item/g)||[]).length;
 expect(navItems===9,`expected 9 primary nav items, found ${navItems}`);
 expect(index.includes('id="compareToggle"'),'Compare control missing');
 expect(index.includes('id="viewMenuBtn"'),'View Settings control missing');
+expect(index.includes('id="periodButton"'),'Period control missing');
+expect(index.includes('id="commandButton"'),'Search control missing');
+expect(index.includes('id="refreshBtn"'),'Refresh control missing');
+expect(index.includes('id="topImportBtn"'),'Import control missing');
 expect(index.includes('id="importDrawer"'),'Import drawer missing');
 expect(index.includes('id="commandPalette"'),'Command palette missing');
 expect(index.includes('id="detailDrawer"'),'Detail drawer missing');
