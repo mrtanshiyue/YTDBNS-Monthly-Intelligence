@@ -19,18 +19,18 @@ if(!executablePath){
 }
 
 const cases=[
-  ['mobile-320x568',320,568,false],
-  ['mobile-360x800',360,800,false],
-  ['mobile-375x667',375,667,false],
-  ['mobile-390x844',390,844,false],
-  ['mobile-393x852',393,852,false],
-  ['mobile-430x932',430,932,false],
-  ['tablet-768x1024',768,1024,false],
-  ['tablet-820x1180',820,1180,false],
-  ['landscape-844x390',844,390,true],
-  ['landscape-932x430',932,430,true],
-  ['desktop-1440x900',1440,900,true],
-  ['desktop-1920x1080',1920,1080,true],
+  ['mobile-320x568',320,568],
+  ['mobile-360x800',360,800],
+  ['mobile-375x667',375,667],
+  ['mobile-390x844',390,844],
+  ['mobile-393x852',393,852],
+  ['mobile-430x932',430,932],
+  ['tablet-768x1024',768,1024],
+  ['tablet-820x1180',820,1180],
+  ['landscape-844x390',844,390],
+  ['landscape-932x430',932,430],
+  ['desktop-1440x900',1440,900],
+  ['desktop-1920x1080',1920,1080],
 ];
 
 await fs.mkdir(artifacts,{recursive:true});
@@ -63,8 +63,12 @@ async function ensurePeriodOpen(page){
   assert(await page.locator('#periodPopover').isVisible(),'period popover did not open','period-helper');
 }
 
-for(const [name,width,height,touch] of cases){
-  const context=await browser.newContext({viewport:{width,height},isMobile:width<=430,hasTouch:touch||width<=430,deviceScaleFactor:1});
+for(const [name,width,height] of cases){
+  const mobile=width<=860;
+  const compactLandscape=width>860&&width<=960&&height<=520;
+  const deviceLike=mobile||compactLandscape;
+  const overlayAcceptance=deviceLike;
+  const context=await browser.newContext({viewport:{width,height},isMobile:deviceLike,hasTouch:deviceLike,deviceScaleFactor:1});
   const page=await context.newPage();
   const consoleErrors=[];
   page.on('console',msg=>{if(msg.type()==='error')consoleErrors.push(msg.text())});
@@ -73,9 +77,6 @@ for(const [name,width,height,touch] of cases){
   await page.waitForSelector('body.studio-v54',{timeout:15000});
   await page.waitForSelector('#content .metric-card, #content .executive-card, #content .panel',{timeout:15000});
 
-  const mobile=width<=860;
-  const compactLandscape=width>860&&width<=960&&height<=520;
-  const overlayAcceptance=mobile||compactLandscape;
   const doc=await page.evaluate(()=>({innerWidth,scrollWidth:document.documentElement.scrollWidth,bodyScrollWidth:document.body.scrollWidth}));
   assert(doc.scrollWidth<=doc.innerWidth+1,`document horizontal overflow ${doc.scrollWidth}>${doc.innerWidth}`,name);
   assert(doc.bodyScrollWidth<=doc.innerWidth+1,`body horizontal overflow ${doc.bodyScrollWidth}>${doc.innerWidth}`,name);
@@ -279,7 +280,7 @@ for(const [name,width,height,touch] of cases){
 
   assert(consoleErrors.length===0,`console/page errors: ${consoleErrors.join(' | ')}`,name);
   await page.screenshot({path:path.join(artifacts,`${name}.png`),fullPage:true});
-  results.push({name,width,height,mobile,compactLandscape,chart,consoleErrors});
+  results.push({name,width,height,mobile,compactLandscape,deviceLike,chart,consoleErrors});
   await context.close();
 }
 
