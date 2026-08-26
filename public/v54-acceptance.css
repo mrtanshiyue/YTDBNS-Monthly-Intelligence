@@ -15,6 +15,8 @@
   body.studio-v54 .section-status .freshness,
   body.studio-v54 .section-status .grain-chip{display:none!important}
   body.studio-v54 .compare-toggle{
+    width:auto!important;
+    min-width:44px!important;
     min-height:44px!important;
     height:44px!important;
     padding-inline:10px!important;
