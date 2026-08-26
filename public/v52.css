@@ -1,0 +1,357 @@
+/* V4.12 — Calm Neutral Color Audit
+   Final visual layer: neutral surfaces, restrained accent, low chroma semantics.
+   No business logic changes. */
+:root{
+  --v52-canvas:#F5F6F7;
+  --v52-canvas-2:#F1F3F4;
+  --v52-surface:#FFFFFF;
+  --v52-surface-subtle:#F8F9FA;
+  --v52-surface-muted:#F2F4F5;
+  --v52-text:#20262D;
+  --v52-text-2:#414B55;
+  --v52-text-3:#5D6974;
+  --v52-text-4:#6B7681;
+  --v52-line:#DEE3E6;
+  --v52-line-strong:#C9D0D5;
+  --v52-accent:#3E6475;
+  --v52-accent-hover:#315260;
+  --v52-accent-soft:#EEF3F5;
+  --v52-accent-line:#CBDCE2;
+  --v52-success:#3F6B57;
+  --v52-success-soft:#EEF5F1;
+  --v52-warning:#8A642B;
+  --v52-warning-soft:#FAF4E9;
+  --v52-danger:#95505A;
+  --v52-danger-soft:#FAEFF1;
+  --v52-info:#4C6D82;
+  --v52-info-soft:#EFF4F6;
+  --v52-violet:#6C6480;
+  --v52-violet-soft:#F2F1F5;
+  --v52-shadow:0 1px 2px rgba(32,38,45,.035),0 6px 18px rgba(32,38,45,.035);
+  --v52-shadow-hover:0 2px 5px rgba(32,38,45,.04),0 12px 28px rgba(32,38,45,.06);
+}
+
+/* Reset the old warm V4.4 body theme. The older selector has unusually high specificity. */
+html{background:var(--v52-canvas)!important}
+body.studio-v43.studio-v44.studio-v52,
+body.studio-v52{
+  background:var(--v52-canvas)!important;
+  color:var(--v52-text)!important;
+}
+body.studio-v52:before{display:none!important;background:none!important}
+body.studio-v52 .main-shell{background:var(--v52-canvas)!important}
+body.studio-v52 .content{background:transparent!important}
+
+/* Typography color hierarchy: fewer blue-gray tints, more neutral graphite. */
+body.studio-v52,
+body.studio-v52 button,
+body.studio-v52 input,
+body.studio-v52 select,
+body.studio-v52 textarea{color:var(--v52-text)!important}
+body.studio-v52 .wordmark-main,
+body.studio-v52 .page-heading h1,
+body.studio-v52 .studio-section-title h2,
+body.studio-v52 .section-head h2,
+body.studio-v52 .panel-title strong,
+body.studio-v52 .intel-title b,
+body.studio-v52 .signal-copy b,
+body.studio-v52 .executive-value,
+body.studio-v52 .metric-value,
+body.studio-v52 .table-primary{color:var(--v52-text)!important}
+body.studio-v52 .wordmark-sub,
+body.studio-v52 .metric-label,
+body.studio-v52 .metric-note,
+body.studio-v52 .metric-compare,
+body.studio-v52 .panel-title span,
+body.studio-v52 .intel-sub,
+body.studio-v52 .annotation,
+body.studio-v52 .signal-copy small,
+body.studio-v52 .executive-note,
+body.studio-v52 .executive-meta,
+body.studio-v52 .table-meta,
+body.studio-v52 .v43-table-caption span,
+body.studio-v52 .v46-table-title span,
+body.studio-v52 .v45-charge-caption span{color:var(--v52-text-3)!important}
+body.studio-v52 .page-heading .eyebrow,
+body.studio-v52 .studio-section-title .copy>span,
+body.studio-v52 .section-head>div>span,
+body.studio-v52 .intel-title span,
+body.studio-v52 .context-label{color:var(--v52-text-4)!important}
+
+/* Navigation: white first row, quiet gray second row. */
+body.studio-v52 .global-nav{
+  background:rgba(255,255,255,.97)!important;
+  border-bottom:1px solid var(--v52-line)!important;
+  box-shadow:none!important;
+}
+body.studio-v52 .section-nav{
+  background:rgba(248,249,250,.97)!important;
+  border-bottom:1px solid var(--v52-line)!important;
+  box-shadow:none!important;
+}
+body.studio-v52 .wordmark:after{
+  background:var(--v52-accent-soft)!important;color:var(--v52-accent)!important;border-color:var(--v52-accent-line)!important;
+}
+body.studio-v52 .nav-item{color:#47525C!important}
+body.studio-v52 .nav-item:hover{background:#F2F4F5!important;color:var(--v52-text)!important}
+body.studio-v52 .nav-item.active{background:#F7F8F9!important;color:var(--v52-text)!important;box-shadow:none!important;border:1px solid #E7EAEC!important}
+body.studio-v52 .nav-item.active .nav-symbol,
+body.studio-v52 .page-title-symbol,
+body.studio-v52 .wordmark-symbol{background:var(--v52-accent-soft)!important;color:var(--v52-accent)!important;border-color:var(--v52-accent-line)!important}
+body.studio-v52 .search-command,
+body.studio-v52 .period-main,
+body.studio-v52 .circle-btn{
+  background:#fff!important;border-color:#D2D8DC!important;color:var(--v52-text-2)!important;box-shadow:none!important;
+}
+body.studio-v52 .search-command:hover,
+body.studio-v52 .period-main:hover,
+body.studio-v52 .circle-btn:hover{background:#F6F7F8!important;border-color:#BEC7CD!important}
+body.studio-v52 .import-button,
+body.studio-v52 .primary-btn,
+body.studio-v52 .apply-btn{background:var(--v52-accent)!important;box-shadow:none!important}
+body.studio-v52 .import-button:hover,
+body.studio-v52 .primary-btn:hover,
+body.studio-v52 .apply-btn:hover{background:var(--v52-accent-hover)!important}
+
+/* Period / view controls should read as controls, not blue chips. */
+body.studio-v52 .quick-range,
+body.studio-v52 .studio-mode-switch,
+body.studio-v52 .v43-tabs{background:#ECEFF1!important;border-color:#D9DEE1!important;box-shadow:none!important}
+body.studio-v52 .quick-range button,
+body.studio-v52 .studio-mode-switch button,
+body.studio-v52 .v43-tab{color:var(--v52-text-3)!important}
+body.studio-v52 .quick-range button.active,
+body.studio-v52 .studio-mode-switch button.active,
+body.studio-v52 .v43-tab.active{
+  background:#fff!important;color:var(--v52-text)!important;box-shadow:0 1px 2px rgba(32,38,45,.08)!important;
+}
+body.studio-v52 .v43-tab-count{background:#DCE2E5!important;color:#56626D!important}
+body.studio-v52 .v43-tab.active .v43-tab-count{background:var(--v52-accent-soft)!important;color:var(--v52-accent)!important}
+body.studio-v52 .freshness,
+body.studio-v52 .grain-chip,
+body.studio-v52 .compare-toggle{background:#fff!important;border-color:#D7DDE1!important;color:var(--v52-text-3)!important;box-shadow:none!important}
+body.studio-v52 .compare-toggle[aria-pressed="true"]{background:var(--v52-accent-soft)!important;border-color:var(--v52-accent-line)!important;color:var(--v52-accent)!important}
+
+/* Utility bar and chips. */
+body.studio-v52 .v47-utility,
+body.studio-v52 .studio-pagebar{background:#fff!important;border-color:var(--v52-line)!important;box-shadow:none!important}
+body.studio-v52 .v47-utility-main>span{background:var(--v52-accent-soft)!important;color:var(--v52-accent)!important}
+body.studio-v52 .studio-chip,
+body.studio-v52 .grain-chip{background:#F7F8F9!important;color:var(--v52-text-3)!important}
+
+/* Cards: one surface language. Remove decorative colored gradients and halos. */
+body.studio-v52 .signal-card,
+body.studio-v52 .signal-card.dark,
+body.studio-v52 .signal-card:nth-child(1),
+body.studio-v52 .signal-card:nth-child(2),
+body.studio-v52 .signal-card:nth-child(3),
+body.studio-v52 .signal-card:nth-child(4),
+body.studio-v52 .signal-card:nth-child(5),
+body.studio-v52 .executive-card,
+body.studio-v52 .executive-card.primary,
+body.studio-v52 .executive-card.good,
+body.studio-v52 .executive-card.warn,
+body.studio-v52 .executive-card:nth-child(4),
+body.studio-v52 .executive-card:nth-child(5),
+body.studio-v52 .metric-card,
+body.studio-v52 .panel,
+body.studio-v52 .intel-card,
+body.studio-v52 .intel-card.dark,
+body.studio-v52 .intel-card.soft-blue,
+body.studio-v52 .intel-card.blue,
+body.studio-v52 .source-card,
+body.studio-v52 .month-tile,
+body.studio-v52 .table-card{
+  background:#fff!important;
+  border:1px solid var(--v52-line)!important;
+  box-shadow:var(--v52-shadow)!important;
+}
+body.studio-v52 .signal-card:hover,
+body.studio-v52 .executive-card:hover,
+body.studio-v52 .metric-card:hover,
+body.studio-v52 .panel:hover,
+body.studio-v52 .intel-card:hover,
+body.studio-v52 .table-card:hover{border-color:#CBD2D7!important;box-shadow:var(--v52-shadow-hover)!important}
+body.studio-v52 .signal-card:after,
+body.studio-v52 .executive-card:after,
+body.studio-v52 .metric-card:after{display:none!important;background:none!important}
+
+/* Icon tiles: same neutral base; color is carried by the glyph only. */
+body.studio-v52 .signal-icon,
+body.studio-v52 .metric-icon,
+body.studio-v52 .executive-symbol,
+body.studio-v52 .panel-title-symbol,
+body.studio-v52 .intel-head-symbol,
+body.studio-v52 .charge-tab-symbol{
+  background:#F7F9F9!important;border-color:#DCE2E5!important;color:var(--v52-accent)!important;box-shadow:none!important;
+}
+body.studio-v52 .signal-card:nth-child(2) .signal-icon{color:var(--v52-info)!important;background:var(--v52-info-soft)!important}
+body.studio-v52 .signal-card:nth-child(3) .signal-icon{color:var(--v52-success)!important;background:var(--v52-success-soft)!important}
+body.studio-v52 .signal-card:nth-child(4) .signal-icon{color:var(--v52-violet)!important;background:var(--v52-violet-soft)!important}
+body.studio-v52 .signal-card:nth-child(5) .signal-icon{color:var(--v52-warning)!important;background:var(--v52-warning-soft)!important}
+
+/* Semantic indicators: pale fill, dark text, restrained chroma. */
+body.studio-v52 .delta.up,
+body.studio-v52 .pill.good,
+body.studio-v52 .page-insight.good,
+body.studio-v52 .risk-cell.good,
+body.studio-v52 .severity.low{background:var(--v52-success-soft)!important;color:var(--v52-success)!important;border-color:#D4E3DA!important}
+body.studio-v52 .delta.down,
+body.studio-v52 .pill.bad,
+body.studio-v52 .page-insight.bad,
+body.studio-v52 .risk-cell.bad,
+body.studio-v52 .severity.high{background:var(--v52-danger-soft)!important;color:var(--v52-danger)!important;border-color:#E9D3D7!important}
+body.studio-v52 .pill.warn,
+body.studio-v52 .page-insight.warn,
+body.studio-v52 .risk-cell.warn,
+body.studio-v52 .severity.medium{background:var(--v52-warning-soft)!important;color:var(--v52-warning)!important;border-color:#E8DDBF!important}
+
+/* Intelligence room: reduce pastel blocks to quiet semantic tints. */
+body.studio-v52 .risk-cell{box-shadow:none!important}
+body.studio-v52 .risk-cell.good{background:#F3F7F4!important}
+body.studio-v52 .risk-cell.warn{background:#FAF7EF!important}
+body.studio-v52 .risk-cell.bad{background:#FAF3F4!important}
+body.studio-v52 .page-insight.good{background:#F3F7F4!important}
+body.studio-v52 .page-insight.warn{background:#FAF7EF!important}
+body.studio-v52 .page-insight.bad{background:#FAF3F4!important}
+
+/* Charts: desaturated data colors, softer tracks and grids. */
+body.studio-v52 .chart-grid line{stroke:#E3E7E9!important}
+body.studio-v52 .chart-axis{fill:#606C76!important;color:#606C76!important}
+body.studio-v52 .chart-line-sales{stroke:#3E7287!important}
+body.studio-v52 .chart-line-ad{stroke:#9A6A32!important}
+body.studio-v52 .legend i.sales{background:#3E7287!important}
+body.studio-v52 .legend i.ad{background:#9A6A32!important}
+body.studio-v52 .bar-track,
+body.studio-v52 .funnel-track,
+body.studio-v52 .finance-stack-row .track,
+body.studio-v52 .charge-bar-track{background:#E8ECEE!important}
+body.studio-v52 .bar-fill,
+body.studio-v52 .funnel-fill,
+body.studio-v52 .portfolio-share,
+body.studio-v52 .portfolio-share i,
+body.studio-v52 .charge-bar-track i{background:#4F7F91!important}
+body.studio-v52 .bar-fill.green{background:#5F806D!important}
+body.studio-v52 .bar-fill.amber{background:#9A743C!important}
+body.studio-v52 .heatmap-day{background:rgba(62,114,135,var(--a,.08))!important;border-color:rgba(62,100,117,.12)!important}
+body.studio-v52 .heat-scale i{background:rgba(62,114,135,var(--a))!important}
+body.studio-v52 .chart-tooltip,
+body.studio-v52 .heatmap-day .heat-tip,
+body.studio-v52 .quad-dot span{background:rgba(36,44,51,.96)!important}
+
+/* Operating-score rings: remove hard black centers. */
+body.studio-v52 .score-ring{background:#F6F8F8!important;border-color:#DDE3E6!important;box-shadow:none!important}
+body.studio-v52 .score-ring:before{background:#FFFFFF!important}
+body.studio-v52 .score-ring b{color:var(--v52-text)!important}
+
+/* Profit anatomy / categorical colors: coordinated muted family. */
+body.studio-v52 .composition-row:nth-child(1) i,
+body.studio-v52 .composition-bar i:nth-child(1){background:#55798B!important}
+body.studio-v52 .composition-row:nth-child(2) i,
+body.studio-v52 .composition-bar i:nth-child(2){background:#A17A45!important}
+body.studio-v52 .composition-row:nth-child(3) i,
+body.studio-v52 .composition-bar i:nth-child(3){background:#7A8791!important}
+body.studio-v52 .composition-row:nth-child(4) i,
+body.studio-v52 .composition-bar i:nth-child(4){background:#5E7D6B!important}
+
+/* Tables: neutral header, hover without blue cast. */
+body.studio-v52 .table-tools{background:#fff!important;border-bottom-color:var(--v52-line)!important}
+body.studio-v52 .table-search-shell{background:#F6F7F8!important;border-color:#C9D1D6!important}
+body.studio-v52 .table-search-shell:focus-within{background:#fff!important;border-color:var(--v52-accent)!important;box-shadow:0 0 0 3px rgba(62,100,117,.10)!important}
+body.studio-v52 .data-table th,
+body.studio-v52 .data-table th:first-child{background:#F3F5F6!important;border-bottom-color:#D5DBDF!important;color:#4E5A64!important}
+body.studio-v52 .data-table td{border-bottom-color:#E5E8EA!important;color:#414B55!important}
+body.studio-v52 .data-table tbody tr:nth-child(even){background:#FAFBFB!important}
+body.studio-v52 .data-table tbody tr:hover,
+body.studio-v52 .data-table tbody tr:hover td:first-child{background:#F1F4F5!important}
+body.studio-v52 .data-table tbody tr.selected,
+body.studio-v52 .data-table tbody tr.selected td:first-child{background:#EAF0F2!important}
+
+/* Charge page: no multi-color hero gradients. */
+body.studio-v52 .charge-page-intro{background:transparent!important}
+body.studio-v52 .charge-total-pill,
+body.studio-v52 .charge-project-tab-shell,
+body.studio-v52 .charge-hero-main,
+body.studio-v52 .charge-hero-side,
+body.studio-v52 .charge-detail-hero{
+  background:#fff!important;border-color:var(--v52-line)!important;box-shadow:var(--v52-shadow)!important;
+}
+body.studio-v52 .charge-project-tab-shell{background:#ECEFF1!important}
+body.studio-v52 .charge-project-tabs button.active{background:#fff!important;box-shadow:0 1px 2px rgba(32,38,45,.08)!important}
+
+/* Drawers / popovers: neutral white, no warm or blue tint. */
+body.studio-v52 .period-popover,
+body.studio-v52 .view-popover,
+body.studio-v52 .command-palette,
+body.studio-v52 .panel-modal,
+body.studio-v52 .import-drawer,
+body.studio-v52 .detail-drawer,
+body.studio-v52 .studio-drawer{background:rgba(255,255,255,.99)!important;border-color:#CDD4D9!important}
+body.studio-v52 .drawer-backdrop,
+body.studio-v52 .detail-backdrop,
+body.studio-v52 .panel-modal-backdrop,
+body.studio-v52 .command-backdrop,
+body.studio-v52 .studio-backdrop{background:rgba(30,36,42,.22)!important}
+body.studio-v52 .period-tabs,
+body.studio-v52 .command-hint-row,
+body.studio-v52 .validation-box,
+body.studio-v52 .file-row{background:#F5F7F8!important}
+body.studio-v52 .period-pane[data-pane="quick"] button{background:#F6F7F8!important;color:var(--v52-text-2)!important}
+body.studio-v52 .period-pane[data-pane="quick"] button:hover{background:#ECEFF1!important}
+body.studio-v52 .command-item.active,
+body.studio-v52 .command-item:hover{background:var(--v52-accent-soft)!important}
+body.studio-v52 .dropzone{background:#F8F9FA!important;border-color:#C7D0D5!important}
+body.studio-v52 .dropzone:hover{background:#F2F6F7!important;border-color:var(--v52-accent)!important}
+
+/* Small details. */
+body.studio-v52 .compare-dot,
+body.studio-v52 .freshness i,
+body.studio-v52 .studio-live i{background:#7D8B94!important;box-shadow:none!important}
+body.studio-v52 .compare-toggle[aria-pressed="true"] .compare-dot{background:var(--v52-accent)!important}
+body.studio-v52 .freshness i{background:var(--v52-success)!important}
+body.studio-v52 .scrollbar,
+body.studio-v52 *{scrollbar-color:#AEB7BE transparent}
+body.studio-v52 .table-wrap::-webkit-scrollbar-thumb{background:#AEB7BE!important}
+body.studio-v52 .toast{background:#fff!important;border-color:var(--v52-line)!important;box-shadow:0 10px 30px rgba(32,38,45,.10)!important}
+
+/* Keep icon pairing legible; icon color follows text importance. */
+body.studio-v52 .nav-symbol,
+body.studio-v52 .tab-symbol,
+body.studio-v52 .v47-utility-actions svg,
+body.studio-v52 .table-tool-btn svg{color:#66737D!important}
+body.studio-v52 .nav-item.active .nav-symbol,
+body.studio-v52 .v43-tab.active .tab-symbol{color:var(--v52-accent)!important}
+
+/* Avoid colored focus haze outside interactive controls. */
+body.studio-v52 :focus-visible{outline-color:rgba(62,100,117,.30)!important}
+
+/* V4.12 final detail pass */
+:root{--v52-text-4:#66717B}
+body.studio-v52 .wordmark:after{content:"V4.12"!important}
+body.studio-v52 .studio-chip>i{background:var(--v52-accent)!important}
+
+body.studio-v52 .score-item,
+body.studio-v52 .dark .score-item{background:#F7F8F8!important;border:1px solid #E7EAEC!important}
+body.studio-v52 .score-ring{
+  background:conic-gradient(var(--c) calc(var(--p)*1%),#E3E8EA 0)!important;
+  border:0!important;
+}
+body.studio-v52 .score-ring:after{background:#FFFFFF!important;box-shadow:inset 0 0 0 1px #EEF1F2!important}
+body.studio-v52 .score-item:nth-child(1) .score-ring{--c:#4F7F91!important}
+body.studio-v52 .score-item:nth-child(2) .score-ring{--c:#9A743C!important}
+body.studio-v52 .score-item:nth-child(3) .score-ring{--c:#5F806D!important}
+body.studio-v52 .score-item:nth-child(4) .score-ring{--c:#8E6068!important}
+
+body.studio-v52 .quadrant{
+  background:linear-gradient(90deg,rgba(63,107,87,.025) 0 50%,rgba(149,80,90,.025) 50%),linear-gradient(transparent 0 50%,rgba(138,100,43,.018) 50%)!important;
+  border-color:#E0E4E7!important;
+}
+body.studio-v52 .quadrant:before,
+body.studio-v52 .quadrant:after{background:#DCE1E4!important}
+body.studio-v52 .quad-dot{background:rgba(79,127,145,.72)!important;border-color:rgba(255,255,255,.95)!important;box-shadow:0 1px 4px rgba(32,38,45,.12)!important}
+body.studio-v52 .quad-dot:hover{background:#3E6475!important}
+
+body.studio-v52 .risk-cell{background:#F7F8F8!important;border:1px solid #E5E9EB!important;border-left-width:3px!important}
+body.studio-v52 .risk-cell.good{background:#F6F9F7!important;border-left-color:#7D9D8C!important}
+body.studio-v52 .risk-cell.warn{background:#FAF8F3!important;border-left-color:#B09A6B!important}
+body.studio-v52 .risk-cell.bad{background:#FAF6F6!important;border-left-color:#B8878E!important}

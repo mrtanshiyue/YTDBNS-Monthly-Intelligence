@@ -1,0 +1,204 @@
+/* V4.7 — Symbol & Interaction System
+   Custom inline SVG symbols, coherent hierarchy, richer controls, no external icon dependency.
+*/
+:root{
+  --v47-blue:#0a66c2;
+  --v47-blue-soft:#eef6ff;
+  --v47-cyan-soft:#eef8fa;
+  --v47-green:#397a58;
+  --v47-green-soft:#eef7f1;
+  --v47-amber:#8b671d;
+  --v47-amber-soft:#fff7e8;
+  --v47-red:#9b4e58;
+  --v47-red-soft:#fff1f2;
+  --v47-indigo:#615d9c;
+  --v47-indigo-soft:#f3f2fb;
+  --v47-neutral:#f3f4f6;
+  --v47-hairline:rgba(29,29,31,.075);
+  --v47-shadow:0 1px 2px rgba(0,0,0,.025),0 10px 28px rgba(0,0,0,.04);
+  --v47-shadow-hover:0 3px 10px rgba(0,0,0,.04),0 18px 42px rgba(0,0,0,.055);
+}
+body.studio-v47{--v46-blue:var(--v47-blue);--v46-blue-soft:var(--v47-blue-soft);}
+body.studio-v47 .yt-symbol{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;flex:0 0 auto}
+body.studio-v47 .yt-symbol.chevron{width:13px;height:13px}
+body.studio-v47 .wordmark:after{content:"V4.7"!important}
+
+/* Navigation — icon + text, closer to a mature desktop Apple surface */
+body.studio-v47 .global-nav{height:58px!important;background:rgba(250,250,252,.88)!important}
+body.studio-v47 .global-nav-inner{height:58px!important;grid-template-columns:198px minmax(0,1fr) auto!important;max-width:1540px!important;padding-inline:24px!important}
+body.studio-v47 .wordmark{display:flex;align-items:center!important;gap:7px!important}
+body.studio-v47 .wordmark-symbol{width:28px;height:28px;border-radius:9px;background:linear-gradient(145deg,#edf6ff,#fff);color:var(--v47-blue);display:grid;place-items:center;border:1px solid rgba(10,102,194,.08);box-shadow:0 1px 3px rgba(0,0,0,.035)}
+body.studio-v47 .wordmark-symbol .yt-symbol{width:16px;height:16px}
+body.studio-v47 .global-links{height:42px!important;gap:3px!important}
+body.studio-v47 .nav-item{height:38px!important;padding:0 10px!important;border-radius:12px!important;display:inline-flex!important;align-items:center!important;gap:6px!important;color:#55565a!important}
+body.studio-v47 .nav-symbol{width:24px;height:24px;display:grid;place-items:center;border-radius:8px;color:#74757a;transition:background .18s ease,color .18s ease,transform .18s ease}
+body.studio-v47 .nav-symbol .yt-symbol{width:15px;height:15px;stroke-width:1.75}
+body.studio-v47 .nav-item:hover .nav-symbol{color:#343438;background:rgba(0,0,0,.035)}
+body.studio-v47 .nav-item.active{box-shadow:0 1px 2px rgba(0,0,0,.035),0 5px 15px rgba(0,0,0,.04)!important}
+body.studio-v47 .nav-item.active .nav-symbol{background:var(--v47-blue-soft);color:var(--v47-blue)}
+body.studio-v47 .nav-label{font-size:13px;line-height:1}
+body.studio-v47 .global-actions{gap:7px!important}
+body.studio-v47 .search-command,body.studio-v47 .period-main,body.studio-v47 .circle-btn{background:rgba(255,255,255,.82)!important;box-shadow:0 1px 1px rgba(0,0,0,.015)!important}
+body.studio-v47 .search-command .yt-symbol,body.studio-v47 .period-main .yt-symbol,body.studio-v47 .circle-btn .yt-symbol{width:16px;height:16px}
+body.studio-v47 .import-button{display:flex!important;align-items:center!important;gap:5px!important;background:#1f6fbd!important;padding-inline:14px!important;box-shadow:0 1px 1px rgba(0,0,0,.03)!important}
+body.studio-v47 .import-button .yt-symbol{width:15px;height:15px}
+body.studio-v47 .studio-action-btn{display:flex!important;align-items:center!important;gap:6px!important}
+body.studio-v47 .studio-action-btn .yt-symbol{width:15px;height:15px;color:#6b6c70}
+
+/* Section header */
+body.studio-v47 .section-nav{top:58px!important}
+body.studio-v47 .main-shell{padding-top:144px!important}
+body.studio-v47 .section-nav-inner{min-height:86px!important}
+body.studio-v47 .page-title-row{display:flex;align-items:center;gap:10px;margin-top:4px}
+body.studio-v47 .page-title-row h1{margin:0!important}
+body.studio-v47 .page-title-symbol{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:#fff;border:1px solid var(--v47-hairline);color:var(--v47-blue);box-shadow:0 1px 3px rgba(0,0,0,.035)}
+body.studio-v47 .page-title-symbol .yt-symbol{width:17px;height:17px}
+
+/* New compact contextual utility rail */
+body.studio-v47 .v47-utility{height:54px;margin:0 0 16px;padding:7px 9px 7px 12px;border-radius:16px;background:rgba(255,255,255,.74);border:1px solid var(--v47-hairline);display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 1px 0 rgba(0,0,0,.02);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+body.studio-v47 .v47-utility-main{display:flex;align-items:center;gap:10px;min-width:0}
+body.studio-v47 .v47-utility-main>span{width:34px;height:34px;border-radius:11px;background:var(--v47-blue-soft);color:var(--v47-blue);display:grid;place-items:center}
+body.studio-v47 .v47-utility-main>span .yt-symbol{width:17px;height:17px}
+body.studio-v47 .v47-utility-main div{display:flex;flex-direction:column;gap:1px;min-width:0}
+body.studio-v47 .v47-utility-main b{font-size:13.5px;color:#2a2a2d;font-weight:680}
+body.studio-v47 .v47-utility-main small{font-size:11.5px;color:#7a7a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.studio-v47 .v47-utility-actions{display:flex;align-items:center;gap:5px}
+body.studio-v47 .v47-utility-actions button{height:36px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:#5f6065;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.16s ease}
+body.studio-v47 .v47-utility-actions button:hover{background:#f1f3f5;color:#252529}
+body.studio-v47 .v47-utility-actions .yt-symbol{width:14px;height:14px}
+body.studio-v47 .v47-utility-actions kbd{font-size:9px;padding:2px 5px;background:#eeeef1;color:#85858a;border-radius:5px}
+
+/* Signal cards — stronger symbol language without dark art blocks */
+body.studio-v47 .signal-card{position:relative;overflow:hidden;isolation:isolate}
+body.studio-v47 .signal-card:after{content:"";position:absolute;width:84px;height:84px;border-radius:50%;right:-34px;top:-36px;background:rgba(10,102,194,.035);z-index:-1}
+body.studio-v47 .signal-icon{width:36px!important;height:36px!important;border-radius:12px!important;display:grid!important;place-items:center!important;background:rgba(255,255,255,.88)!important}
+body.studio-v47 .signal-icon .yt-symbol{width:17px;height:17px}
+body.studio-v47 .signal-card:nth-child(1) .signal-icon{color:#3376b9!important}
+body.studio-v47 .signal-card:nth-child(2) .signal-icon{color:#6b668f!important;background:#f7f5ff!important}
+body.studio-v47 .signal-card:nth-child(3) .signal-icon{color:#3d795a!important;background:#f1f8f3!important}
+body.studio-v47 .signal-card:nth-child(4) .signal-icon{color:#356f9b!important;background:#eff7fb!important}
+body.studio-v47 .signal-card:nth-child(5) .signal-icon{color:#8a671f!important;background:#fff8e9!important}
+body.studio-v47 .studio-live{display:flex!important;align-items:center!important;gap:5px!important}
+body.studio-v47 .studio-live>i{display:none!important}
+body.studio-v47 .live-symbol{width:18px;height:18px;border-radius:6px;background:var(--v47-green-soft);color:var(--v47-green);display:grid;place-items:center}
+body.studio-v47 .live-symbol .yt-symbol{width:11px;height:11px;stroke-width:2}
+
+/* Metric symbols */
+body.studio-v47 .metric-card,body.studio-v47 .executive-card{position:relative;isolation:isolate}
+body.studio-v47 .metric-icon,body.studio-v47 .executive-symbol{width:38px!important;height:38px!important;border-radius:12px!important;display:grid!important;place-items:center!important;background:#f3f5f7!important;color:#557390!important;border:1px solid rgba(0,0,0,.035)!important}
+body.studio-v47 .metric-icon .yt-symbol,body.studio-v47 .executive-symbol .yt-symbol{width:17px;height:17px}
+body.studio-v47 .executive-symbol{position:absolute;right:20px;top:20px}
+body.studio-v47 .metric-card:hover .metric-icon,body.studio-v47 .executive-card:hover .executive-symbol{transform:translateY(-1px);color:var(--v47-blue);background:var(--v47-blue-soft)}
+body.studio-v47 .metric-icon,body.studio-v47 .executive-symbol{transition:.18s ease}
+
+/* Panel and intelligence icons */
+body.studio-v47 .panel-head{display:flex!important;align-items:flex-start!important}
+body.studio-v47 .panel-title{position:relative;padding-left:42px!important;min-height:34px}
+body.studio-v47 .panel-title-symbol{position:absolute;left:0;top:0;width:32px;height:32px;border-radius:10px;background:#f3f5f7;color:#607890;display:grid;place-items:center}
+body.studio-v47 .panel-title-symbol .yt-symbol{width:15px;height:15px}
+body.studio-v47 .panel-action{display:flex!important;align-items:center!important;gap:3px!important;padding-inline:11px!important}
+body.studio-v47 .panel-action .yt-symbol{width:11px;height:11px;transition:transform .15s ease}
+body.studio-v47 .panel-action:hover .yt-symbol{transform:translateX(2px)}
+body.studio-v47 .intel-head{display:flex!important;align-items:center!important;gap:9px!important}
+body.studio-v47 .intel-head-symbol{width:30px;height:30px;border-radius:10px;background:#f3f5f7;color:#607890;display:grid;place-items:center;flex:0 0 auto}
+body.studio-v47 .intel-head-symbol .yt-symbol{width:14px;height:14px}
+
+/* Tabs — icon hierarchy + clearer selected state */
+body.studio-v47 .v43-tabs-shell{border:1px solid var(--v47-hairline)!important;background:rgba(255,255,255,.8)!important;box-shadow:0 5px 20px rgba(0,0,0,.025)!important}
+body.studio-v47 .v43-tab{display:flex!important;align-items:center!important;gap:6px!important;padding-inline:13px!important}
+body.studio-v47 .tab-symbol{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;color:#777980;background:transparent}
+body.studio-v47 .tab-symbol .yt-symbol{width:13px;height:13px}
+body.studio-v47 .v43-tab.active .tab-symbol{background:var(--v47-blue-soft);color:var(--v47-blue)}
+body.studio-v47 .charge-project-tabs button{min-width:142px!important;display:grid!important;grid-template-columns:28px minmax(0,1fr)!important;grid-template-rows:auto auto!important;column-gap:8px!important;align-items:center!important}
+body.studio-v47 .charge-tab-symbol{grid-row:1/3;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:#f3f5f7;color:#6a7480}
+body.studio-v47 .charge-tab-symbol .yt-symbol{width:14px;height:14px}
+body.studio-v47 .charge-project-tabs button.active .charge-tab-symbol{background:var(--v47-blue-soft);color:var(--v47-blue)}
+
+/* Charge page detail symbols */
+body.studio-v47 .charge-intro-symbol{width:42px;height:42px;border-radius:14px;background:var(--v47-blue-soft);color:var(--v47-blue);display:grid;place-items:center;margin-bottom:13px}
+body.studio-v47 .charge-intro-symbol .yt-symbol{width:20px;height:20px}
+body.studio-v47 .charge-bar-label{position:relative;padding-left:35px}
+body.studio-v47 .charge-row-symbol{position:absolute;left:0;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:9px;background:#f3f5f7;color:#697786;display:grid;place-items:center}
+body.studio-v47 .charge-row-symbol .yt-symbol{width:13px;height:13px}
+body.studio-v47 .charge-bar-row:hover .charge-row-symbol{background:var(--v47-blue-soft);color:var(--v47-blue)}
+
+/* Tables — unified search, sort glyphs, richer but quieter tools */
+body.studio-v47 .table-tools{padding-inline:17px!important}
+body.studio-v47 .table-search-shell{height:40px;min-width:260px;display:flex;align-items:center;gap:8px;padding:0 11px;border:1px solid var(--v47-hairline);border-radius:12px;background:#f5f5f7;transition:border-color .16s ease,background .16s ease,box-shadow .16s ease}
+body.studio-v47 .table-search-shell:focus-within{background:#fff;border-color:rgba(10,102,194,.28);box-shadow:0 0 0 3px rgba(10,102,194,.08)}
+body.studio-v47 .table-search-shell>.yt-symbol{width:15px;height:15px;color:#7d7e83}
+body.studio-v47 .table-search-shell .table-search{height:auto!important;min-width:0!important;flex:1;border:0!important;background:transparent!important;padding:0!important;outline:none!important;box-shadow:none!important}
+body.studio-v47 .table-tool-btn{display:flex!important;align-items:center!important;gap:5px!important;padding:0 9px!important;transition:.16s ease!important}
+body.studio-v47 .table-tool-btn:hover{background:#e9edf1!important;color:#24262a!important}
+body.studio-v47 .table-tool-btn .yt-symbol{width:14px;height:14px}
+body.studio-v47 .data-table th{cursor:pointer!important;position:relative!important;padding-right:29px!important}
+body.studio-v47 .data-table th .sort-glyph{position:absolute;right:10px;top:50%;transform:translateY(-50%) rotate(90deg);opacity:.18;color:#73757a;transition:.15s ease}
+body.studio-v47 .data-table th .sort-glyph .yt-symbol{width:10px;height:10px}
+body.studio-v47 .data-table th:hover .sort-glyph{opacity:.5}
+body.studio-v47 .data-table th.sort-asc .sort-glyph{opacity:1;color:var(--v47-blue);transform:translateY(-50%) rotate(-90deg)}
+body.studio-v47 .data-table th.sort-desc .sort-glyph{opacity:1;color:var(--v47-blue);transform:translateY(-50%) rotate(90deg)}
+
+/* Status, empty, quality */
+body.studio-v47 .quality-symbol{width:28px;height:28px;border-radius:9px;background:var(--v47-green-soft);color:var(--v47-green);display:grid;place-items:center;flex:0 0 auto}
+body.studio-v47 .quality-item.warn .quality-symbol{background:var(--v47-amber-soft);color:var(--v47-amber)}
+body.studio-v47 .quality-item.bad .quality-symbol{background:var(--v47-red-soft);color:var(--v47-red)}
+body.studio-v47 .quality-symbol .yt-symbol{width:13px;height:13px;stroke-width:2}
+body.studio-v47 .insight-ico{font-size:0!important;display:grid!important;place-items:center!important}
+body.studio-v47 .insight-ico .yt-symbol{width:15px;height:15px}
+body.studio-v47 .empty-symbol{width:54px;height:54px;border-radius:18px;background:#f3f5f7;color:#727984;display:grid;place-items:center;margin:0 auto 15px}
+body.studio-v47 .empty-symbol .yt-symbol{width:24px;height:24px}
+body.studio-v47 .loading-symbol{width:38px;height:38px;border-radius:13px;background:var(--v47-blue-soft);color:var(--v47-blue);display:grid;place-items:center;animation:v47pulse 1.4s ease-in-out infinite}
+body.studio-v47 .loading-symbol .yt-symbol{width:18px;height:18px}
+@keyframes v47pulse{50%{transform:scale(1.05);opacity:.72}}
+
+/* Action drawer */
+body.studio-v47 .drawer-action{position:relative;padding-left:54px!important}
+body.studio-v47 .drawer-action-symbol{position:absolute;left:16px;top:18px;width:30px;height:30px;border-radius:10px;background:#f3f5f7;color:#737983;display:grid;place-items:center}
+body.studio-v47 .drawer-action-symbol .yt-symbol{width:14px;height:14px}
+body.studio-v47 .drawer-action:has(.severity.high) .drawer-action-symbol{background:var(--v47-red-soft);color:var(--v47-red)}
+body.studio-v47 .drawer-action:has(.severity.medium) .drawer-action-symbol{background:var(--v47-amber-soft);color:var(--v47-amber)}
+body.studio-v47 .drawer-action:has(.severity.low) .drawer-action-symbol{background:var(--v47-green-soft);color:var(--v47-green)}
+body.studio-v47 .drawer-close,body.studio-v47 .studio-close{display:grid!important;place-items:center!important}
+body.studio-v47 .drawer-close .yt-symbol,body.studio-v47 .studio-close .yt-symbol{width:15px;height:15px}
+body.studio-v47 .file-ico{display:grid!important;place-items:center!important;background:#f2f5f7!important;color:#66798b!important}
+body.studio-v47 .file-ico .yt-symbol{width:16px;height:16px}
+
+/* Command palette */
+body.studio-v47 .command-search-row>.yt-symbol{width:18px;height:18px;color:#6f7176}
+body.studio-v47 .command-icon{display:grid!important;place-items:center!important}
+body.studio-v47 .command-icon .yt-symbol{width:15px;height:15px}
+
+/* Subtle page cadence */
+body.studio-v47 .panel,body.studio-v47 .table-card,body.studio-v47 .intel-card,body.studio-v47 .signal-card{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease!important}
+body.studio-v47 .panel:hover,body.studio-v47 .intel-card:hover{box-shadow:var(--v47-shadow-hover)!important}
+body.studio-v47 .section-head h2:after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#8ba9c4;margin-left:9px;vertical-align:middle;opacity:.55}
+
+@media(max-width:1380px){
+  body.studio-v47 .nav-item{padding-inline:8px!important;gap:4px!important}
+  body.studio-v47 .nav-symbol{width:22px;height:22px}
+  body.studio-v47 .global-nav-inner{grid-template-columns:160px minmax(0,1fr) auto!important}
+  body.studio-v47 .wordmark-sub{display:none!important}
+}
+@media(max-width:1180px){
+  body.studio-v47 .nav-symbol{display:none!important}
+  body.studio-v47 .v47-utility-actions button span,body.studio-v47 .v47-utility-actions kbd{display:none}
+  body.studio-v47 .v47-utility-actions button{width:34px;padding:0;justify-content:center}
+}
+@media(max-width:820px){
+  body.studio-v47 .v47-utility-main small{display:none}
+  body.studio-v47 .v47-utility{height:50px;padding-inline:8px}
+  body.studio-v47 .page-title-symbol{display:none}
+  body.studio-v47 .charge-project-tabs button{min-width:128px!important}
+}
+@media(prefers-reduced-motion:reduce){body.studio-v47 *,body.studio-v47 *:before,body.studio-v47 *:after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+
+/* V4.7.1 — executive number fit fix */
+body.studio-v47 .executive-strip{align-items:stretch}
+body.studio-v47 .executive-card{overflow:hidden!important}
+body.studio-v47 .executive-value{font-size:clamp(34px,2.2vw,48px)!important;line-height:.96!important;letter-spacing:-.05em!important;max-width:100%}
+body.studio-v47 .executive-card.primary .executive-value{font-size:clamp(50px,3.05vw,64px)!important;line-height:.92!important;letter-spacing:-.065em!important}
+body.studio-v47 .executive-card .exec-spark{margin-top:8px!important}
+@media(max-width:1500px){body.studio-v47 .executive-card.primary .executive-value{font-size:56px!important}body.studio-v47 .executive-value{font-size:42px!important}}
+@media(max-width:1320px){body.studio-v47 .executive-card.primary .executive-value{font-size:50px!important}body.studio-v47 .executive-value{font-size:38px!important}}
+@media(max-width:1120px){body.studio-v47 .executive-card.primary .executive-value{font-size:44px!important}body.studio-v47 .executive-value{font-size:34px!important}}

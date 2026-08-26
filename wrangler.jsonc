@@ -13,7 +13,7 @@
     {
       "binding": "DB",
       "database_name": "ytdbns-monthly-db",
-      "database_id": "daad1ce7-a13a-49a5-8581-14294b153147",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
       "migrations_dir": "./migrations"
     }
   ],

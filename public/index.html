@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>YTDBNS Intelligence · V4.14 Chart Typography Fix</title>
+  <meta name="theme-color" content="#F5F6F7" />
+  <link rel="stylesheet" href="./app.css" />
+  <link rel="stylesheet" href="./rich.css" />
+  <link rel="stylesheet" href="./studio.css" />
+  <link rel="stylesheet" href="./v43.css" />
+  <link rel="stylesheet" href="./v44.css" />
+  <link rel="stylesheet" href="./v45.css" />
+  <link rel="stylesheet" href="./v46.css" />
+  <link rel="stylesheet" href="./v47.css" />
+  <link rel="stylesheet" href="./v48.css" />
+  <link rel="stylesheet" href="./v49.css" />
+  <link rel="stylesheet" href="./v50.css" />
+  <link rel="stylesheet" href="./v51.css" />
+  <link rel="stylesheet" href="./v52.css" />
+  <link rel="stylesheet" href="./v53.css" />
+</head>
+<body>
+  <header class="global-nav">
+    <div class="global-nav-inner">
+      <div class="wordmark" aria-label="YTDBNS Intelligence">
+        <span class="wordmark-main">YTDBNS</span><span class="wordmark-sub">Intelligence</span>
+      </div>
+      <nav class="global-links" id="mainNav" aria-label="主导航">
+        <button class="nav-item active" data-page="overview">总览</button>
+        <button class="nav-item" data-page="finance">利润</button>
+        <button class="nav-item" data-page="charges">扣费</button>
+        <button class="nav-item" data-page="ads">广告</button>
+        <button class="nav-item" data-page="products">商品</button>
+        <button class="nav-item" data-page="inventory">库存</button>
+        <button class="nav-item" data-page="returns">退货</button>
+        <button class="nav-item" data-page="history">历史</button>
+        <button class="nav-item" data-page="data">数据</button>
+      </nav>
+      <div class="global-actions">
+        <button class="search-command" id="commandButton" aria-label="全局搜索与快捷指令" title="搜索 · ⌘K">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+          <span>搜索</span><kbd>⌘ K</kbd>
+        </button>
+        <div class="period-control" id="periodControl">
+          <button class="period-main" id="periodButton" aria-label="选择查看期间">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4.5 9h15M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V7A1.5 1.5 0 0 1 5 5.5Z"/></svg>
+            <span id="periodLabel">2026年6月</span>
+            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"/></svg>
+          </button>
+          <div class="period-popover" id="periodPopover">
+            <div class="period-tabs">
+              <button class="period-tab active" data-mode="quick">快捷</button>
+              <button class="period-tab" data-mode="month">按月</button>
+              <button class="period-tab" data-mode="custom">自定义</button>
+            </div>
+            <div class="period-pane active" data-pane="quick">
+              <button data-quick="current">当前月份</button><button data-quick="previous">上一个月</button><button data-quick="30">最近30天</button><button data-quick="90">最近90天</button><button data-quick="ytd">今年至今</button>
+            </div>
+            <div class="period-pane" data-pane="month">
+              <label>选择月份<select id="monthSelect"></select></label>
+              <button class="apply-btn" id="applyMonth">应用</button>
+            </div>
+            <div class="period-pane" data-pane="custom">
+              <div class="date-grid"><label>开始日期<input type="date" id="dateFrom"></label><label>结束日期<input type="date" id="dateTo"></label></div>
+              <div class="period-note">财务和广告按日聚合；Sessions / CVR 保留真实月级口径。</div>
+              <button class="apply-btn" id="applyCustom">应用区间</button>
+            </div>
+          </div>
+        </div>
+        <button class="circle-btn" id="refreshBtn" title="刷新" aria-label="刷新数据">
+          <svg viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18.4 9A7 7 0 0 0 6 6.5L4 9M5.6 15A7 7 0 0 0 18 17.5l2-2.5"/></svg>
+        </button>
+        <button class="import-button" id="topImportBtn"><span>＋</span>导入</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="section-nav">
+    <div class="section-nav-inner">
+      <div class="page-heading">
+        <div class="eyebrow" id="pageEyebrow">EXECUTIVE OVERVIEW</div>
+        <h1 id="pageTitle">经营驾驶舱</h1>
+      </div>
+      <div class="quick-range" id="quickRangeBar">
+        <button data-quick="current" class="active">本月</button><button data-quick="previous">上月</button><button data-quick="30">30天</button><button data-quick="90">90天</button><button data-quick="ytd">今年</button>
+      </div>
+      <div class="section-status">
+        <button class="compare-toggle" id="compareToggle" aria-pressed="false" title="与上一等长期间比较">
+          <span class="compare-dot"></span><span>对比上期</span>
+        </button>
+        <button class="view-menu-btn" id="viewMenuBtn" title="视图设置" aria-label="视图设置">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+        </button>
+        <span class="freshness" id="freshness"><i></i>查看：2026年6月</span>
+        <span class="grain-chip" id="grainChip">日级财务 + 月级流量</span>
+      </div>
+    </div>
+  </div>
+
+  <main class="main-shell">
+    <section class="content" id="content">
+      <div class="loading-card"><span class="loader"></span><b>正在载入经营数据</b></div>
+    </section>
+  </main>
+
+  <div class="system-state" aria-hidden="true">
+    <span id="dbModeLabel">DEMO 数据</span><span id="dbStateText">本地预览模式</span>
+    <button id="sideImportBtn"></button><button id="collapseSidebar"></button>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="import-drawer" id="importDrawer">
+    <div class="drawer-head">
+      <div><span class="drawer-kicker">MONTHLY IMPORT</span><h2>导入月度报表</h2><p>每月数据进入历史数据库，原始文件永久归档。</p></div>
+      <button class="drawer-close" id="drawerClose" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="import-step"><span>1</span><div><b>选择报告月份</b><p>作为月级事实、库存快照和导入版本的时间键。</p></div></div>
+      <label class="field-label">报告月份<input type="month" id="importMonth" value="2026-06"></label>
+      <div class="import-step"><span>2</span><div><b>加入本月源文件</b><p>支持 CSV / XLSX，自动识别 9 类报表。</p></div></div>
+      <label class="dropzone" id="dropzone"><input id="importFiles" type="file" multiple accept=".csv,.xlsx"><div class="drop-icon">＋</div><strong>将文件拖到这里</strong><span>或点击选择文件</span></label>
+      <div class="source-progress"><div class="source-progress-top"><b>数据源识别</b><span id="sourceCount">0 / 9</span></div><div class="progress-track"><i id="sourceProgressBar"></i></div></div>
+      <div class="file-stack" id="fileStack"><div class="empty-mini">尚未选择文件</div></div>
+      <div class="import-step"><span>3</span><div><b>检查并写入</b><p>先解析、校验，再保存原文件和结构化历史数据。</p></div></div>
+      <div class="validation-box" id="validationBox"><span class="muted">等待解析。</span></div>
+    </div>
+    <div class="drawer-foot"><button class="secondary-btn" id="validateBtn">检查数据</button><button class="primary-btn wide" id="commitBtn" disabled>写入数据库</button></div>
+  </aside>
+
+  <div class="command-backdrop" id="commandBackdrop"></div>
+  <section class="command-palette" id="commandPalette" role="dialog" aria-modal="true" aria-label="全局搜索">
+    <div class="command-search-row">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      <input id="commandInput" type="text" autocomplete="off" placeholder="搜索页面、指标或执行快捷操作…" />
+      <kbd>ESC</kbd>
+    </div>
+    <div class="command-hint-row"><span>快速导航</span><span>↑ ↓ 选择 · Enter 打开</span></div>
+    <div class="command-results" id="commandResults"></div>
+  </section>
+
+  <div class="detail-backdrop" id="detailBackdrop"></div>
+  <aside class="detail-drawer" id="detailDrawer" aria-label="详情">
+    <div class="detail-head">
+      <div><span class="detail-kicker" id="detailKicker">DETAIL</span><h2 id="detailTitle">指标详情</h2><p id="detailSubtitle">所选期间的经营口径与变化</p></div>
+      <button class="drawer-close" id="detailClose" aria-label="关闭">×</button>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+  </aside>
+
+  <div class="panel-modal-backdrop" id="panelModalBackdrop"></div>
+  <section class="panel-modal" id="panelModal" role="dialog" aria-modal="true">
+    <div class="panel-modal-head"><div><span>FOCUS VIEW</span><h2 id="panelModalTitle">详情</h2></div><button class="drawer-close" id="panelModalClose">×</button></div>
+    <div class="panel-modal-body" id="panelModalBody"></div>
+  </section>
+
+  <div class="view-popover" id="viewPopover">
+    <div class="view-popover-title">视图设置</div>
+    <button data-density="comfortable" class="active"><span>舒适密度</span><small>默认</small></button>
+    <button data-density="compact"><span>紧凑密度</span><small>更多数据</small></button>
+    <div class="view-divider"></div>
+    <button id="toggleMotion"><span>界面动效</span><small>开启</small></button>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+  <script src="./demo-data.js"></script>
+  <script src="./engine.js"></script>
+  <script src="./normalizer.js"></script>
+  <script src="./app.js"></script>
+  <script src="./enhancements.js"></script>
+  <script src="./studio.js"></script>
+  <script src="./v43.js"></script>
+  <script src="./v44.js"></script>
+  <script src="./v45.js"></script>
+  <script src="./v46.js"></script>
+  <script src="./v47.js"></script>
+  <script src="./v48.js"></script>
+  <script src="./v49.js"></script>
+  <script src="./v50.js"></script>
+  <script src="./v51.js"></script>
+  <script src="./v52.js"></script>
+  <script src="./v53.js"></script>
+</body>
+</html>

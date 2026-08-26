@@ -1,0 +1,510 @@
+/* V4.10 — Color Science Readability System
+   Color-only refinement layer. Layout, modules and business logic remain unchanged.
+   Goals: higher luminance separation, neutral surfaces, semantic role colors,
+   stronger text hierarchy, color-vision-friendly data visualization, and reduced visual fatigue.
+*/
+:root{
+  /* Compatibility remap: V4.9 components inherit the new V4.10 color roles. */
+  --v49-bg:#F3F6F8;
+  --v49-bg-elevated:#F7F9FA;
+  --v49-surface:#FFFFFF;
+  --v49-surface-pure:#FFFFFF;
+  --v49-surface-soft:#FAFBFC;
+
+  --v49-ink:#18232D;
+  --v49-copy:#35434F;
+  --v49-muted:#566572;
+  --v49-faint:#64727E;
+
+  --v49-line:#D7DEE4;
+  --v49-line-strong:#A8B4BD;
+
+  --v49-accent:#25647A;
+  --v49-accent-strong:#1D5265;
+  --v49-accent-soft:#EAF3F6;
+
+  --v49-blue:#156B91;
+  --v49-blue-soft:#EAF4F9;
+  --v49-green:#21684F;
+  --v49-green-soft:#ECF6F0;
+  --v49-amber:#76520A;
+  --v49-amber-soft:#FFF4DB;
+  --v49-rose:#963B49;
+  --v49-rose-soft:#FCEDEF;
+  --v49-lilac:#594A83;
+  --v49-lilac-soft:#F1EFF8;
+
+  --v50-canvas:#F3F6F8;
+  --v50-surface:#FFFFFF;
+  --v50-surface-subtle:#F8FAFB;
+  --v50-surface-hover:#F0F4F6;
+  --v50-text:#18232D;
+  --v50-text-2:#35434F;
+  --v50-text-3:#566572;
+  --v50-text-4:#64727E;
+  --v50-border:#D7DEE4;
+  --v50-border-control:#8A99A5;
+  --v50-primary:#25647A;
+  --v50-primary-strong:#1D5265;
+  --v50-primary-soft:#EAF3F6;
+  --v50-blue:#156B91;
+  --v50-orange:#A44A12;
+  --v50-green:#21684F;
+  --v50-violet:#704C8C;
+  --v50-gold:#805B00;
+  --v50-rose:#9A3E54;
+
+  --v49-shadow-xs:0 1px 2px rgba(24,35,45,.035);
+  --v49-shadow-sm:0 1px 2px rgba(24,35,45,.028),0 8px 24px rgba(24,35,45,.045);
+  --v49-shadow-md:0 2px 5px rgba(24,35,45,.035),0 14px 36px rgba(24,35,45,.065);
+  --v49-shadow-hover:0 5px 14px rgba(24,35,45,.045),0 22px 52px rgba(24,35,45,.08);
+}
+
+html{background:var(--v50-canvas)!important}
+body.studio-v50{
+  background:
+    radial-gradient(1000px 520px at 50% -240px,rgba(255,255,255,.92),transparent 70%),
+    var(--v50-canvas)!important;
+  color:var(--v50-text)!important;
+}
+body.studio-v50 :focus-visible{
+  outline:3px solid rgba(37,100,122,.30)!important;
+  outline-offset:2px!important;
+}
+
+/* Top navigation: clear canvas/surface separation without glare. */
+body.studio-v50 .global-nav{
+  background:rgba(250,252,253,.94)!important;
+  border-bottom-color:#D5DDE3!important;
+}
+body.studio-v50 .wordmark-main{color:var(--v50-text)!important}
+body.studio-v50 .wordmark-sub{color:var(--v50-text-3)!important}
+body.studio-v50 .wordmark:after{
+  content:"V4.10"!important;
+  background:var(--v50-primary-soft)!important;
+  color:var(--v50-primary-strong)!important;
+  border-color:#C9DDE5!important;
+}
+body.studio-v50 .wordmark-symbol{
+  background:#fff!important;
+  border-color:var(--v50-border)!important;
+  color:var(--v50-primary-strong)!important;
+}
+body.studio-v50 .nav-item{color:#4D5B67!important}
+body.studio-v50 .nav-item:hover{background:#EEF3F5!important;color:var(--v50-text)!important}
+body.studio-v50 .nav-item.active{
+  background:#FFFFFF!important;
+  color:var(--v50-text)!important;
+  box-shadow:0 1px 2px rgba(24,35,45,.04),0 5px 16px rgba(24,35,45,.06)!important;
+}
+body.studio-v50 .nav-symbol,body.studio-v50 .tab-symbol{color:#667784!important}
+body.studio-v50 .nav-item.active .nav-symbol,
+body.studio-v50 .v43-tab.active .tab-symbol{
+  background:var(--v50-primary-soft)!important;
+  color:var(--v50-primary-strong)!important;
+}
+body.studio-v50 .search-command,
+body.studio-v50 .period-main,
+body.studio-v50 .circle-btn{
+  background:#FFFFFF!important;
+  border-color:#C9D2D9!important;
+  color:var(--v50-text-2)!important;
+}
+body.studio-v50 .search-command:hover,
+body.studio-v50 .period-main:hover,
+body.studio-v50 .circle-btn:hover{
+  background:#F8FAFB!important;
+  border-color:#AEBBC4!important;
+}
+body.studio-v50 .import-button,
+body.studio-v50 .primary-btn,
+body.studio-v50 .apply-btn{
+  background:var(--v50-primary-strong)!important;
+  color:#FFFFFF!important;
+  box-shadow:0 4px 14px rgba(29,82,101,.18)!important;
+}
+body.studio-v50 .import-button:hover,
+body.studio-v50 .primary-btn:hover,
+body.studio-v50 .apply-btn:hover{
+  background:#174657!important;
+}
+
+/* Context / period bar. */
+body.studio-v50 .section-nav{
+  background:rgba(243,246,248,.94)!important;
+  border-bottom-color:#D7DEE4!important;
+}
+body.studio-v50 .page-heading .eyebrow{color:var(--v50-text-4)!important}
+body.studio-v50 .page-heading h1{color:var(--v50-text)!important}
+body.studio-v50 .page-title-symbol{
+  background:#FFFFFF!important;
+  border-color:#D2DAE0!important;
+  color:var(--v50-primary)!important;
+}
+body.studio-v50 .quick-range,
+body.studio-v50 .studio-mode-switch{
+  background:#E7EDF1!important;
+  border-color:#D2DAE0!important;
+}
+body.studio-v50 .quick-range button,
+body.studio-v50 .studio-live,
+body.studio-v50 .studio-chip{color:var(--v50-text-3)!important}
+body.studio-v50 .quick-range button:hover{color:var(--v50-text)!important}
+body.studio-v50 .quick-range button.active,
+body.studio-v50 .studio-mode-switch button.active{
+  background:#FFFFFF!important;
+  color:var(--v50-text)!important;
+  box-shadow:0 1px 3px rgba(24,35,45,.10)!important;
+}
+body.studio-v50 .freshness,
+body.studio-v50 .grain-chip,
+body.studio-v50 .compare-toggle{
+  background:#FFFFFF!important;
+  border-color:#CCD5DC!important;
+  color:var(--v50-text-3)!important;
+}
+body.studio-v50 .compare-toggle[aria-pressed="true"]{
+  background:var(--v50-primary-soft)!important;
+  color:var(--v50-primary-strong)!important;
+  border-color:#B8D3DD!important;
+}
+
+/* Utility and tab systems. */
+body.studio-v50 .v47-utility{
+  background:rgba(255,255,255,.92)!important;
+  border-color:#D4DCE2!important;
+}
+body.studio-v50 .v47-utility-main>span{
+  background:var(--v50-primary-soft)!important;
+  color:var(--v50-primary-strong)!important;
+}
+body.studio-v50 .v47-utility-main b{color:var(--v50-text)!important}
+body.studio-v50 .v47-utility-main small{color:var(--v50-text-3)!important}
+body.studio-v50 .v47-utility-actions button{color:var(--v50-text-2)!important}
+body.studio-v50 .v47-utility-actions button:hover{background:#EDF2F5!important;color:var(--v50-text)!important}
+
+body.studio-v50 .v43-tabs{
+  background:#E7EDF1!important;
+  border-color:#D0D9DF!important;
+  box-shadow:0 4px 16px rgba(24,35,45,.035)!important;
+}
+body.studio-v50 .v43-tab{color:var(--v50-text-3)!important}
+body.studio-v50 .v43-tab:hover{background:#F3F7F9!important;color:var(--v50-text)!important}
+body.studio-v50 .v43-tab.active{
+  background:#FFFFFF!important;
+  color:var(--v50-text)!important;
+  box-shadow:0 1px 4px rgba(24,35,45,.10)!important;
+}
+body.studio-v50 .v43-tab-count{
+  background:#DCE4E9!important;
+  color:#4E5E6A!important;
+}
+body.studio-v50 .v43-tab.active .v43-tab-count{
+  background:var(--v50-primary-soft)!important;
+  color:var(--v50-primary-strong)!important;
+}
+
+/* Cards: color is used for meaning, not as a decorative wash. */
+body.studio-v50 .signal-card,
+body.studio-v50 .signal-card.dark,
+body.studio-v50 .executive-card,
+body.studio-v50 .metric-card,
+body.studio-v50 .panel,
+body.studio-v50 .intel-card,
+body.studio-v50 .table-card,
+body.studio-v50 .charge-total-pill{
+  background:#FFFFFF!important;
+  border-color:#D7DEE4!important;
+}
+body.studio-v50 .signal-card:nth-child(1){
+  background:linear-gradient(145deg,#EEF6F8 0%,#FFFFFF 78%)!important;
+}
+body.studio-v50 .executive-card.primary,
+body.studio-v50 .charge-hero-main{
+  background:linear-gradient(145deg,#EDF5F8 0%,#F8FBFC 62%,#FFFFFF 100%)!important;
+}
+body.studio-v50 .executive-card.good{
+  background:linear-gradient(145deg,#EEF7F2 0%,#FFFFFF 80%)!important;
+}
+body.studio-v50 .executive-card.warn{
+  background:linear-gradient(145deg,#FFF7E7 0%,#FFFFFF 80%)!important;
+}
+body.studio-v50 .intel-card.soft-blue,
+body.studio-v50 .intel-card.blue{
+  background:linear-gradient(145deg,#EEF6FA 0%,#FFFFFF 82%)!important;
+}
+body.studio-v50 .intel-card.dark,
+body.studio-v50 .charge-hero-side{
+  background:linear-gradient(145deg,#F3F0F8 0%,#FFFFFF 82%)!important;
+}
+body.studio-v50 .signal-card:hover,
+body.studio-v50 .executive-card:hover,
+body.studio-v50 .metric-card:hover,
+body.studio-v50 .panel:hover,
+body.studio-v50 .intel-card:hover{
+  border-color:#B9C7D0!important;
+}
+
+/* Text hierarchy: every recurring small-text role stays above normal-text AA contrast on white. */
+body.studio-v50 .metric-label,
+body.studio-v50 .metric-note,
+body.studio-v50 .metric-compare,
+body.studio-v50 .executive-label,
+body.studio-v50 .executive-note,
+body.studio-v50 .executive-meta,
+body.studio-v50 .panel-title span,
+body.studio-v50 .intel-sub,
+body.studio-v50 .rank-copy span,
+body.studio-v50 .portfolio-row span,
+body.studio-v50 .rank-val span,
+body.studio-v50 .annotation,
+body.studio-v50 .studio-section-title p,
+body.studio-v50 .section-head span,
+body.studio-v50 .charge-page-intro p,
+body.studio-v50 .charge-total-pill span,
+body.studio-v50 .charge-hero-main>p,
+body.studio-v50 .charge-detail-copy p,
+body.studio-v50 .charge-hero-side>span,
+body.studio-v50 .charge-hero-side>small,
+body.studio-v50 .charge-detail-number span,
+body.studio-v50 .charge-detail-stats span,
+body.studio-v50 .drawer-head p,
+body.studio-v50 .detail-head p,
+body.studio-v50 .command-item-copy span,
+body.studio-v50 .page-insight-copy span,
+body.studio-v50 .quality-copy span,
+body.studio-v50 .source-card p,
+body.studio-v50 .action-copy span,
+body.studio-v50 .detail-hero span,
+body.studio-v50 .detail-stat span,
+body.studio-v50 .empty-state span,
+body.studio-v50 .empty-mini,
+body.studio-v50 .apple-empty p{
+  color:var(--v50-text-3)!important;
+}
+body.studio-v50 .studio-section-title .copy>span,
+body.studio-v50 .section-head>div>span,
+body.studio-v50 .intel-title span,
+body.studio-v50 .table-meta,
+body.studio-v50 .v43-table-caption span,
+body.studio-v50 .v46-table-title span,
+body.studio-v50 .v45-charge-caption span{
+  color:var(--v50-text-4)!important;
+}
+body.studio-v50 .metric-value,
+body.studio-v50 .executive-value,
+body.studio-v50 .panel-title strong,
+body.studio-v50 .intel-title b,
+body.studio-v50 .charge-page-intro h2,
+body.studio-v50 .charge-total-pill b,
+body.studio-v50 .charge-hero-main>strong,
+body.studio-v50 .charge-hero-side>b,
+body.studio-v50 .charge-hero-side>strong,
+body.studio-v50 .charge-detail-copy h2,
+body.studio-v50 .charge-detail-number strong,
+body.studio-v50 .charge-detail-stats b,
+body.studio-v50 .drawer-head h2,
+body.studio-v50 .detail-head h2,
+body.studio-v50 .panel-modal-head h2,
+body.studio-v50 .page-insight-copy b,
+body.studio-v50 .quality-copy b,
+body.studio-v50 .source-card b,
+body.studio-v50 .action-copy b,
+body.studio-v50 .rank-copy b,
+body.studio-v50 .portfolio-row b{
+  color:var(--v50-text)!important;
+}
+
+/* Icons and secondary actions. */
+body.studio-v50 .metric-icon,
+body.studio-v50 .panel-title-symbol,
+body.studio-v50 .intel-head-symbol{
+  background:#F2F6F8!important;
+  border-color:#D4DDE3!important;
+  color:var(--v50-primary)!important;
+}
+body.studio-v50 .signal-icon{
+  background:#FFFFFF!important;
+  border-color:#D4DDE3!important;
+  color:var(--v50-primary-strong)!important;
+}
+body.studio-v50 .signal-card:nth-child(2) .signal-icon{background:#EAF4F9!important;color:var(--v50-blue)!important}
+body.studio-v50 .signal-card:nth-child(3) .signal-icon{background:#ECF6F0!important;color:var(--v50-green)!important}
+body.studio-v50 .panel-action,
+body.studio-v50 .charge-page-kicker,
+body.studio-v50 .drawer-kicker,
+body.studio-v50 .detail-kicker,
+body.studio-v50 .charge-hero-main>span,
+body.studio-v50 .charge-detail-copy>span{
+  color:var(--v50-primary-strong)!important;
+}
+body.studio-v50 .panel-action:hover,
+body.studio-v50 .command-item.active,
+body.studio-v50 .command-item:hover{
+  background:var(--v50-primary-soft)!important;
+}
+
+/* Semantic states — dark foreground + light tint for sufficient contrast. */
+body.studio-v50 .delta.up,
+body.studio-v50 .pill.good,
+body.studio-v50 .page-insight.good,
+body.studio-v50 .risk-cell.good,
+body.studio-v50 .severity.low{
+  background:#ECF6F0!important;
+  color:#21684F!important;
+  border-color:#C9E2D4!important;
+}
+body.studio-v50 .delta.down,
+body.studio-v50 .pill.bad,
+body.studio-v50 .page-insight.bad,
+body.studio-v50 .risk-cell.bad,
+body.studio-v50 .severity.high{
+  background:#FCEDEF!important;
+  color:#963B49!important;
+  border-color:#EDC9CF!important;
+}
+body.studio-v50 .pill.warn,
+body.studio-v50 .page-insight.warn,
+body.studio-v50 .risk-cell.warn,
+body.studio-v50 .severity.medium{
+  background:#FFF4DB!important;
+  color:#76520A!important;
+  border-color:#EBD7A7!important;
+}
+
+/* Tables: brighter rows, darker labels, deliberate row-state separation. */
+body.studio-v50 .table-card{background:#FFFFFF!important}
+body.studio-v50 .table-tools{
+  background:#FFFFFF!important;
+  border-bottom-color:#D7DEE4!important;
+}
+body.studio-v50 .table-search-shell{
+  background:#F5F8FA!important;
+  border-color:#BFCAD2!important;
+}
+body.studio-v50 .table-search{color:var(--v50-text)!important}
+body.studio-v50 .table-search::placeholder{color:#61717D!important}
+body.studio-v50 .table-search-shell:focus-within{
+  background:#FFFFFF!important;
+  border-color:var(--v50-primary)!important;
+  box-shadow:0 0 0 3px rgba(37,100,122,.12)!important;
+}
+body.studio-v50 .table-tool-btn{color:var(--v50-text-2)!important}
+body.studio-v50 .table-tool-btn:hover{background:#EEF3F5!important;color:var(--v50-text)!important}
+body.studio-v50 .data-table{color:var(--v50-text-2)!important}
+body.studio-v50 .data-table th,
+body.studio-v50 .data-table th:first-child{
+  background:#F1F5F7!important;
+  border-bottom-color:#CBD5DC!important;
+  color:#4E5D69!important;
+}
+body.studio-v50 .data-table td{
+  border-bottom-color:#E1E7EB!important;
+}
+body.studio-v50 .data-table tbody tr:nth-child(even){background:#FAFCFD!important}
+body.studio-v50 .data-table tbody tr:hover{background:#EDF4F7!important}
+body.studio-v50 .data-table .num{color:#2F3D48!important}
+body.studio-v50 .table-primary{color:var(--v50-text)!important}
+
+/* Data visualization: hue + luminance separation; avoid relying on red/green alone. */
+body.studio-v50 .chart-grid line{stroke:#DCE3E8!important}
+body.studio-v50 .chart-axis{
+  color:var(--v50-text-3)!important;
+  fill:#5A6975!important;
+}
+body.studio-v50 .legend,
+body.studio-v50 .heat-legend,
+body.studio-v50 .heat-tip,
+body.studio-v50 .bar-label,
+body.studio-v50 .bar-value{color:var(--v50-text-3)!important}
+body.studio-v50 .chart-line-sales{stroke:var(--v50-blue)!important}
+body.studio-v50 .chart-line-ad{stroke:var(--v50-orange)!important}
+body.studio-v50 .legend i.sales{background:var(--v50-blue)!important}
+body.studio-v50 .legend i.ad{background:var(--v50-orange)!important}
+body.studio-v50 .chart-hover-line{background:rgba(24,35,45,.22)!important}
+body.studio-v50 .chart-hover-dot{
+  background:#FFFFFF!important;
+  border-color:var(--v50-blue)!important;
+}
+body.studio-v50 .chart-tooltip,
+body.studio-v50 .heatmap-day .heat-tip,
+body.studio-v50 .quad-dot span{
+  background:rgba(28,42,53,.96)!important;
+  color:#FFFFFF!important;
+}
+body.studio-v50 .bar-track,
+body.studio-v50 .funnel-track,
+body.studio-v50 .finance-stack-row .track,
+body.studio-v50 .charge-bar-track{
+  background:#E8EDF1!important;
+}
+body.studio-v50 .bar-fill,
+body.studio-v50 .funnel-fill,
+body.studio-v50 .portfolio-share,
+body.studio-v50 .portfolio-share i{
+  background:linear-gradient(90deg,#69A1BC,#156B91)!important;
+}
+body.studio-v50 .bar-fill.green{
+  background:linear-gradient(90deg,#6E9D86,#21684F)!important;
+}
+body.studio-v50 .bar-fill.amber{
+  background:linear-gradient(90deg,#C8A154,#805B00)!important;
+}
+body.studio-v50 .charge-bar-track i{
+  background:linear-gradient(90deg,#6A9CAD,#25647A)!important;
+}
+body.studio-v50 .heatmap-day{
+  background:rgba(21,107,145,var(--a,.08))!important;
+  border-color:rgba(21,107,145,.14)!important;
+}
+body.studio-v50 .heat-scale i{background:rgba(21,107,145,var(--a))!important}
+
+/* Charges and project tabs. */
+body.studio-v50 .charge-project-tab-shell{
+  background:rgba(237,242,245,.94)!important;
+  border-color:#D0D9DF!important;
+  box-shadow:0 7px 24px rgba(24,35,45,.05)!important;
+}
+body.studio-v50 .charge-project-tabs button{color:var(--v50-text-3)!important}
+body.studio-v50 .charge-project-tabs button:hover{background:#F7FAFB!important;color:var(--v50-text)!important}
+body.studio-v50 .charge-project-tabs button.active{
+  background:#FFFFFF!important;
+  color:var(--v50-text)!important;
+  box-shadow:0 1px 4px rgba(24,35,45,.10)!important;
+}
+body.studio-v50 .charge-project-tabs button.active .charge-tab-symbol{
+  background:var(--v50-primary-soft)!important;
+  color:var(--v50-primary-strong)!important;
+}
+body.studio-v50 .charge-bar-row:hover{background:#F0F5F7!important}
+
+/* Drawers / popovers: opaque enough to preserve text contrast over busy content. */
+body.studio-v50 .period-popover,
+body.studio-v50 .view-popover,
+body.studio-v50 .command-palette,
+body.studio-v50 .panel-modal,
+body.studio-v50 .import-drawer,
+body.studio-v50 .detail-drawer,
+body.studio-v50 .studio-drawer{
+  background:rgba(255,255,255,.985)!important;
+  border-color:#CCD6DD!important;
+  box-shadow:0 22px 72px rgba(24,35,45,.20)!important;
+}
+body.studio-v50 .secondary-btn{
+  background:#EFF3F6!important;
+  border-color:#C7D1D8!important;
+  color:var(--v50-text-2)!important;
+}
+body.studio-v50 .v48-visual-note{
+  background:#EEF4F6!important;
+  border-color:#D2DDE3!important;
+}
+body.studio-v50 .v48-visual-note span{color:var(--v50-text-2)!important}
+body.studio-v50 .v48-visual-note small{color:var(--v50-text-3)!important}
+
+/* Scrollbars: visible without becoming a visual accent. */
+body.studio-v50 *{scrollbar-color:#A7B4BE transparent}
+body.studio-v50 .table-wrap::-webkit-scrollbar-thumb{
+  background:#A7B4BE!important;
+  border-color:transparent!important;
+}
