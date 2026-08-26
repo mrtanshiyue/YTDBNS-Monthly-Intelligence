@@ -14,6 +14,11 @@ expect(index.indexOf('./v54.css')>index.indexOf('./v53.css'),'v54.css must load 
 expect(index.indexOf('./v54-acceptance.css')>index.indexOf('./v54.css'),'v54-acceptance.css must load after v54.css');
 expect(index.indexOf('./v54.js')>index.indexOf('./v53.js'),'v54.js must load after v53.js');
 
+const mobileMediaIndex=css.indexOf('@media(max-width:860px){');
+const firstTableRuleIndex=css.indexOf('body.studio-v54 .table-wrap{');
+expect(mobileMediaIndex>=0,'primary mobile media block missing');
+expect(firstTableRuleIndex>mobileMediaIndex,'table hardening must remain mobile-only for desktop no-op');
+expect(!css.slice(0,mobileMediaIndex).includes('body.studio-v54 .table-wrap{'),'desktop-scoped table hardening detected before mobile breakpoint');
 expect(css.includes('body.studio-v54 .global-links{')&&css.includes('display:flex!important'),'mobile primary nav restore missing');
 expect(css.includes('position:fixed!important')&&css.includes('bottom:0!important'),'mobile bottom nav rail missing');
 expect(css.includes('env(safe-area-inset-bottom,0px)'),'safe-area bottom inset missing');
