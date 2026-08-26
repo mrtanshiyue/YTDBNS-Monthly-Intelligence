@@ -190,3 +190,11 @@
   body.studio-v54 .drawer-body,
   body.studio-v54 .detail-body{overscroll-behavior:contain!important}
 }
+
+/* Supported desktop widths retain the V4.14 centered navigation. The legacy 1440px track is
+   about 632px wide while nine 78px items overflow symmetrically into the wordmark/actions.
+   Tighten only item spacing so all nine existing click targets stay inside the allocated track. */
+@media(min-width:861px){
+  body.studio-v54 .global-links{gap:0!important}
+  body.studio-v54 .nav-item{padding-left:5px!important;padding-right:5px!important}
+}
