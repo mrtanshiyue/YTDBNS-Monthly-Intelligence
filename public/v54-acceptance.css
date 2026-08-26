@@ -99,6 +99,14 @@
     overflow:hidden!important;
   }
   body.studio-v54 .page-heading h1{max-width:100%!important}
+
+  /* Short landscape viewports cannot fit the legacy View Settings panel above the bottom rail at
+     its intrinsic height. Cap the sheet to the available viewport and let its own body scroll. */
+  body.studio-v54 .view-popover{
+    max-height:calc(100dvh - var(--v54-mobile-bottom) - var(--v54-safe-bottom) - 20px)!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+  }
 }
 
 @media(max-width:620px){
