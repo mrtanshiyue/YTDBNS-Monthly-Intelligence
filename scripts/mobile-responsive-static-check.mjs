@@ -61,6 +61,8 @@ expect(browserAcceptance.includes('const deviceLike=mobile||compactLandscape'),'
 expect(browserAcceptance.includes('isMobile:deviceLike,hasTouch:deviceLike'),'tablet/landscape touch emulation missing');
 expect(!browserAcceptance.includes("['desktop-1440x900',1440,900,true]")&&!browserAcceptance.includes("['desktop-1920x1080',1920,1080,true]"),'desktop acceptance must not be hard-coded as touch');
 expect(browserAcceptance.includes("['tablet-768x1024',768,1024]")&&browserAcceptance.includes("['tablet-820x1180',820,1180]"),'tablet acceptance cases missing');
+expect(browserAcceptance.includes('innerWidth,innerHeight'),'browser acceptance must capture actual viewport dimensions');
+expect(browserAcceptance.includes('actual viewport width')&&browserAcceptance.includes('actual viewport height'),'browser acceptance must reject viewport emulation drift');
 
 const navItems=(index.match(/class="nav-item/g)||[]).length;
 expect(navItems===9,`expected 9 primary nav items, found ${navItems}`);
