@@ -165,9 +165,11 @@
 
   function surfaceOpen(surface) {
     if (!surface) return false;
-    const style = getComputedStyle(surface);
-    return style.display !== 'none' && style.visibility !== 'hidden' &&
-      (surface.classList.contains('show') || surface.classList.contains('open') || surface.classList.contains('active'));
+    const hasOpenState = surface.classList.contains('show') || surface.classList.contains('open') || surface.classList.contains('active');
+    if (!hasOpenState) return false;
+    // Visibility can remain `hidden` briefly while a CSS visibility transition is opening.
+    // The explicit runtime open class is the semantic source of truth; display:none still means closed.
+    return getComputedStyle(surface).display !== 'none';
   }
 
   function syncDisclosureStates() {
