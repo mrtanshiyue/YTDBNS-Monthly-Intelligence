@@ -128,7 +128,7 @@
         </section>
 
         <section class="v5-overview-section" aria-labelledby="v5OverviewTrend">
-          <div class="v5-overview-section-head"><div><span>TREND</span><h2 id="v5OverviewTrend">销售趋势</h2></div><small>Daily</small></div>
+          <div class="v5-overview-section-head"><div><span>TREND</span><h2 id="v5OverviewTrend">销售趋势</h2></div><small>单指标视图</small></div>
           <div class="v5-overview-chart-card">
             <div class="v5-overview-chart-value"><span>销售额</span><strong>${fmt.money(s.sales, 0)}</strong></div>
             ${salesChart(model.salesSeries)}
