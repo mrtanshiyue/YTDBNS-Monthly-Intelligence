@@ -27,6 +27,7 @@ const secondarySelectors = read('public/shared/secondary-selectors.js');
 const coreCss = read('public/mobile/views/core.css');
 const secondaryCss = read('public/mobile/views/secondary.css');
 const overviewCss = read('public/mobile/views/overview.css');
+const overview = read('public/mobile/views/overview.js');
 const compareCss = read('public/mobile/mobile-compare.css');
 const mobileCss = [shellCss, read('public/mobile/mobile-interactions.css'), compareCss, overviewCss, coreCss, secondaryCss].join('\n');
 const recordViews = ['ads','products','inventory','charges'].map(name => read(`public/mobile/views/${name}.js`));
@@ -76,9 +77,12 @@ expect(shellCss.includes('.v5-mobile-runtime-notice') && shellCss.includes('.v5-
 expect(!shell.includes('分阶段重写队列'), 'mobile fallback no longer exposes development-phase copy');
 
 for (const [name, source] of [['ads',recordViews[0]],['products',recordViews[1]],['inventory',recordViews[2]],['charges',recordViews[3]]]) {
-  expect(source.includes('<button type="button" class="v5-record-card"'), `${name} record cards use native button semantics`);
+  expect(/<button type="button" class="[^"]*\bv5-record-card\b[^"]*"/.test(source), `${name} record cards use native button semantics`);
   expect(!source.includes('<article class="v5-record-card"'), `${name} has no click-only article records`);
 }
+expect(currentCss.includes('V5 Mobile Intelligence Terminal') && currentCss.includes('.v5-intel-status') && currentCss.includes('.v5-intel-efficiency'), 'mobile high-density intelligence visual system is encoded in the canonical UI layer');
+expect(overview.includes('v5-intel-status') && overview.includes('v5-intel-primary') && overview.includes('v5-intel-ops'), 'Overview renders status, primary business and operational intelligence tiers');
+expect(overview.includes('data-v5-open-compare') && overview.includes('s.fulfillableUnits') && overview.includes('s.cvr') && overview.includes('s.returns'), 'Overview exposes compare and dense operational metrics from real selectors');
 expect(compare.includes('let lastFocus = null') && compare.includes('focusClose()') && compare.includes('lastFocus.focus'), 'Mobile Compare restores trigger focus');
 expect(compare.includes("event.key !== 'Tab'") && compare.includes("event.key === 'Escape'"), 'Mobile Compare traps focus and supports Escape');
 expect(compare.includes('let requestSerial = 0') && compare.includes('requestId !== requestSerial'), 'Mobile Compare ignores stale async responses after close');
