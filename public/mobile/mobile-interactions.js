@@ -3,6 +3,7 @@
 
   const mobileRoot = document.getElementById('mobileAppRoot');
   const runtime = window.YT_SHARED_RUNTIME;
+  const selectors = window.YT_SHARED_SELECTORS;
   const fmt = window.YT_SHARED_FORMATTERS;
   if (!mobileRoot || !runtime) return;
 
@@ -27,6 +28,14 @@
     ['returns', '退货', '退货原因、退款与退货率'],
     ['history', '历史', '月度经营趋势与历史数据'],
     ['data', '数据', '数据质量、导入状态与数据源']
+  ];
+  const METRICS = [
+    ['经营销售额', 'sales', 'finance', 'money', '所选期间经营层销售额'],
+    ['贡献利润', 'profit', 'finance', 'money', '销售扣除退款、费用、广告与成本后的贡献'],
+    ['ACOS', 'acos', 'ads', 'pct', '广告花费 ÷ 广告归因销售额'],
+    ['TACOS', 'tacos', 'ads', 'pct', '广告花费 ÷ 全店销售额'],
+    ['广告花费', 'adSpend', 'ads', 'money', '所选期间广告发生额'],
+    ['库存资金', 'inventoryValue', 'inventory', 'money', '最近库存快照的采购成本资金占用']
   ];
 
   let overlay = null;
@@ -129,9 +138,16 @@
       </div>`, '[data-v5-close-overlay]');
   }
 
-  function normalizeRecord(route, kind, title, subtitle, meta, detail) {
-    const haystack = [title, subtitle, meta, route, kind, ...Object.values(detail || {})].join(' ').toLowerCase();
-    return { route, kind, title: text(title) || '未命名记录', subtitle: text(subtitle), meta: text(meta), detail: detail || {}, haystack };
+  function normalizeRecord(route, kind, title, subtitle, meta, detail, action = null) {
+    const haystack = [title, subtitle, meta, route, kind, action, ...Object.values(detail || {})].join(' ').toLowerCase();
+    return { route, kind, title: text(title) || '未命名记录', subtitle: text(subtitle), meta: text(meta), detail: detail || {}, action, haystack };
+  }
+
+  function formatMetric(value, type) {
+    if (value == null) return '—';
+    if (type === 'money') return fmt?.money ? fmt.money(value, 0) : `$${Number(value).toLocaleString('en-US')}`;
+    if (type === 'pct') return fmt?.percent ? fmt.percent(value) : `${(Number(value) * 100).toFixed(1)}%`;
+    return fmt?.number ? fmt.number(value) : String(value);
   }
 
   function buildSearchIndex() {
@@ -139,6 +155,17 @@
     const detail = state.monthDetail || {};
     const demo = state.mode === 'live' || !state.monthDetail ? null : window.YT_DEMO?.current;
     const rows = MODULES.map(([route, title, subtitle]) => normalizeRecord(route, 'module', title, subtitle, 'MODULE', {}));
+    const summary = selectors?.normalizeSummary?.(state.dashboard?.summary || {}) || {};
+
+    METRICS.forEach(([label, key, route, type, definition]) => {
+      rows.push(normalizeRecord(route, 'metric', label, `${formatMetric(summary[key], type)} · ${definition}`, 'METRIC', {
+        当前值: formatMetric(summary[key], type),
+        口径: definition,
+        期间: state.rangeLabel || '当前期间'
+      }));
+    });
+    rows.push(normalizeRecord('overview', 'function', '选择期间', '本月、上月、最近30天、最近90天、今年或自定义日期', 'ACTION', {}, 'period'));
+    rows.push(normalizeRecord('overview', 'function', '对比上期', '当前期间与上一等长期间经营指标对比', 'ACTION', {}, 'compare'));
 
     const campaigns = detail.campaigns || demo?.campaigns || [];
     campaigns.slice(0, 120).forEach(row => rows.push(normalizeRecord(
@@ -182,12 +209,12 @@
     const summary = overlayRoot.querySelector('[data-v5-search-summary]');
     if (!host || !summary) return;
     const results = searchResults(query);
-    summary.textContent = query.trim() ? `找到 ${results.length} 个结果` : '页面、指标与当前月份经营记录';
+    summary.textContent = query.trim() ? `找到 ${results.length} 个结果` : '页面、指标、SKU、Campaign 与功能入口';
     host.innerHTML = results.length ? results.map((item, index) => `
       <button class="v5-search-result" type="button" data-v5-search-index="${index}">
         <span><b>${esc(item.title)}</b><small>${esc(item.subtitle || item.route)}</small></span><em>${esc(item.meta || item.kind)}</em>
       </button>`).join('') : `
-      <div class="v5-search-empty"><strong>没有匹配结果</strong><span>可以搜索页面名称、SKU、ASIN、Campaign 或扣费项目。</span></div>`;
+      <div class="v5-search-empty"><strong>没有匹配结果</strong><span>可以搜索页面、指标、SKU、ASIN、Campaign、扣费项目或功能入口。</span></div>`;
     host._v5Results = results;
   }
 
@@ -200,7 +227,7 @@
           <div class="v5-fullscreen-title"><span>SEARCH</span><h2 id="v5SearchTitle">全局搜索</h2></div>
         </header>
         <div class="v5-fullscreen-body">
-          <label class="v5-search-field"><span aria-hidden="true">⌕</span><input type="search" inputmode="search" autocomplete="off" enterkeyhint="search" data-v5-search-input placeholder="搜索页面、SKU、ASIN、Campaign…"></label>
+          <label class="v5-search-field"><span aria-hidden="true">⌕</span><input type="search" inputmode="search" autocomplete="off" enterkeyhint="search" data-v5-search-input placeholder="搜索页面、指标、SKU、Campaign…"></label>
           <p class="v5-search-summary" data-v5-search-summary></p>
           <div class="v5-search-results" data-v5-search-results></div>
         </div>
@@ -299,6 +326,14 @@
       const item = host?._v5Results?.[Number(resultButton.dataset.v5SearchIndex)];
       if (!item) return;
       closeOverlay({ restoreFocus: false });
+      if (item.action === 'period') {
+        requestAnimationFrame(openPeriod);
+        return;
+      }
+      if (item.action === 'compare') {
+        requestAnimationFrame(() => window.YT_MOBILE_COMPARE?.open?.());
+        return;
+      }
       window.YT_MOBILE_APP?.navigate?.(item.route);
       if (item.kind !== 'module') requestAnimationFrame(() => openDetail(item));
     }
