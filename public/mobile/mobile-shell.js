@@ -168,6 +168,10 @@
 
   async function refresh() {
     if (!runtime) return;
+    if (typeof runtime.refresh === 'function') {
+      await runtime.refresh();
+      return;
+    }
     const state = runtime.getState();
     if (state?.from && state?.to) await runtime.setRange(state.from, state.to);
   }
