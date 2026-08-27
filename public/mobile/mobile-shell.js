@@ -112,7 +112,7 @@
       const current = active === id;
       const moreAttrs = id === 'more' ? ` aria-haspopup="dialog"${ui.moreOpen ? ' aria-controls="v5MoreSheet" aria-expanded="true"' : ' aria-expanded="false"'}` : '';
       return `
-        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}"${id === ui.route ? ' aria-current="page"' : ''}${moreAttrs}>
+        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}"${current ? ' aria-current="page"' : ''}${moreAttrs}>
           <span class="v5-mobile-nav-icon" aria-hidden="true">${icon(iconName)}</span>
           <span>${esc(label)}</span>
         </button>`;
