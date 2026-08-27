@@ -8,6 +8,7 @@
   registry.products = ({ runtimeState, esc }) => {
     const model = selectors.productsModel(runtimeState);
     const rows = model.products.slice(0, 30);
+    const summaryGrain = model.detailAvailable ? 'SKU 明细合计' : '所选期间汇总';
     const empty = !rows.length ? `
       <div class="v5-core-empty"><strong>当前期间没有 SKU 明细</strong><span>商品明细使用完整月份数据；顶部汇总仍保留所选期间经营口径。</span></div>` : '';
     const cards = rows.map(row => `
@@ -32,9 +33,9 @@
           <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(model.rangeLabel)}</span><i aria-hidden="true">›</i></button>
         </div>
         <section class="v5-core-stat-grid" aria-label="商品核心指标">
-          <div class="v5-core-stat"><span>销售额</span><strong>${fmt.compactMoney(model.totals.sales)}</strong><small>SKU 明细合计</small></div>
-          <div class="v5-core-stat"><span>销量</span><strong>${fmt.number(model.totals.units)}</strong><small>Units</small></div>
-          <div class="v5-core-stat"><span>Sessions</span><strong>${fmt.number(model.totals.sessions)}</strong><small>流量口径</small></div>
+          <div class="v5-core-stat"><span>销售额</span><strong>${fmt.compactMoney(model.totals.sales)}</strong><small>${summaryGrain}</small></div>
+          <div class="v5-core-stat"><span>销量</span><strong>${fmt.number(model.totals.units)}</strong><small>${summaryGrain}</small></div>
+          <div class="v5-core-stat"><span>Sessions</span><strong>${fmt.number(model.totals.sessions)}</strong><small>${model.detailAvailable ? 'SKU 流量合计' : '所选期间流量'}</small></div>
           <div class="v5-core-stat"><span>CVR</span><strong>${fmt.percent(model.totals.cvr)}</strong><small>Units / Sessions</small></div>
         </section>
         <section class="v5-core-section" aria-labelledby="v5ProductRecords">
