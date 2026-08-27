@@ -9,9 +9,12 @@
     const profit = value(raw.contributionProfit, raw.contribution_profit, raw.profit);
     const adSpend = value(raw.adSpend, raw.ad_spend);
     const adSales = value(raw.adSales, raw.ad_sales);
+    const units = value(raw.businessUnits, raw.business_units, raw.units);
+    const sessions = value(raw.sessions);
     const profitMarginFallback = sales != null && Number(sales) !== 0 && profit != null ? Number(profit) / Number(sales) : null;
     const acosFallback = adSales != null && Number(adSales) !== 0 && adSpend != null ? Number(adSpend) / Number(adSales) : null;
     const tacosFallback = sales != null && Number(sales) !== 0 && adSpend != null ? Number(adSpend) / Number(sales) : null;
+    const cvrFallback = sessions != null && Number(sessions) !== 0 && units != null ? Number(units) / Number(sessions) : null;
     return Object.freeze({
       sales,
       profit,
@@ -22,8 +25,9 @@
       adSales,
       inventoryValue: value(raw.inventoryValue, raw.inventory_value),
       fulfillableUnits: value(raw.fulfillableUnits, raw.fulfillable_units),
-      units: value(raw.businessUnits, raw.business_units, raw.units),
-      sessions: value(raw.sessions),
+      units,
+      sessions,
+      cvr: value(raw.cvr, raw.traffic_cvr, cvrFallback),
       returns: value(raw.returns),
       refundSales: value(raw.refundSales, raw.refund_sales)
     });
@@ -131,6 +135,7 @@
     const sales = products.reduce((sum, row) => sum + Number(row.sales || 0), 0);
     const units = products.reduce((sum, row) => sum + Number(row.units || 0), 0);
     const sessions = products.reduce((sum, row) => sum + Number(row.sessions || 0), 0);
+    const hasProductSessions = products.some(row => row.sessions != null);
     const summary = normalizeSummary(runtimeState?.dashboard?.summary || {});
     return Object.freeze({
       summary,
@@ -138,8 +143,8 @@
       totals: Object.freeze({
         sales: products.length ? sales : summary.sales,
         units: products.length ? units : summary.units,
-        sessions: products.some(row => row.sessions != null) ? sessions : summary.sessions,
-        cvr: sessions ? units / sessions : null
+        sessions: hasProductSessions ? sessions : summary.sessions,
+        cvr: hasProductSessions && sessions ? units / sessions : summary.cvr
       }),
       rangeLabel: runtimeState?.rangeLabel || '选择期间',
       detailAvailable: products.length > 0
