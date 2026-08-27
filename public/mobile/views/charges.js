@@ -8,9 +8,14 @@
   registry.charges = ({ runtimeState, esc }) => {
     const m = selectors.chargesModel(runtimeState);
     const rows = m.rows.slice(0, 40);
-    const totalAbs = Math.abs(Number(m.total || 0));
+    const absoluteCostLoad = m.rows.reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
+    const shareFor = row => row?.share != null
+      ? Number(row.share)
+      : absoluteCostLoad
+        ? Math.abs(Number(row?.amount || 0)) / absoluteCostLoad
+        : null;
     const cards = rows.map(row => {
-      const share = row.share != null ? Number(row.share) : totalAbs ? Math.abs(Number(row.amount || 0)) / totalAbs : null;
+      const share = shareFor(row);
       const meter = share == null ? 0 : clamp(share * 100);
       return `
       <button type="button" class="v5-record-card ${share != null ? 'v5-has-meter' : ''}" style="--v5-meter:${meter.toFixed(1)}%" data-record-type="charge" data-record-id="${esc(row.id)}" aria-label="查看扣费项目 ${esc(row.name)} 详情">
@@ -26,7 +31,8 @@
         </div>
       </button>`;
     }).join('');
-    const topShare = rows[0] ? (rows[0].share != null ? Number(rows[0].share) : totalAbs ? Math.abs(Number(rows[0].amount || 0)) / totalAbs : null) : null;
+    const shares = m.rows.map(shareFor).filter(value => value != null && Number.isFinite(Number(value)));
+    const topShare = shares.length ? Math.max(...shares) : null;
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="charges" aria-labelledby="v5MobileViewTitle">
@@ -35,7 +41,7 @@
         <section class="v5-intel-ops" aria-label="扣费状态">
           <div class="v5-intel-op"><span>Charge Names</span><strong>${fmt.number(m.rows.length)}</strong><small>Categories</small></div>
           <div class="v5-intel-op"><span>Top Cost</span><strong>${rows[0] ? fmt.compactMoney(rows[0].amount) : '—'}</strong><small>${rows[0] ? esc(rows[0].name) : '—'}</small></div>
-          <div class="v5-intel-op"><span>Top Share</span><strong>${fmt.percent(topShare)}</strong><small>Net cost</small></div>
+          <div class="v5-intel-op"><span>Top Share</span><strong>${fmt.percent(topShare)}</strong><small>Cost load</small></div>
           <div class="v5-intel-op"><span>Rows</span><strong>${fmt.number(m.rows.reduce((sum,row)=>sum+Number(row.count||0),0))}</strong><small>Source rows</small></div>
         </section>
         <section class="v5-core-section"><div class="v5-core-section-head"><div><span>CHARGE MATRIX</span><h2>费用项目</h2></div><small>${rows.length ? `Top ${rows.length}` : '暂无数据'}</small></div><div class="v5-record-list">${cards || '<div class="v5-core-empty"><strong>没有扣费记录</strong><span>当前期间未返回 charge rows。</span></div>'}</div></section>
