@@ -1,0 +1,39 @@
+name: V5 Native Mobile CI
+
+on:
+  push:
+    branches:
+      - feature/v5-native-mobile
+  pull_request:
+    paths:
+      - 'public/mobile/**'
+      - 'public/shared/**'
+      - 'public/index.html'
+      - 'scripts/v5-native-mobile-static-check.mjs'
+      - 'package.json'
+      - '.github/workflows/v5-native-mobile-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  native-mobile-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: JavaScript syntax
+        run: |
+          node --check public/shared/runtime.js
+          node --check public/mobile/mobile-shell.js
+          node --check scripts/v5-native-mobile-static-check.mjs
+
+      - name: Native mobile architecture gate
+        run: npm run check:v5:mobile:static
