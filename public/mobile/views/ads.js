@@ -22,7 +22,7 @@
           <div class="v5-record-metric"><span>Orders</span><strong>${fmt.number(row.orders)}</strong></div>
           <div class="v5-record-metric"><span>CTR</span><strong>${fmt.percent(row.ctr, 2)}</strong></div>
         </div>
-        <div class="v5-record-card-foot"><span class="v5-record-chip">${row.acos != null && row.acos > .45 ? '需要优化' : '持续观察'}</span><span>详情 ›</span></div>
+        <div class="v5-record-card-foot"><span class="v5-record-chip">${esc(row.optimizationLabel)}</span><span>详情 ›</span></div>
       </article>`).join('');
 
     return `
