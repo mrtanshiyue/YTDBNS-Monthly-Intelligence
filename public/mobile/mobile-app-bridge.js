@@ -39,13 +39,6 @@
       </button>`).join('');
   }
 
-  function syncGeometry(nav) {
-    const topbar = root.querySelector('.v5-mobile-topbar');
-    if (!nav || !topbar) return;
-    const height = Math.ceil(topbar.getBoundingClientRect().height);
-    if (height > 0) nav.style.setProperty('--v5-mobile-topbar-height', `${height}px`);
-  }
-
   function upgradeNavigation() {
     const app = root.querySelector('.v5-mobile-app');
     const main = root.querySelector('.v5-mobile-content');
@@ -65,7 +58,6 @@
     }
 
     if (nav.nextElementSibling !== main) app.insertBefore(nav, main);
-    syncGeometry(nav);
   }
 
   function scheduleUpgrade() {
@@ -79,8 +71,6 @@
 
   const observer = new MutationObserver(scheduleUpgrade);
   observer.observe(root, { childList: true, subtree: true });
-  window.addEventListener('resize', scheduleUpgrade, { passive: true });
-  window.visualViewport?.addEventListener('resize', scheduleUpgrade, { passive: true });
   scheduleUpgrade();
 
   window.YT_MOBILE_APP = Object.freeze({
