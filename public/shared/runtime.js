@@ -282,7 +282,8 @@
 
   function quickRange(key) {
     const months = periodMonths();
-    const latest = months[0] || D.current?.meta?.period || D.monthly?.at(-1)?.month;
+    const demoLatest = D.current?.meta?.period || D.monthly?.at(-1)?.month;
+    const latest = months[0] || (state.mode === 'demo' ? demoLatest : null);
     if (!latest) return [null, null];
     const end = monthEnd(latest);
     if (key === 'current') return [monthStart(latest), end];
@@ -360,6 +361,11 @@
         }
         if (previousMode !== 'live') clearRangeData();
         state.error = null;
+        if (!state.from || !state.to) {
+          state.loading = false;
+          publish();
+          return snapshot();
+        }
         return loadRange();
       } catch (error) {
         if (requestId !== refreshSerial) return snapshot();
