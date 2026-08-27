@@ -1,0 +1,139 @@
+/* YTDBNS Monthly Intelligence — canonical V5 UI convergence layer.
+   This file owns current cross-device polish. Historical v43-v53 layers remain as
+   compatibility foundations; retired V4.15 responsive patches are intentionally not loaded. */
+
+:root{
+  --yt-current-version:"V5.0";
+  --yt-focus-color:#315f73;
+  --yt-focus-ring:0 0 0 3px rgba(49,95,115,.18);
+}
+
+html[data-ui-version="5.0"]{color-scheme:light}
+
+/* ---------- Desktop convergence ---------- */
+@media (min-width:861px){
+  body.studio-v53 .wordmark:after{
+    content:"V5.0"!important;
+    min-width:0!important;
+    letter-spacing:.02em!important;
+  }
+
+  /* Nine destinations must remain inside the centered desktop navigation track. */
+  body.studio-v53 .global-links{gap:0!important}
+  body.studio-v53 .nav-item{padding-left:5px!important;padding-right:5px!important}
+
+  body.studio-v53 .main-shell{min-width:0}
+  body.studio-v53 .content{min-width:0}
+  body.studio-v53 .panel,
+  body.studio-v53 .table-card,
+  body.studio-v53 .grid-2>*{min-width:0}
+}
+
+/* ---------- Shared accessibility ---------- */
+body :is(button,[role="button"],input,select,textarea,a):focus-visible{
+  outline:2px solid var(--yt-focus-color)!important;
+  outline-offset:2px!important;
+  box-shadow:var(--yt-focus-ring)!important;
+}
+
+[aria-hidden="true"][role="dialog"]{pointer-events:none}
+
+/* ---------- Native Mobile readability + interaction polish ---------- */
+@media (max-width:860px){
+  body.v5-native-mobile{
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  body.v5-native-mobile :is(
+    .v5-overview-summary>strong,
+    .v5-overview-summary b,
+    .v5-overview-kpis strong,
+    .v5-core-stat>strong,
+    .v5-record-primary strong,
+    .v5-record-metric strong,
+    .v5-secondary-hero>strong,
+    .v5-secondary-row-value>b,
+    .v5-history-metrics b,
+    .v5-detail-metric strong,
+    .v5-compare-values strong,
+    .v5-compare-delta
+  ){
+    font-variant-numeric:tabular-nums lining-nums;
+    font-feature-settings:"tnum" 1,"lnum" 1;
+  }
+
+  .v5-mobile-root button,
+  .v5-mobile-overlay-root button,
+  .v5-compare-root button{cursor:pointer}
+
+  .v5-record-card{
+    width:100%;
+    color:#1d1d1f;
+    font:inherit;
+    text-align:left;
+    -webkit-appearance:none;
+    appearance:none;
+  }
+
+  .v5-record-card:active{background:#f7f7f8}
+
+  .v5-mobile-nav-icon svg,
+  .v5-mobile-top-actions svg{
+    display:block;
+    width:22px;
+    height:22px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+  .v5-mobile-nav-icon svg{width:21px;height:21px}
+
+  /* A high-frequency operating tool should not rely on 8–9px helper text. */
+  .v5-mobile-eyebrow{font-size:11px!important}
+  .v5-overview-summary small,
+  .v5-overview-kpis small,
+  .v5-overview-section-head>small,
+  .v5-overview-insight-copy small,
+  .v5-overview-shortcuts small,
+  .v5-core-stat>small,
+  .v5-core-section-head small,
+  .v5-record-card-title>small,
+  .v5-record-metric span,
+  .v5-record-chip,
+  .v5-record-card-foot>span:last-child,
+  .v5-secondary-row-copy>small,
+  .v5-secondary-row-value>small,
+  .v5-history-metrics small,
+  .v5-compare-range small,
+  .v5-compare-values small{font-size:10.5px!important}
+
+  .v5-overview-section-head span,
+  .v5-record-card-title>span,
+  .v5-record-primary span,
+  .v5-core-section-head span,
+  .v5-secondary-row-copy>span,
+  .v5-history-month-head span{font-size:10px!important}
+
+  .v5-record-metric strong{font-size:13px!important}
+  .v5-history-metrics b{font-size:12px!important}
+
+  @media (hover:hover) and (pointer:fine){
+    .v5-record-card:hover,
+    .v5-overview-insight:hover,
+    .v5-overview-shortcuts button:hover,
+    .v5-secondary-row:is(button):hover{background:#f7f7f8}
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto!important}
+  body *,body *::before,body *::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
