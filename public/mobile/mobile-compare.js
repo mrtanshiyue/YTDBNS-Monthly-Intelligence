@@ -22,15 +22,23 @@
     document.body.classList.remove('v5-mobile-overlay-open');
   }
 
-  function delta(current, previous, type) {
+  function delta(current, previous, type, good = 'neutral') {
     if (current == null || previous == null || !Number.isFinite(Number(current)) || !Number.isFinite(Number(previous))) return { label: '—', tone: '' };
+    let rawChange;
+    let label;
     if (type === 'pct') {
-      const pp = (Number(current) - Number(previous)) * 100;
-      return { label: `${pp > 0 ? '+' : ''}${pp.toFixed(1)}pp`, tone: pp > 0 ? 'up' : pp < 0 ? 'down' : '' };
+      rawChange = Number(current) - Number(previous);
+      const pp = rawChange * 100;
+      label = `${pp > 0 ? '+' : ''}${pp.toFixed(1)}pp`;
+    } else {
+      if (!Number(previous)) return { label: '—', tone: '' };
+      rawChange = (Number(current) - Number(previous)) / Math.abs(Number(previous));
+      label = `${rawChange > 0 ? '+' : ''}${(rawChange * 100).toFixed(1)}%`;
     }
-    if (!Number(previous)) return { label: '—', tone: '' };
-    const change = (Number(current) - Number(previous)) / Math.abs(Number(previous));
-    return { label: `${change > 0 ? '+' : ''}${(change * 100).toFixed(1)}%`, tone: change > 0 ? 'up' : change < 0 ? 'down' : '' };
+    let tone = '';
+    if (good === 'up') tone = rawChange > 0 ? 'up' : rawChange < 0 ? 'down' : '';
+    if (good === 'down') tone = rawChange < 0 ? 'up' : rawChange > 0 ? 'down' : '';
+    return { label, tone };
   }
 
   function format(value, type) {
@@ -70,15 +78,15 @@
       const currentSummary = selectors.normalizeSummary(state.dashboard?.summary || {});
       const previousSummary = selectors.normalizeSummary(previous.dashboard?.summary || {});
       const metrics = [
-        ['销售额', 'sales', 'money'],
-        ['贡献利润', 'profit', 'money'],
-        ['广告花费', 'adSpend', 'money'],
-        ['ACOS', 'acos', 'pct'],
-        ['TACOS', 'tacos', 'pct']
+        ['销售额', 'sales', 'money', 'up'],
+        ['贡献利润', 'profit', 'money', 'up'],
+        ['广告花费', 'adSpend', 'money', 'neutral'],
+        ['ACOS', 'acos', 'pct', 'down'],
+        ['TACOS', 'tacos', 'pct', 'down']
       ];
 
-      const rows = metrics.map(([label, key, type]) => {
-        const d = delta(currentSummary[key], previousSummary[key], type);
+      const rows = metrics.map(([label, key, type, good]) => {
+        const d = delta(currentSummary[key], previousSummary[key], type, good);
         return `
           <article class="v5-compare-row">
             <div class="v5-compare-row-head"><span>${label}</span><b class="v5-compare-delta ${d.tone}">${d.label}</b></div>
@@ -96,7 +104,7 @@
           <span><small>PREVIOUS</small><b>${esc(rangeLabel(previous.from, previous.to))}</b></span>
         </div>
         <section class="v5-compare-list" aria-label="经营指标对比">${rows}</section>
-        <p class="v5-compare-note">百分比指标显示百分点变化；金额指标显示相对变化。Compare 全程只发起 GET 请求，不修改 D1、R2 或导入状态。</p>`);
+        <p class="v5-compare-note">百分比指标显示百分点变化；金额指标显示相对变化。绿色表示朝有利方向变化，红色表示朝不利方向变化；广告花费本身保持中性。Compare 全程只发起 GET 请求，不修改 D1、R2 或导入状态。</p>`);
     } catch (error) {
       fullscreen(`<div class="v5-compare-unavailable"><strong>对比读取失败</strong><span>${esc(error?.message || '无法读取上一期间数据')}</span></div>`);
     }
