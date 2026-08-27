@@ -95,7 +95,7 @@
       files: value(row.stored_files, row.file_count) ?? 0,
       sources: value(row.source_count) ?? 0,
       createdAt: text(row.created_at)
-    }));
+    })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || (b.month || '').localeCompare(a.month || ''));
     return Object.freeze({ quality, imports, rangeLabel: runtimeState?.rangeLabel || '选择期间' });
   }
 
