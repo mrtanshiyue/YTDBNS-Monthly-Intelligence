@@ -1,0 +1,103 @@
+.v5-mobile-overlay-root{display:none}
+
+@media (max-width:860px){
+  body.v5-native-mobile.v5-mobile-overlay-open{overflow:hidden!important;touch-action:none}
+  body.v5-native-mobile .v5-mobile-overlay-root{display:block}
+  .v5-mobile-overlay-root *,
+  .v5-mobile-overlay-root *::before,
+  .v5-mobile-overlay-root *::after{box-sizing:border-box}
+  .v5-mobile-overlay-root button,
+  .v5-mobile-overlay-root input{font:inherit}
+  .v5-mobile-overlay-root button{min-height:44px;border:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+
+  .v5-interaction-backdrop{
+    position:fixed;z-index:200;inset:0;display:flex;align-items:flex-end;
+    padding-top:env(safe-area-inset-top);background:rgba(0,0,0,.34)
+  }
+  .v5-interaction-sheet{
+    width:100%;max-height:86dvh;overflow:auto;overscroll-behavior:contain;
+    padding:8px 16px calc(20px + env(safe-area-inset-bottom));
+    border-radius:28px 28px 0 0;background:#f9f9fb;
+    box-shadow:0 -18px 54px rgba(0,0,0,.18);-webkit-overflow-scrolling:touch
+  }
+  .v5-interaction-handle{width:36px;height:5px;margin:0 auto 11px;border-radius:99px;background:#c7c7cc}
+  .v5-interaction-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .v5-interaction-head>div{min-width:0}
+  .v5-interaction-head span{display:block;color:#86868b;font-size:10px;font-weight:700;letter-spacing:.08em}
+  .v5-interaction-head h2{margin:3px 0 0;font-size:25px;line-height:1.1;letter-spacing:-.03em}
+  .v5-interaction-close{display:grid;width:44px;min-width:44px;height:44px;place-items:center;border-radius:50%;background:#e9e9ee;color:#5c5c61;font-size:24px}
+
+  .v5-period-options{display:grid;gap:8px}
+  .v5-period-option{
+    display:flex;width:100%;min-width:0;min-height:58px;align-items:center;justify-content:space-between;
+    padding:8px 14px;border:1px solid rgba(0,0,0,.06)!important;border-radius:16px;background:#fff;color:#1d1d1f;text-align:left
+  }
+  .v5-period-option span{display:grid;gap:2px;min-width:0}
+  .v5-period-option b{font-size:16px;line-height:1.25}
+  .v5-period-option small{color:#86868b;font-size:12px;line-height:1.3}
+  .v5-period-option i{font-style:normal;color:#496f79;font-size:20px}
+  .v5-period-option.active{border-color:#b8cdd3!important;background:#f1f6f7}
+  .v5-period-divider{height:1px;margin:16px 0;background:rgba(0,0,0,.07)}
+  .v5-period-custom{display:grid;gap:12px}
+  .v5-period-custom>span{color:#86868b;font-size:11px;font-weight:700;letter-spacing:.06em}
+  .v5-period-date-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .v5-period-date-grid label{display:grid;gap:6px;color:#6e6e73;font-size:12px;font-weight:600}
+  .v5-period-date-grid input{
+    width:100%;min-width:0;height:48px;padding:0 10px;border:1px solid rgba(0,0,0,.1);border-radius:13px;
+    background:#fff;color:#1d1d1f;font-size:16px
+  }
+  .v5-period-apply{width:100%;min-height:50px;border-radius:14px!important;background:#496f79;color:#fff;font-weight:700}
+  .v5-period-note{margin:0;color:#86868b;font-size:12px;line-height:1.45}
+
+  .v5-fullscreen{
+    position:fixed;z-index:210;inset:0;display:flex;min-width:0;flex-direction:column;
+    padding-top:env(safe-area-inset-top);background:#f5f5f7;color:#1d1d1f
+  }
+  .v5-fullscreen-head{
+    display:flex;min-height:58px;align-items:center;gap:8px;padding:7px 12px;
+    border-bottom:1px solid rgba(0,0,0,.07);background:rgba(250,250,252,.96)
+  }
+  .v5-fullscreen-back{display:grid;width:44px;min-width:44px;height:44px;place-items:center;border-radius:50%;background:transparent;color:#1d1d1f;font-size:27px}
+  .v5-fullscreen-title{min-width:0;flex:1}
+  .v5-fullscreen-title span{display:block;color:#86868b;font-size:10px;font-weight:700;letter-spacing:.07em}
+  .v5-fullscreen-title h2{overflow:hidden;margin:1px 0 0;font-size:18px;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+  .v5-fullscreen-body{
+    min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;padding:16px 16px calc(24px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling:touch
+  }
+
+  .v5-search-field{
+    display:flex;align-items:center;gap:8px;min-height:48px;margin-bottom:14px;padding:0 12px;
+    border:1px solid rgba(0,0,0,.08);border-radius:15px;background:#fff
+  }
+  .v5-search-field>span{color:#86868b;font-size:19px}
+  .v5-search-field input{width:100%;min-width:0;height:46px;border:0;outline:0;background:transparent;color:#1d1d1f;font-size:16px}
+  .v5-search-summary{margin:0 0 10px;color:#86868b;font-size:12px}
+  .v5-search-results{display:grid;gap:8px}
+  .v5-search-result{
+    display:flex;width:100%;min-width:0;min-height:64px;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 14px;border:1px solid rgba(0,0,0,.055)!important;border-radius:16px;background:#fff;color:#1d1d1f;text-align:left
+  }
+  .v5-search-result>span{display:grid;min-width:0;gap:3px}
+  .v5-search-result b{overflow:hidden;font-size:15px;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
+  .v5-search-result small{overflow:hidden;color:#6e6e73;font-size:12px;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
+  .v5-search-result em{flex:0 0 auto;color:#86868b;font-size:10px;font-style:normal;font-weight:700;letter-spacing:.05em}
+  .v5-search-empty{display:grid;gap:6px;padding:32px 20px;text-align:center}
+  .v5-search-empty strong{font-size:17px}.v5-search-empty span{color:#86868b;font-size:13px;line-height:1.45}
+
+  .v5-detail-hero{display:grid;gap:5px;padding:20px;border-radius:22px;background:#fff;box-shadow:0 8px 28px rgba(0,0,0,.045)}
+  .v5-detail-hero>span{color:#86868b;font-size:10px;font-weight:700;letter-spacing:.07em}
+  .v5-detail-hero strong{overflow-wrap:anywhere;font-size:24px;line-height:1.15;letter-spacing:-.025em}
+  .v5-detail-hero small{overflow-wrap:anywhere;color:#6e6e73;font-size:13px;line-height:1.4}
+  .v5-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+  .v5-detail-metric{display:grid;gap:5px;min-width:0;padding:15px;border:1px solid rgba(0,0,0,.055);border-radius:17px;background:#fff}
+  .v5-detail-metric span{color:#86868b;font-size:11px}.v5-detail-metric strong{overflow-wrap:anywhere;font-size:17px;line-height:1.25}
+  .v5-detail-footnote{margin:14px 2px 0;color:#86868b;font-size:12px;line-height:1.5}
+
+  @media (max-width:390px){
+    .v5-period-date-grid,.v5-detail-grid{grid-template-columns:minmax(0,1fr)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .v5-mobile-overlay-root *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+  }
+}
