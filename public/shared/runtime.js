@@ -18,6 +18,7 @@
     charges: null
   };
   let rangeLoadSerial = 0;
+  let refreshSerial = 0;
 
   const monthStart = month => `${month}-01`;
   const monthEnd = month => {
@@ -57,6 +58,7 @@
     if (!response.ok || payload?.ok === false) throw new Error(payload?.error || `HTTP ${response.status}`);
     return payload;
   };
+  const previewAllowed = () => location.protocol === 'file:' || ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
   const detectApi = async () => {
     if (location.protocol === 'file:') return false;
     try {
@@ -248,7 +250,7 @@
         state.monthDetail = monthDetail;
         state.inventoryDetail = inventoryDetail;
         state.charges = charges;
-      } else {
+      } else if (state.mode === 'demo') {
         const dashboard = demoDashboard(from, to);
         const month = activeMonthFor(from, to);
         const monthDetail = month && month === D.current?.meta?.period ? demoMonthDetail() : null;
@@ -261,6 +263,9 @@
         state.monthDetail = monthDetail;
         state.inventoryDetail = hasInventorySnapshot(candidate) ? candidate : null;
         state.charges = monthDetail?.charges?.length ? { rows: monthDetail.charges } : null;
+      } else {
+        clearRangeData();
+        state.error = state.error || '实时数据服务暂时不可用，请稍后刷新重试。';
       }
     } catch (error) {
       if (requestId !== rangeLoadSerial) return snapshot();
@@ -335,52 +340,104 @@
   }
 
   async function refresh() {
+    const requestId = ++refreshSerial;
+    state.loading = true;
+    state.error = null;
+    publish();
     const live = await detectApi();
+    if (requestId !== refreshSerial) return snapshot();
+
     if (live) {
       state.mode = 'live';
       try {
         await loadLiveMetadata();
+        if (requestId !== refreshSerial) return snapshot();
+        state.loading = false;
         state.error = null;
+        publish();
+        return loadRange();
       } catch (error) {
+        if (requestId !== refreshSerial) return snapshot();
+        rangeLoadSerial += 1;
+        clearRangeData();
+        state.loading = false;
         state.error = error instanceof Error ? error.message : String(error);
+        publish();
+        return snapshot();
       }
+    }
+
+    rangeLoadSerial += 1;
+    clearRangeData();
+    if (previewAllowed()) {
+      state.mode = 'demo';
+      loadDemoMetadata();
+      const [from, to] = quickRange('current');
+      if (!state.from || !state.to) {
+        state.from = from;
+        state.to = to;
+      }
+      state.loading = false;
+      publish();
       return loadRange();
     }
 
-    if (state.mode === 'live') {
-      rangeLoadSerial += 1;
-      state.loading = false;
-      clearRangeData();
-      state.error = '实时数据服务暂时不可用，请稍后刷新重试。';
-      publish();
-      return snapshot();
-    }
-
-    state.mode = 'demo';
-    loadDemoMetadata();
-    return loadRange();
+    state.mode = 'offline';
+    state.periods = [];
+    state.imports = [];
+    state.loading = false;
+    state.error = '实时数据服务暂时不可用，请稍后刷新重试。';
+    publish();
+    return snapshot();
   }
 
   async function start() {
     if (state.started) return snapshot();
     state.started = true;
     state.loading = true;
+    state.error = null;
     publish();
+
     const live = await detectApi();
-    state.mode = live ? 'live' : 'demo';
     try {
-      if (live) await loadLiveMetadata();
-      else loadDemoMetadata();
-      const [from, to] = quickRange('current');
-      state.from = from;
-      state.to = to;
+      if (live) {
+        state.mode = 'live';
+        await loadLiveMetadata();
+      } else if (previewAllowed()) {
+        state.mode = 'demo';
+        loadDemoMetadata();
+      } else {
+        state.mode = 'offline';
+        state.periods = [];
+        state.imports = [];
+        clearRangeData();
+        state.error = '实时数据服务暂时不可用，请稍后刷新重试。';
+      }
+
+      if (state.mode === 'live' || state.mode === 'demo') {
+        const [from, to] = quickRange('current');
+        state.from = from;
+        state.to = to;
+      }
     } catch (error) {
-      state.error = error instanceof Error ? error.message : String(error);
+      clearRangeData();
+      state.mode = previewAllowed() ? 'demo' : 'offline';
+      if (state.mode === 'demo') {
+        loadDemoMetadata();
+        const [from, to] = quickRange('current');
+        state.from = from;
+        state.to = to;
+      } else {
+        state.periods = [];
+        state.imports = [];
+        state.error = error instanceof Error ? error.message : String(error);
+      }
     } finally {
       state.loading = false;
       publish();
     }
-    return loadRange();
+
+    return state.mode === 'live' || state.mode === 'demo' ? loadRange() : snapshot();
   }
 
   window.YT_SHARED_RUNTIME = Object.freeze({
