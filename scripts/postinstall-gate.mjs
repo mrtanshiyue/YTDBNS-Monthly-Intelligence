@@ -44,8 +44,8 @@ if (!fs.existsSync(playwrightCli)) {
   process.exit(1);
 }
 
-console.log(`[V5 install gate] installing Playwright Chromium for exact-head acceptance · ${commit}`);
-runNode('node_modules/playwright-core/cli.js', ['install', 'chromium']);
+console.log(`[V5 install gate] installing Playwright Chromium + Linux dependencies for exact-head acceptance · ${commit}`);
+runNode('node_modules/playwright-core/cli.js', ['install', '--with-deps', 'chromium']);
 console.log(`[V5 install gate] running 4 iPhone + 2 Desktop Chromium matrix · ${commit}`);
 runNode('scripts/v5-browser-acceptance.mjs');
 
