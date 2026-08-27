@@ -2,6 +2,9 @@ name: UI Integrity
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - audit/v5-pc-mobile-polish
 
 permissions:
   contents: read
