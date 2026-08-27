@@ -67,7 +67,7 @@
     }
   };
   const activeMonthFor = (from, to) => isSingleFullMonth(from, to) ? from.slice(0, 7) : null;
-  const periodMonths = () => state.periods.map(item => typeof item === 'string' ? item : item.month).filter(Boolean);
+  const periodMonths = () => state.periods.map(item => typeof item === 'string' ? item : item.month).filter(Boolean).sort((a, b) => b.localeCompare(a));
   const inventoryReferenceMonths = to => {
     const ceiling = (to || state.to)?.slice(0, 7);
     if (!ceiling) return [];
