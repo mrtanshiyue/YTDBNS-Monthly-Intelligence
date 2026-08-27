@@ -341,6 +341,7 @@
 
   async function refresh() {
     const requestId = ++refreshSerial;
+    const previousMode = state.mode;
     state.loading = true;
     state.error = null;
     publish();
@@ -352,9 +353,13 @@
       try {
         await loadLiveMetadata();
         if (requestId !== refreshSerial) return snapshot();
-        state.loading = false;
+        if (!state.from || !state.to) {
+          const [from, to] = quickRange('current');
+          state.from = from;
+          state.to = to;
+        }
+        if (previousMode !== 'live') clearRangeData();
         state.error = null;
-        publish();
         return loadRange();
       } catch (error) {
         if (requestId !== refreshSerial) return snapshot();
