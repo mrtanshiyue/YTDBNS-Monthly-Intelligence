@@ -90,6 +90,20 @@
     };
   }
 
+  function demoMonthDetail() {
+    const current = D.current || {};
+    return {
+      campaigns: [...(current.campaigns || [])],
+      products: [...(current.skus || [])],
+      parents: [...(current.parents || [])],
+      inventory: [...(current.inventoryRows || [])],
+      returns: [...(current.returns?.reasons || [])],
+      quality: [...(current.checks || [])],
+      charges: [...(current.chargeNames || [])],
+      inventorySnapshotDate: current.inventorySnapshotDate || null
+    };
+  }
+
   async function loadRange() {
     if (!state.from || !state.to) return snapshot();
     state.loading = true;
@@ -103,8 +117,9 @@
         state.charges = await requestJson(`/api/charges?store=yt-us&from=${encodeURIComponent(state.from)}&to=${encodeURIComponent(state.to)}`).catch(() => null);
       } else {
         state.dashboard = demoDashboard();
-        state.monthDetail = null;
-        state.charges = null;
+        const month = activeMonth();
+        state.monthDetail = month && month === D.current?.meta?.period ? demoMonthDetail() : null;
+        state.charges = state.monthDetail?.charges?.length ? { rows: state.monthDetail.charges } : null;
       }
     } catch (error) {
       state.error = error instanceof Error ? error.message : String(error);
