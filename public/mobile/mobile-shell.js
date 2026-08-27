@@ -109,10 +109,11 @@
 
   function selectorForFocus(element) {
     if (!(element instanceof HTMLElement) || !root.contains(element)) return null;
+    const tag = element.tagName.toLowerCase();
     const action = element.dataset.mobileAction;
-    if (action) return `[data-mobile-action="${action}"]`;
+    if (action) return `${tag}[data-mobile-action="${action}"]`;
     const route = element.dataset.mobileRoute;
-    if (route) return `[data-mobile-route="${route}"]`;
+    if (route) return `${tag}[data-mobile-route="${route}"]`;
     return null;
   }
 
