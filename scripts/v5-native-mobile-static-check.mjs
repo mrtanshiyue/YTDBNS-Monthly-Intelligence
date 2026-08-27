@@ -62,18 +62,23 @@ expect(index.includes('./mobile/mobile-shell.js'), 'mobile Shell is loaded');
 expect(index.includes('./mobile/mobile-app-bridge.js'), 'mobile app bridge is loaded');
 expect(index.includes('./mobile/mobile-interactions.js'), 'mobile interaction controller is loaded');
 expect(index.includes('./mobile/mobile-compare.js') && index.includes('./mobile/mobile-compare-trigger.js'), 'mobile Compare is loaded');
+expect(shell.includes("link.href = './mobile/v51-mobile.css'"), 'V5.1 authoritative mobile CSS is loaded after convergence styles');
 expect(/const PRIMARY = \[[\s\S]*?\];/.test(shell), 'primary mobile navigation is explicitly declared');
 
 const primaryBlock = shell.match(/const PRIMARY = \[([\s\S]*?)\];/)?.[1] || '';
 const primaryRoutes = [...primaryBlock.matchAll(/\['([^']+)',/g)].map(match => match[1]);
 expect(primaryRoutes.length === 5, `exactly five primary mobile destinations (${primaryRoutes.join(', ')})`);
-expect(primaryRoutes.join('|') === 'overview|ads|products|inventory|more', 'primary navigation matches V5 product hierarchy');
+expect(primaryRoutes.join('|') === 'overview|ads|products|inventory|workspace', 'primary navigation matches V5.1 product hierarchy');
+expect(shell.includes('function workspaceMarkup()') && shell.includes('data-mobile-view="workspace"'), 'Workspace is a persistent route rather than a transient More sheet');
+expect(!shell.includes('v5MoreSheet') && !shell.includes("route === 'more'"), 'legacy More sheet navigation is removed');
+expect(shell.includes('document.scrollingElement') && shell.includes('requestAnimationFrame(scrollDocumentToTop)'), 'route navigation resets the document scroller predictably');
 
 const expectedViews = ['overview', 'ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data'];
 for (const view of expectedViews) {
   expect(new RegExp(`registry\\.${view}\\s*=`).test(mobileJs), `${view} has an independent mobile renderer`);
 }
 expect(read('public/mobile/views/overview.js').includes('单指标视图'), 'Overview chart contract is single-focus');
+expect(!read('public/mobile/views/overview.js').includes('快速工作区'), 'Overview does not duplicate Bottom Nav destinations');
 
 const forbiddenDesktopContracts = [
   'mainNav', 'periodPopover', 'importDrawer', 'commandPalette', 'detailDrawer', 'panelModal',
@@ -103,6 +108,7 @@ expect(interactionCss.includes('v5-interaction-sheet') && interactionCss.include
 expect(interactionCss.includes('.v5-fullscreen-body') && interactionCss.includes('touch-action:pan-y'), 'Full-screen body explicitly preserves vertical touch scrolling');
 expect(bridge.includes("new CustomEvent('v5:navigate'"), 'Search navigation crosses the explicit mobile route bridge');
 expect(shell.includes("root.addEventListener('v5:navigate'"), 'Mobile Shell owns route changes requested by interaction layer');
+expect(shell.includes("root.addEventListener('v5:refresh-view'"), 'Mobile Shell exposes a read-only client rerender contract for operational controls');
 
 expect(runtime.includes('async function comparePrevious()'), 'shared runtime owns previous-period retrieval');
 expect(compare.includes('runtime.comparePrevious()'), 'Mobile Compare consumes the shared comparison API');
@@ -122,6 +128,7 @@ expect(interactionCss.includes('env(safe-area-inset-top)') && interactionCss.inc
 expect(/min-height:\s*44px/.test(v5Css) || /height:\s*44px/.test(v5Css), '44px touch target floor is encoded');
 expect(shellCss.includes('overflow-x:hidden') && shellCss.includes('overflow-x:clip'), 'mobile Shell prevents accidental horizontal overflow');
 expect(shellCss.includes('grid-template-columns:repeat(5,minmax(0,1fr))'), 'bottom navigation uses fixed five-column layout, not horizontal scrolling');
+expect(v5Css.includes('@media(max-width:390px)') && v5Css.includes('grid-template-columns:repeat(2,minmax(0,1fr))!important'), 'V5.1 restores two-column record metrics at <=390px');
 
 expect(!/method\s*:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/i.test(v5BrowserJs), 'V5 browser JavaScript contains no write HTTP methods');
 expect(!/\/api\/imports\/(?:start|file|commit)/.test(v5BrowserJs), 'V5 browser JavaScript cannot reach import mutation endpoints');
