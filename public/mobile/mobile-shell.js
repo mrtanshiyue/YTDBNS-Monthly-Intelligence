@@ -4,6 +4,15 @@
   const root = document.getElementById('mobileAppRoot');
   if (!root) return;
 
+  const v51StyleId = 'v51MobileUxStyles';
+  if (!document.getElementById(v51StyleId)) {
+    const link = document.createElement('link');
+    link.id = v51StyleId;
+    link.rel = 'stylesheet';
+    link.href = './mobile/v51-mobile.css';
+    document.head.appendChild(link);
+  }
+
   const media = window.matchMedia('(max-width: 860px)');
   const runtime = window.YT_SHARED_RUNTIME;
   const ICONS = {
@@ -187,6 +196,24 @@
     render({ focusSelector: '.v5-mobile-bottom-nav [data-mobile-route="more"]' });
   }
 
+  function scrollDocumentToTop() {
+    const scrollingElement = document.scrollingElement || document.documentElement;
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+    if (scrollingElement) {
+      scrollingElement.scrollTop = 0;
+      scrollingElement.scrollLeft = 0;
+    }
+    const mobileContent = root.querySelector('.v5-mobile-content');
+    if (mobileContent) {
+      mobileContent.scrollTop = 0;
+      mobileContent.scrollLeft = 0;
+    }
+  }
+
   function setRoute(route) {
     if (route === 'more') {
       ui.moreOpen = true;
@@ -197,7 +224,7 @@
     ui.route = route;
     ui.moreOpen = false;
     render();
-    root.querySelector('.v5-mobile-content')?.scrollTo({ top: 0, behavior: 'auto' });
+    requestAnimationFrame(scrollDocumentToTop);
   }
 
   async function refresh() {
