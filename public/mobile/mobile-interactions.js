@@ -137,7 +137,7 @@
   function buildSearchIndex() {
     const state = runtime.getState();
     const detail = state.monthDetail || {};
-    const demo = state.mode === 'live' ? null : window.YT_DEMO?.current;
+    const demo = state.mode === 'live' || !state.monthDetail ? null : window.YT_DEMO?.current;
     const rows = MODULES.map(([route, title, subtitle]) => normalizeRecord(route, 'module', title, subtitle, 'MODULE', {}));
 
     const campaigns = detail.campaigns || demo?.campaigns || [];
