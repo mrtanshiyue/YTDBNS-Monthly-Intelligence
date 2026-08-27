@@ -19,6 +19,8 @@ const readme = read('README.md');
 const architecture = read('V5_MOBILE_ARCHITECTURE.md');
 const shell = read('public/mobile/mobile-shell.js');
 const compare = read('public/mobile/mobile-compare.js');
+const runtime = read('public/shared/runtime.js');
+const selectors = read('public/shared/selectors.js');
 const coreCss = read('public/mobile/views/core.css');
 const secondaryCss = read('public/mobile/views/secondary.css');
 const overviewCss = read('public/mobile/views/overview.css');
@@ -38,6 +40,7 @@ expect(index.includes('./current-ui.css') && index.includes('./current-ui.js'), 
 expect(!index.includes('./v54.css') && !index.includes('./v54-acceptance.css') && !index.includes('./v54.js'), 'retired V4.15 responsive layer is not loaded');
 for (const legacy of ['v48.js','v49.js','v50.js','v51.js','v52.js','v53.js']) {
   expect(!index.includes(`./${legacy}`), `${legacy} duplicate runtime is not loaded`);
+  expect(!exists(`public/${legacy}`), `${legacy} duplicate runtime file is removed`);
 }
 expect(/<body class="[^"]*studio-v43[^"]*studio-v53[^"]*">/.test(index), 'historical CSS compatibility classes are declared without runtime helper scripts');
 
@@ -67,6 +70,7 @@ expect(!exists('public/mobile/interactions.css'), 'dormant alternate mobile inte
 expect(shell.includes('const ICONS = {') && shell.includes("['overview', '首页', 'home']"), 'native mobile shell uses deterministic SVG iconography');
 expect(!/[⌂◎◇▦]/.test(shell), 'native mobile primary navigation no longer depends on font-specific symbol glyphs');
 expect(shell.includes("event.key === 'Escape'") && shell.includes("event.key !== 'Tab'"), 'More sheet has Escape and focus containment behavior');
+expect(shell.includes("typeof runtime.refresh === 'function'") && shell.includes('await runtime.refresh()'), 'mobile refresh can re-detect live runtime availability');
 expect(!shell.includes('分阶段重写队列'), 'mobile fallback no longer exposes development-phase copy');
 
 for (const [name, source] of [['ads',recordViews[0]],['products',recordViews[1]],['inventory',recordViews[2]],['charges',recordViews[3]]]) {
@@ -75,7 +79,16 @@ for (const [name, source] of [['ads',recordViews[0]],['products',recordViews[1]]
 }
 expect(compare.includes('let lastFocus = null') && compare.includes('focusClose()') && compare.includes('lastFocus.focus'), 'Mobile Compare restores trigger focus');
 expect(compare.includes("event.key !== 'Tab'") && compare.includes("event.key === 'Escape'"), 'Mobile Compare traps focus and supports Escape');
+expect(compare.includes('let requestSerial = 0') && compare.includes('requestId !== requestSerial'), 'Mobile Compare ignores stale async responses after close');
 expect(currentJs.includes('bindMobileOverlayTrap'), 'Period/Search/Detail dialogs receive shared mobile focus containment');
+
+expect(runtime.includes('let rangeLoadSerial = 0'), 'shared runtime serializes range requests');
+expect(runtime.includes('requestId !== rangeLoadSerial'), 'stale range responses cannot overwrite the active range');
+expect(runtime.includes('clearRangeData();') && runtime.includes('state.from = from') && runtime.includes('state.to = to'), 'range changes clear old data before publishing a new period');
+expect(runtime.includes('async function refresh()') && runtime.includes("state.error = '实时数据服务暂时不可用，请稍后刷新重试。'"), 'runtime refresh re-detects API without silently falling back from live data');
+expect(runtime.includes('function demoDashboard(from, to)') && runtime.includes("daysBetween(from, to) > 100"), 'demo runtime honors the selected range instead of pinning current month data');
+expect(runtime.includes('resolveLiveInventoryDetail') && runtime.includes('hasInventorySnapshot'), 'inventory runtime resolves the nearest valid snapshot');
+expect(selectors.includes('runtimeState?.inventoryDetail ||'), 'inventory selector consumes the resolved inventory snapshot first');
 
 expect(!/font-size\s*:\s*(?:8|9)px\b/i.test(mobileCss), 'loaded native mobile CSS contains no 8px/9px text');
 expect(coreCss.includes('.v5-record-metric span') && coreCss.includes('font-size:10px'), 'record metric labels meet the raised readability floor');
