@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "postinstall": "npm run check:release:static",
+    "postinstall": "node scripts/postinstall-gate.mjs",
     "check:mobile:static": "node scripts/mobile-responsive-static-check.mjs",
     "check:mobile": "node scripts/mobile-responsive-acceptance.mjs",
     "check:v5:mobile:static": "node scripts/v5-native-mobile-static-check.mjs",
     "check:v5:mobile": "node scripts/v5-native-mobile-acceptance.mjs",
+    "check:v5:browser": "node scripts/v5-browser-acceptance.mjs",
     "check:ui:static": "node scripts/ui-integrity-static-check.mjs",
     "check:release:static": "npm run check:v5:mobile:static && npm run check:ui:static",
     "db:create": "wrangler d1 create ytdbns-monthly-db",
