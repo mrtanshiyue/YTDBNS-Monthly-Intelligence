@@ -36,6 +36,10 @@ const shellCss = read('public/mobile/mobile-shell.css');
 const interactions = read('public/mobile/mobile-interactions.js');
 const interactionCss = read('public/mobile/mobile-interactions.css');
 const bridge = read('public/mobile/mobile-app-bridge.js');
+const compare = read('public/mobile/mobile-compare.js');
+const compareCss = read('public/mobile/mobile-compare.css');
+const compareTrigger = read('public/mobile/mobile-compare-trigger.js');
+const runtime = read('public/shared/runtime.js');
 const mobileJsFiles = filesUnder('public/mobile', '.js');
 const mobileCssFiles = filesUnder('public/mobile', '.css');
 const sharedJsFiles = filesUnder('public/shared', '.js');
@@ -47,6 +51,7 @@ const v5Css = mobileCssFiles.map(read).join('\n');
 expect(index.includes('id="mobileAppRoot"'), 'independent mobile root exists');
 expect(index.includes('./mobile/mobile-shell.css'), 'mobile Shell CSS is loaded');
 expect(index.includes('./mobile/mobile-interactions.css'), 'mobile interaction CSS is loaded');
+expect(index.includes('./mobile/mobile-compare.css'), 'mobile Compare CSS is loaded');
 expect(index.includes('./shared/runtime.js'), 'shared runtime is loaded');
 expect(index.includes('./shared/formatters.js'), 'shared formatters are loaded');
 expect(index.includes('./shared/selectors.js'), 'shared core selectors are loaded');
@@ -54,6 +59,7 @@ expect(index.includes('./shared/secondary-selectors.js'), 'shared secondary sele
 expect(index.includes('./mobile/mobile-shell.js'), 'mobile Shell is loaded');
 expect(index.includes('./mobile/mobile-app-bridge.js'), 'mobile app bridge is loaded');
 expect(index.includes('./mobile/mobile-interactions.js'), 'mobile interaction controller is loaded');
+expect(index.includes('./mobile/mobile-compare.js') && index.includes('./mobile/mobile-compare-trigger.js'), 'mobile Compare is loaded');
 expect(/const PRIMARY = \[[\s\S]*?\];/.test(shell), 'primary mobile navigation is explicitly declared');
 
 const primaryBlock = shell.match(/const PRIMARY = \[([\s\S]*?)\];/)?.[1] || '';
@@ -83,11 +89,20 @@ expect(interactions.includes("mount('period'") && interactions.includes('v5-inte
 expect(interactions.includes("mount('search'") && interactions.includes('v5-fullscreen'), 'Search uses a full-screen mobile surface');
 expect(interactions.includes("mount('detail'") && interactions.includes('v5-fullscreen'), 'Detail uses a full-screen mobile surface');
 expect(interactions.includes('data-v5-date-from') && interactions.includes('data-v5-date-to'), 'Period supports mobile custom date controls');
-expect(interactions.includes('inputmode="search"') && interactions.includes('font-size:16px') === false, 'Search uses a mobile input contract without inline desktop styling');
+expect(interactions.includes("state.mode === 'live' || !state.monthDetail ? null"), 'Search never falls back to stale Demo detail outside the active Demo month');
+expect(interactions.includes('inputmode="search"'), 'Search uses a mobile search keyboard contract');
 expect(interactionCss.includes('.v5-search-field input') && interactionCss.includes('font-size:16px'), 'mobile inputs use 16px text to avoid iOS focus zoom');
 expect(interactionCss.includes('overscroll-behavior:contain'), 'interaction surfaces own their scrolling');
 expect(bridge.includes("new CustomEvent('v5:navigate'"), 'Search navigation crosses the explicit mobile route bridge');
 expect(shell.includes("root.addEventListener('v5:navigate'"), 'Mobile Shell owns route changes requested by interaction layer');
+
+expect(runtime.includes('async function comparePrevious()'), 'shared runtime owns previous-period retrieval');
+expect(compare.includes('runtime.comparePrevious()'), 'Mobile Compare consumes the shared comparison API');
+expect(!/\bfetch\s*\(/.test(compare), 'Mobile Compare does not bypass shared runtime with direct fetch');
+expect(compare.includes("['ACOS', 'acos', 'pct', 'down']") && compare.includes("['TACOS', 'tacos', 'pct', 'down']"), 'Compare treats lower ACOS/TACOS as favorable');
+expect(compare.includes("['广告花费', 'adSpend', 'money', 'neutral']"), 'Compare keeps ad-spend movement semantically neutral');
+expect(compareTrigger.includes('data-v5-open-compare'), 'Overview exposes a one-tap mobile Compare action');
+expect(compareCss.includes('.v5-compare-row') && compareCss.includes('.v5-compare-range'), 'Compare has an independent mobile presentation');
 
 expect(!/\bv55(?:\.css|\.js|-)/i.test(index + v5BrowserJs + v5Css), 'V5 does not continue v55 responsive patch naming');
 expect(shellCss.includes('env(safe-area-inset-top)') && shellCss.includes('env(safe-area-inset-bottom)'), 'iPhone safe-area insets are handled');
