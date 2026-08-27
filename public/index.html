@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>YTDBNS Intelligence · V4.14 Chart Typography Fix</title>
+  <title>YTDBNS Monthly Intelligence</title>
+  <meta name="description" content="YTDBNS Monthly Intelligence — 桌面经营驾驶舱与原生移动经营视图。" />
   <meta name="theme-color" content="#F5F6F7" />
   <link rel="stylesheet" href="./app.css" />
   <link rel="stylesheet" href="./rich.css" />
@@ -19,16 +20,15 @@
   <link rel="stylesheet" href="./v51.css" />
   <link rel="stylesheet" href="./v52.css" />
   <link rel="stylesheet" href="./v53.css" />
-  <link rel="stylesheet" href="./v54.css" />
-  <link rel="stylesheet" href="./v54-acceptance.css" />
   <link rel="stylesheet" href="./mobile/mobile-shell.css" />
   <link rel="stylesheet" href="./mobile/mobile-interactions.css" />
   <link rel="stylesheet" href="./mobile/mobile-compare.css" />
   <link rel="stylesheet" href="./mobile/views/overview.css" />
   <link rel="stylesheet" href="./mobile/views/core.css" />
   <link rel="stylesheet" href="./mobile/views/secondary.css" />
+  <link rel="stylesheet" href="./current-ui.css" />
 </head>
-<body>
+<body class="studio-v43 studio-v44 studio-v45 studio-v46 studio-v47 studio-v48 studio-v49 studio-v50 studio-v51 studio-v52 studio-v53">
   <div class="v5-mobile-root" id="mobileAppRoot" hidden aria-hidden="true"></div>
 
   <header class="global-nav">
@@ -48,17 +48,17 @@
         <button class="nav-item" data-page="data">数据</button>
       </nav>
       <div class="global-actions">
-        <button class="search-command" id="commandButton" aria-label="全局搜索与快捷指令" title="搜索 · ⌘K">
+        <button class="search-command" id="commandButton" aria-label="全局搜索与快捷指令" aria-haspopup="dialog" aria-controls="commandPalette" aria-expanded="false" title="搜索 · ⌘K">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
           <span>搜索</span><kbd>⌘ K</kbd>
         </button>
         <div class="period-control" id="periodControl">
-          <button class="period-main" id="periodButton" aria-label="选择查看期间">
+          <button class="period-main" id="periodButton" aria-label="选择查看期间" aria-haspopup="dialog" aria-controls="periodPopover" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4.5 9h15M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V7A1.5 1.5 0 0 1 5 5.5Z"/></svg>
             <span id="periodLabel">2026年6月</span>
             <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"/></svg>
           </button>
-          <div class="period-popover" id="periodPopover">
+          <div class="period-popover" id="periodPopover" role="dialog" aria-label="选择查看期间" aria-hidden="true">
             <div class="period-tabs">
               <button class="period-tab active" data-mode="quick">快捷</button>
               <button class="period-tab" data-mode="month">按月</button>
@@ -79,9 +79,9 @@
           </div>
         </div>
         <button class="circle-btn" id="refreshBtn" title="刷新" aria-label="刷新数据">
-          <svg viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M18.4 9A7 7 0 0 0 6 6.5L4 9M5.6 15A7 7 0 0 0 18 17.5l2-2.5"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.4 9A7 7 0 0 0 6 6.5L4 9M5.6 15A7 7 0 0 0 18 17.5l2-2.5"/></svg>
         </button>
-        <button class="import-button" id="topImportBtn"><span>＋</span>导入</button>
+        <button class="import-button" id="topImportBtn" aria-label="导入月度报表" aria-haspopup="dialog" aria-controls="importDrawer" aria-expanded="false"><span>＋</span>导入</button>
       </div>
     </div>
   </header>
@@ -99,8 +99,8 @@
         <button class="compare-toggle" id="compareToggle" aria-pressed="false" title="与上一等长期间比较">
           <span class="compare-dot"></span><span>对比上期</span>
         </button>
-        <button class="view-menu-btn" id="viewMenuBtn" title="视图设置" aria-label="视图设置">
-          <svg viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+        <button class="view-menu-btn" id="viewMenuBtn" title="视图设置" aria-label="视图设置" aria-haspopup="dialog" aria-controls="viewPopover" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
         </button>
         <span class="freshness" id="freshness"><i></i>查看：2026年6月</span>
         <span class="grain-chip" id="grainChip">日级财务 + 月级流量</span>
@@ -120,10 +120,10 @@
   </div>
 
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
-  <aside class="import-drawer" id="importDrawer">
+  <aside class="import-drawer" id="importDrawer" role="dialog" aria-modal="true" aria-labelledby="importDrawerTitle" aria-hidden="true">
     <div class="drawer-head">
-      <div><span class="drawer-kicker">MONTHLY IMPORT</span><h2>导入月度报表</h2><p>每月数据进入历史数据库，原始文件永久归档。</p></div>
-      <button class="drawer-close" id="drawerClose" aria-label="关闭">×</button>
+      <div><span class="drawer-kicker">MONTHLY IMPORT</span><h2 id="importDrawerTitle">导入月度报表</h2><p>每月数据进入历史数据库，原始文件永久归档。</p></div>
+      <button class="drawer-close" id="drawerClose" aria-label="关闭导入面板">×</button>
     </div>
     <div class="drawer-body">
       <div class="import-step"><span>1</span><div><b>选择报告月份</b><p>作为月级事实、库存快照和导入版本的时间键。</p></div></div>
@@ -139,9 +139,9 @@
   </aside>
 
   <div class="command-backdrop" id="commandBackdrop"></div>
-  <section class="command-palette" id="commandPalette" role="dialog" aria-modal="true" aria-label="全局搜索">
+  <section class="command-palette" id="commandPalette" role="dialog" aria-modal="true" aria-label="全局搜索" aria-hidden="true">
     <div class="command-search-row">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
       <input id="commandInput" type="text" autocomplete="off" placeholder="搜索页面、指标或执行快捷操作…" />
       <kbd>ESC</kbd>
     </div>
@@ -150,21 +150,21 @@
   </section>
 
   <div class="detail-backdrop" id="detailBackdrop"></div>
-  <aside class="detail-drawer" id="detailDrawer" aria-label="详情">
+  <aside class="detail-drawer" id="detailDrawer" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true">
     <div class="detail-head">
       <div><span class="detail-kicker" id="detailKicker">DETAIL</span><h2 id="detailTitle">指标详情</h2><p id="detailSubtitle">所选期间的经营口径与变化</p></div>
-      <button class="drawer-close" id="detailClose" aria-label="关闭">×</button>
+      <button class="drawer-close" id="detailClose" aria-label="关闭详情">×</button>
     </div>
     <div class="detail-body" id="detailBody"></div>
   </aside>
 
   <div class="panel-modal-backdrop" id="panelModalBackdrop"></div>
-  <section class="panel-modal" id="panelModal" role="dialog" aria-modal="true">
-    <div class="panel-modal-head"><div><span>FOCUS VIEW</span><h2 id="panelModalTitle">详情</h2></div><button class="drawer-close" id="panelModalClose">×</button></div>
+  <section class="panel-modal" id="panelModal" role="dialog" aria-modal="true" aria-labelledby="panelModalTitle" aria-hidden="true">
+    <div class="panel-modal-head"><div><span>FOCUS VIEW</span><h2 id="panelModalTitle">详情</h2></div><button class="drawer-close" id="panelModalClose" aria-label="关闭聚焦视图">×</button></div>
     <div class="panel-modal-body" id="panelModalBody"></div>
   </section>
 
-  <div class="view-popover" id="viewPopover">
+  <div class="view-popover" id="viewPopover" role="dialog" aria-label="视图设置" aria-hidden="true">
     <div class="view-popover-title">视图设置</div>
     <button data-density="comfortable" class="active"><span>舒适密度</span><small>默认</small></button>
     <button data-density="compact"><span>紧凑密度</span><small>更多数据</small></button>
@@ -172,7 +172,7 @@
     <button id="toggleMotion"><span>界面动效</span><small>开启</small></button>
   </div>
 
-  <div class="toast-stack" id="toastStack"></div>
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
   <script src="./demo-data.js"></script>
   <script src="./engine.js"></script>
   <script src="./normalizer.js"></script>
@@ -188,13 +188,6 @@
   <script src="./v45.js"></script>
   <script src="./v46.js"></script>
   <script src="./v47.js"></script>
-  <script src="./v48.js"></script>
-  <script src="./v49.js"></script>
-  <script src="./v50.js"></script>
-  <script src="./v51.js"></script>
-  <script src="./v52.js"></script>
-  <script src="./v53.js"></script>
-  <script src="./v54.js"></script>
   <script src="./mobile/views/overview.js"></script>
   <script src="./mobile/views/ads.js"></script>
   <script src="./mobile/views/products.js"></script>
@@ -209,5 +202,6 @@
   <script src="./mobile/mobile-interactions.js"></script>
   <script src="./mobile/mobile-compare.js"></script>
   <script src="./mobile/mobile-compare-trigger.js"></script>
+  <script src="./current-ui.js"></script>
 </body>
 </html>
