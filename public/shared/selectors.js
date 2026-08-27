@@ -68,17 +68,21 @@
 
   function campaignRows(runtimeState) {
     const rows = runtimeState?.monthDetail?.campaigns || [];
-    return rows.map((row, index) => ({
-      id: text(row.id, row.campaign_id, row.campaign, `campaign-${index}`),
-      portfolio: text(row.portfolio, row.portfolio_name),
-      campaign: text(row.campaign, row.campaign_name, '未命名活动'),
-      spend: value(row.spend, row.ad_spend) ?? 0,
-      sales: value(row.sales, row.ad_sales) ?? 0,
-      acos: value(row.acos),
-      orders: value(row.orders, row.ad_orders) ?? 0,
-      ctr: value(row.ctr),
-      cvr: value(row.cvr)
-    })).sort((a, b) => b.spend - a.spend);
+    return rows.map((row, index) => {
+      const acos = value(row.acos);
+      return {
+        id: text(row.id, row.campaign_id, row.campaign, `campaign-${index}`),
+        portfolio: text(row.portfolio, row.portfolio_name),
+        campaign: text(row.campaign, row.campaign_name, '未命名活动'),
+        spend: value(row.spend, row.ad_spend) ?? 0,
+        sales: value(row.sales, row.ad_sales) ?? 0,
+        acos,
+        orders: value(row.orders, row.ad_orders) ?? 0,
+        ctr: value(row.ctr),
+        cvr: value(row.cvr),
+        optimizationLabel: acos != null && acos > 0.45 ? '需要优化' : '持续观察'
+      };
+    }).sort((a, b) => b.spend - a.spend);
   }
 
   function adsModel(runtimeState) {
