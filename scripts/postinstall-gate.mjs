@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const featureBranch = 'audit/v5-pc-mobile-polish';
+const featureBranch = 'v51-mobile-ux-hardening';
 const branch = process.env.WORKERS_CI_BRANCH || '';
 const commit = process.env.WORKERS_CI_COMMIT_SHA || 'local';
 const workersBuild = process.env.WORKERS_CI === '1';
@@ -139,7 +139,7 @@ runNode('scripts/v5-native-mobile-static-check.mjs');
 runNode('scripts/ui-integrity-static-check.mjs');
 
 if (!previewAcceptance) {
-  console.log('[V5 install gate] Chromium matrix skipped outside the V5 feature Preview branch.');
+  console.log('[V5 install gate] Chromium matrix skipped outside the V5.1 feature Preview branch.');
   process.exit(0);
 }
 
@@ -162,7 +162,7 @@ runNode('scripts/v5-browser-acceptance.mjs');
 
 fs.writeFileSync(marker, `${commit}\n`, 'utf8');
 fs.writeFileSync(path.join(root, 'public', '__v5_acceptance.json'), `${JSON.stringify({
-  version: 'V5.0',
+  version: 'V5.1',
   commit,
   branch,
   staticGate: 'PASS',
