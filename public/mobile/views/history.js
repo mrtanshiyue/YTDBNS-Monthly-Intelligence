@@ -5,6 +5,7 @@
   const fmt = window.YT_SHARED_FORMATTERS;
 
   const deltaLabel = (current, previous) => {
+    if (current == null || previous == null) return '—';
     const c = Number(current);
     const p = Number(previous);
     if (!Number.isFinite(c) || !Number.isFinite(p) || p === 0) return '—';
