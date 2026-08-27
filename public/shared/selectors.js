@@ -141,7 +141,8 @@
   }
 
   function inventoryRows(runtimeState) {
-    const rows = runtimeState?.monthDetail?.inventory || [];
+    const detail = runtimeState?.monthDetail?.inventory ? runtimeState.monthDetail : runtimeState?.inventoryDetail;
+    const rows = detail?.inventory || [];
     return rows.map((row, index) => ({
       id: text(row.sku, row.asin, `inventory-${index}`),
       model: text(row.model, row.product_line),
@@ -157,6 +158,7 @@
 
   function inventoryModel(runtimeState) {
     const inventory = inventoryRows(runtimeState);
+    const detail = runtimeState?.monthDetail?.inventory ? runtimeState.monthDetail : runtimeState?.inventoryDetail;
     return Object.freeze({
       inventory,
       totals: Object.freeze({
@@ -166,7 +168,7 @@
         inventoryValue: inventory.reduce((sum, row) => sum + Number(row.inventoryValue || 0), 0),
         unsellable: inventory.reduce((sum, row) => sum + Number(row.unsellable || 0), 0)
       }),
-      snapshotDate: runtimeState?.monthDetail?.inventorySnapshotDate || null,
+      snapshotDate: detail?.inventorySnapshotDate || null,
       rangeLabel: runtimeState?.rangeLabel || '选择期间',
       detailAvailable: inventory.length > 0
     });
