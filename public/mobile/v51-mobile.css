@@ -113,8 +113,42 @@
   body.v5-native-mobile .v5-data-recommendation b{font-size:13px!important}
   body.v5-native-mobile .v5-data-recommendation span{color:#b7d3da!important;font-size:12px!important;line-height:1.4!important}
 
-  /* Overview: raise hierarchy and remove the 10px terminal-style readability floor. */
+  /* Overview is a decision surface: result -> action -> trend. */
+  body.v5-native-mobile .v51-overview{gap:14px!important}
   body.v5-native-mobile .v5-overview-heading p{font-size:13px!important;line-height:1.4!important}
+  body.v5-native-mobile .v51-overview-actions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:7px}
+  body.v5-native-mobile .v51-overview-action{
+    display:grid;
+    min-width:0;
+    min-height:58px;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-rows:auto auto;
+    align-items:center;
+    gap:1px 7px;
+    padding:9px 11px;
+    border:1px solid var(--mi-line);
+    border-radius:13px;
+    background:#fff;
+    color:var(--mi-ink);
+    text-align:left;
+  }
+  body.v5-native-mobile .v51-overview-action>span{color:#5a6e78;font-size:11.5px;line-height:1.2}
+  body.v5-native-mobile .v51-overview-action>strong{overflow:hidden;font-size:13px;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+  body.v5-native-mobile .v51-overview-action>i{grid-column:2;grid-row:1 / span 2;color:#617680;font-size:18px;font-style:normal}
+  body.v5-native-mobile .v51-overview-results{display:grid;gap:8px}
+  body.v5-native-mobile .v5-overview-summary{padding:17px 16px 14px;border-radius:18px;box-shadow:none}
+  body.v5-native-mobile .v5-overview-summary>strong{font-size:36px}
+  body.v5-native-mobile .v5-overview-summary>div{margin-top:6px}
+  body.v5-native-mobile .v5-overview-kpis{gap:7px}
+  body.v5-native-mobile .v5-overview-kpis button{min-height:94px;padding:12px 13px;border-radius:15px;box-shadow:none}
+  body.v5-native-mobile .v5-overview-kpis strong{font-size:24px}
+  body.v5-native-mobile .v51-overview-priority{padding:12px;border:1px solid #d7e1e6;border-radius:16px;background:#f8fbfc}
+  body.v5-native-mobile .v5-overview-insight-copy small{color:#596d77!important;font-size:12px!important;line-height:1.4!important}
+  body.v5-native-mobile .v5-overview-empty-note{display:grid;gap:3px;color:#526873;font-size:12px;line-height:1.4}
+  body.v5-native-mobile .v5-overview-empty-note strong{color:#223842;font-size:13px}
+  body.v5-native-mobile .v5-chart-edge-labels{color:#5f727c!important;font-size:11px!important}
+
+  /* Existing metric surfaces: readable labels, not terminal microcopy. */
   body.v5-native-mobile .v5-intel-status-label{color:#8eb4bd;font-size:11px;line-height:1.2}
   body.v5-native-mobile .v5-intel-status-value{font-size:12.5px;line-height:1.25}
   body.v5-native-mobile .v5-intel-sales>span:first-child{color:#91bac3;font-size:11.5px}
@@ -126,10 +160,82 @@
   body.v5-native-mobile .v5-intel-op span{color:#566b75;font-size:11px;line-height:1.2}
   body.v5-native-mobile .v5-intel-op strong{font-size:15px}
   body.v5-native-mobile .v5-intel-op small{color:#647680;font-size:11px;line-height:1.2}
-  body.v5-native-mobile .v5-overview-insight-copy small{color:#596d77!important;font-size:12px!important;line-height:1.4!important}
-  body.v5-native-mobile .v5-chart-edge-labels{color:#5f727c!important;font-size:11px!important}
   body.v5-native-mobile .v5-cost-bar>span{color:#536a75;font-size:12px}
   body.v5-native-mobile .v5-cost-bar>b{font-size:12.5px}
+
+  /* Operational controls for Ads / Products / Inventory. */
+  body.v5-native-mobile .v51-ops-controls{
+    display:grid;
+    gap:9px;
+    padding:10px;
+    border:1px solid #d7e1e6;
+    border-radius:15px;
+    background:#f8fbfc;
+  }
+  body.v5-native-mobile .v51-ops-control-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  body.v5-native-mobile .v51-ops-control-head b{font-size:13px}
+  body.v5-native-mobile .v51-ops-control-head span{color:#596d77;font-size:12px}
+  body.v5-native-mobile .v51-filter-scroll{
+    display:flex;
+    gap:7px;
+    overflow-x:auto;
+    padding-bottom:2px;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.v5-native-mobile .v51-filter-scroll::-webkit-scrollbar{display:none}
+  body.v5-native-mobile .v51-filter-scroll button{
+    min-width:max-content;
+    min-height:44px;
+    padding:0 13px;
+    border:1px solid #cfdbe1;
+    border-radius:999px;
+    background:#fff;
+    color:#314b57;
+    font-size:12.5px;
+    font-weight:650;
+  }
+  body.v5-native-mobile .v51-filter-scroll button.active{
+    border-color:#315f73;
+    background:#173744;
+    color:#fff;
+  }
+  body.v5-native-mobile .v51-sort-row{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:9px}
+  body.v5-native-mobile .v51-sort-row label{color:#536a75;font-size:12px;font-weight:650}
+  body.v5-native-mobile .v51-sort-row select{
+    width:100%;
+    min-width:0;
+    min-height:44px;
+    padding:0 34px 0 11px;
+    border:1px solid #cfdbe1;
+    border-radius:11px;
+    background:#fff;
+    color:#17313c;
+    font:600 16px/1.2 inherit;
+  }
+  body.v5-native-mobile .v51-result-note{color:#5b707a;font-size:12px;line-height:1.35}
+
+  /* Workspace is a stable fifth route. */
+  body.v5-native-mobile .v51-workspace-grid{display:grid;gap:8px}
+  body.v5-native-mobile .v51-workspace-card{
+    display:flex;
+    min-width:0;
+    min-height:66px;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    width:100%;
+    padding:11px 13px;
+    border:1px solid var(--mi-line);
+    border-radius:14px;
+    background:#fff;
+    color:var(--mi-ink);
+    text-align:left;
+  }
+  body.v5-native-mobile .v51-workspace-card>span{display:grid;min-width:0;gap:3px}
+  body.v5-native-mobile .v51-workspace-card b{font-size:14px}
+  body.v5-native-mobile .v51-workspace-card small{color:#596d77;font-size:12px;line-height:1.35}
+  body.v5-native-mobile .v51-workspace-card i{color:#607681;font-size:20px;font-style:normal}
 
   /* Bottom navigation remains compact but readable and safe-area aware. */
   body.v5-native-mobile .v5-mobile-bottom-nav{
@@ -158,5 +264,6 @@
       grid-template-columns:repeat(2,minmax(0,1fr))!important;
       gap:8px 10px!important;
     }
+    body.v5-native-mobile .v51-overview-actions{grid-template-columns:1fr}
   }
 }
