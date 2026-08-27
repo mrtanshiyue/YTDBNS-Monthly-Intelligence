@@ -137,13 +137,15 @@
     ['#topImportBtn', '#importDrawer']
   ];
   const DIALOGS = [
-    ['#periodPopover', null],
-    ['#viewPopover', null],
-    ['#importDrawer', 'importDrawerTitle'],
-    ['#detailDrawer', 'detailTitle'],
-    ['#panelModal', 'panelModalTitle'],
-    ['#commandPalette', null]
+    ['#periodPopover', null, false, '.period-tab.active,button'],
+    ['#viewPopover', null, false, '[data-density].active,button'],
+    ['#importDrawer', 'importDrawerTitle', true, '#drawerClose'],
+    ['#detailDrawer', 'detailTitle', true, '#detailClose'],
+    ['#panelModal', 'panelModalTitle', true, '#panelModalClose'],
+    ['#commandPalette', null, true, '#commandInput']
   ];
+  const dialogState = new WeakMap();
+  const dialogReturnFocus = new WeakMap();
 
   function surfaceOpen(surface) {
     if (!surface) return false;
@@ -164,13 +166,58 @@
   }
 
   function syncDialogSemantics() {
-    DIALOGS.forEach(([selector, labelledBy]) => {
+    DIALOGS.forEach(([selector, labelledBy, modal, initialFocus]) => {
       const dialog = $(selector);
       if (!dialog) return;
+      const open = surfaceOpen(dialog);
+      const wasOpen = dialogState.get(dialog) || false;
       dialog.setAttribute('role', 'dialog');
-      if (['#importDrawer','#detailDrawer','#panelModal','#commandPalette'].includes(selector)) dialog.setAttribute('aria-modal', 'true');
+      if (modal) dialog.setAttribute('aria-modal', 'true');
+      else dialog.removeAttribute('aria-modal');
       if (labelledBy) dialog.setAttribute('aria-labelledby', labelledBy);
-      dialog.setAttribute('aria-hidden', surfaceOpen(dialog) ? 'false' : 'true');
+      dialog.setAttribute('aria-hidden', open ? 'false' : 'true');
+
+      if (open && !wasOpen) {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && !dialog.contains(active)) dialogReturnFocus.set(dialog, active);
+        if (initialFocus) requestAnimationFrame(() => dialog.querySelector(initialFocus)?.focus({ preventScroll: true }));
+      } else if (!open && wasOpen) {
+        const target = dialogReturnFocus.get(dialog);
+        if (target instanceof HTMLElement && target.isConnected) requestAnimationFrame(() => target.focus({ preventScroll: true }));
+        dialogReturnFocus.delete(dialog);
+      }
+      dialogState.set(dialog, open);
+    });
+  }
+
+  function visibleFocusable(root) {
+    return $$('button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])', root)
+      .filter(element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden');
+  }
+
+  function trapTab(event, dialog) {
+    const focusable = visibleFocusable(dialog);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function bindDesktopModalTrap() {
+    if (document.documentElement.dataset.currentUiDesktopTrap) return;
+    document.documentElement.dataset.currentUiDesktopTrap = '1';
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Tab' || !desktop.matches) return;
+      const modal = [...DIALOGS].reverse().find(([selector,, isModal]) => isModal && surfaceOpen($(selector)));
+      if (!modal) return;
+      const dialog = $(modal[0]);
+      if (dialog) trapTab(event, dialog);
     });
   }
 
@@ -181,19 +228,7 @@
     overlayRoot.addEventListener('keydown', event => {
       if (event.key !== 'Tab') return;
       const dialog = overlayRoot.querySelector('[role="dialog"][aria-modal="true"]');
-      if (!dialog) return;
-      const focusable = [...dialog.querySelectorAll('button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')]
-        .filter(element => element.getClientRects().length > 0);
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (dialog) trapTab(event, dialog);
     });
   }
 
@@ -206,6 +241,7 @@
       syncGroups();
       syncDialogSemantics();
       syncDisclosureStates();
+      bindDesktopModalTrap();
       bindMobileOverlayTrap();
       requestAnimationFrame(fitDesktopNumerals);
     });
