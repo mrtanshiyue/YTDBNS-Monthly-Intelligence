@@ -33,6 +33,9 @@ const filesUnder = (relative, extension) => {
 const index = read('public/index.html');
 const shell = read('public/mobile/mobile-shell.js');
 const shellCss = read('public/mobile/mobile-shell.css');
+const interactions = read('public/mobile/mobile-interactions.js');
+const interactionCss = read('public/mobile/mobile-interactions.css');
+const bridge = read('public/mobile/mobile-app-bridge.js');
 const mobileJsFiles = filesUnder('public/mobile', '.js');
 const mobileCssFiles = filesUnder('public/mobile', '.css');
 const sharedJsFiles = filesUnder('public/shared', '.js');
@@ -43,11 +46,14 @@ const v5Css = mobileCssFiles.map(read).join('\n');
 
 expect(index.includes('id="mobileAppRoot"'), 'independent mobile root exists');
 expect(index.includes('./mobile/mobile-shell.css'), 'mobile Shell CSS is loaded');
+expect(index.includes('./mobile/mobile-interactions.css'), 'mobile interaction CSS is loaded');
 expect(index.includes('./shared/runtime.js'), 'shared runtime is loaded');
 expect(index.includes('./shared/formatters.js'), 'shared formatters are loaded');
 expect(index.includes('./shared/selectors.js'), 'shared core selectors are loaded');
 expect(index.includes('./shared/secondary-selectors.js'), 'shared secondary selectors are loaded');
 expect(index.includes('./mobile/mobile-shell.js'), 'mobile Shell is loaded');
+expect(index.includes('./mobile/mobile-app-bridge.js'), 'mobile app bridge is loaded');
+expect(index.includes('./mobile/mobile-interactions.js'), 'mobile interaction controller is loaded');
 expect(/const PRIMARY = \[[\s\S]*?\];/.test(shell), 'primary mobile navigation is explicitly declared');
 
 const primaryBlock = shell.match(/const PRIMARY = \[([\s\S]*?)\];/)?.[1] || '';
@@ -73,8 +79,19 @@ for (const file of mobileJsFiles.filter(file => file.includes('/views/'))) {
   expect(!/<table\b/i.test(source), `${file} uses mobile records instead of table markup`);
 }
 
+expect(interactions.includes("mount('period'") && interactions.includes('v5-interaction-sheet'), 'Period uses an independent mobile bottom sheet');
+expect(interactions.includes("mount('search'") && interactions.includes('v5-fullscreen'), 'Search uses a full-screen mobile surface');
+expect(interactions.includes("mount('detail'") && interactions.includes('v5-fullscreen'), 'Detail uses a full-screen mobile surface');
+expect(interactions.includes('data-v5-date-from') && interactions.includes('data-v5-date-to'), 'Period supports mobile custom date controls');
+expect(interactions.includes('inputmode="search"') && interactions.includes('font-size:16px') === false, 'Search uses a mobile input contract without inline desktop styling');
+expect(interactionCss.includes('.v5-search-field input') && interactionCss.includes('font-size:16px'), 'mobile inputs use 16px text to avoid iOS focus zoom');
+expect(interactionCss.includes('overscroll-behavior:contain'), 'interaction surfaces own their scrolling');
+expect(bridge.includes("new CustomEvent('v5:navigate'"), 'Search navigation crosses the explicit mobile route bridge');
+expect(shell.includes("root.addEventListener('v5:navigate'"), 'Mobile Shell owns route changes requested by interaction layer');
+
 expect(!/\bv55(?:\.css|\.js|-)/i.test(index + v5BrowserJs + v5Css), 'V5 does not continue v55 responsive patch naming');
 expect(shellCss.includes('env(safe-area-inset-top)') && shellCss.includes('env(safe-area-inset-bottom)'), 'iPhone safe-area insets are handled');
+expect(interactionCss.includes('env(safe-area-inset-top)') && interactionCss.includes('env(safe-area-inset-bottom)'), 'interaction surfaces respect iPhone safe areas');
 expect(/min-height:\s*44px/.test(v5Css) || /height:\s*44px/.test(v5Css), '44px touch target floor is encoded');
 expect(shellCss.includes('overflow-x:hidden') && shellCss.includes('overflow-x:clip'), 'mobile Shell prevents accidental horizontal overflow');
 expect(shellCss.includes('grid-template-columns:repeat(5,minmax(0,1fr))'), 'bottom navigation uses fixed five-column layout, not horizontal scrolling');
@@ -82,6 +99,9 @@ expect(shellCss.includes('grid-template-columns:repeat(5,minmax(0,1fr))'), 'bott
 expect(!/method\s*:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/i.test(v5BrowserJs), 'V5 browser JavaScript contains no write HTTP methods');
 expect(!/\/api\/imports\/(?:start|file|commit)/.test(v5BrowserJs), 'V5 browser JavaScript cannot reach import mutation endpoints');
 expect(!/\bRAW_REPORTS\b/.test(v5BrowserJs), 'V5 browser layer has no direct R2 binding access');
+
+expect(index.includes('<div class="period-pane" data-pane="month">'), 'Desktop month period pane keeps the frozen inactive markup');
+expect(!index.includes('<div class="period-pane active" data-pane="month">'), 'V5 wiring does not activate the Desktop month pane');
 
 const frozen = {
   'public/app.js': 'a6848333f0bada81120966cd4c4d6b3393366ecc',
