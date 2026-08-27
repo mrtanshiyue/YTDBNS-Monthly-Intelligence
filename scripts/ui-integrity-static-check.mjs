@@ -1,0 +1,98 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, '..');
+const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+const exists = relative => fs.existsSync(path.join(root, relative));
+const failures = [];
+const pass = message => console.log(`PASS  ${message}`);
+const fail = message => { failures.push(message); console.error(`FAIL  ${message}`); };
+const expect = (condition, message) => condition ? pass(message) : fail(message);
+
+const index = read('public/index.html');
+const currentCss = read('public/current-ui.css');
+const currentJs = read('public/current-ui.js');
+const packageJson = JSON.parse(read('package.json'));
+const readme = read('README.md');
+const architecture = read('V5_MOBILE_ARCHITECTURE.md');
+const shell = read('public/mobile/mobile-shell.js');
+const compare = read('public/mobile/mobile-compare.js');
+const coreCss = read('public/mobile/views/core.css');
+const secondaryCss = read('public/mobile/views/secondary.css');
+const overviewCss = read('public/mobile/views/overview.css');
+const compareCss = read('public/mobile/mobile-compare.css');
+const mobileCss = [
+  read('public/mobile/mobile-shell.css'),
+  read('public/mobile/mobile-interactions.css'),
+  compareCss,
+  overviewCss,
+  coreCss,
+  secondaryCss
+].join('\n');
+const recordViews = ['ads','products','inventory','charges'].map(name => read(`public/mobile/views/${name}.js`));
+
+expect(/<title>YTDBNS Monthly Intelligence<\/title>/.test(index), 'document title reflects the current product');
+expect(index.includes('./current-ui.css') && index.includes('./current-ui.js'), 'canonical current UI layer is loaded');
+expect(!index.includes('./v54.css') && !index.includes('./v54-acceptance.css') && !index.includes('./v54.js'), 'retired V4.15 responsive layer is not loaded');
+for (const legacy of ['v48.js','v49.js','v50.js','v51.js','v52.js','v53.js']) {
+  expect(!index.includes(`./${legacy}`), `${legacy} duplicate runtime is not loaded`);
+}
+expect(/<body class="[^"]*studio-v43[^"]*studio-v53[^"]*">/.test(index), 'historical CSS compatibility classes are declared without runtime helper scripts');
+
+const desktopRoutes = [...index.matchAll(/class="nav-item(?: active)?" data-page="([^"]+)"/g)].map(match => match[1]);
+expect(desktopRoutes.length === 9, `desktop navigation keeps nine destinations (${desktopRoutes.join(', ')})`);
+expect(desktopRoutes.join('|') === 'overview|finance|charges|ads|products|inventory|returns|history|data', 'desktop navigation order is stable');
+expect(currentCss.includes('content:"V5.0"'), 'desktop wordmark version badge is current');
+expect(currentCss.includes('@media (min-width:861px)') && currentCss.includes('.global-links{gap:0!important}'), 'desktop nine-item navigation fit rule is preserved');
+expect(currentJs.includes("dataset.uiVersion = '5.0'"), 'runtime exposes current UI version');
+expect(currentJs.includes('FIT_RULES') && currentJs.includes('fitDesktopNumerals'), 'desktop large-number fit behavior is consolidated');
+expect(currentJs.includes('syncTopNavigation') && currentJs.includes('syncGroups'), 'desktop keyboard and ARIA behavior is consolidated');
+
+for (const [trigger, surface] of [
+  ['commandButton','commandPalette'],
+  ['periodButton','periodPopover'],
+  ['viewMenuBtn','viewPopover'],
+  ['topImportBtn','importDrawer']
+]) {
+  expect(index.includes(`id="${trigger}"`) && index.includes(`aria-controls="${surface}"`), `${trigger} declares its controlled surface`);
+}
+expect(index.includes('id="importDrawer" role="dialog"') && index.includes('aria-labelledby="importDrawerTitle"'), 'Desktop import drawer has dialog semantics');
+expect(index.includes('id="detailDrawer" role="dialog"') && index.includes('aria-labelledby="detailTitle"'), 'Desktop detail drawer has dialog semantics');
+expect(index.includes('id="panelModal" role="dialog"') && index.includes('aria-labelledby="panelModalTitle"'), 'Desktop focus modal has dialog semantics');
+expect(index.includes('id="toastStack" aria-live="polite"'), 'Desktop toast region announces non-blocking updates');
+
+expect(!exists('public/mobile/interactions.css'), 'dormant alternate mobile interaction stylesheet is removed');
+expect(shell.includes('const ICONS = {') && shell.includes("['overview', '首页', 'home']"), 'native mobile shell uses deterministic SVG iconography');
+expect(!/[⌂◎◇▦]/.test(shell), 'native mobile primary navigation no longer depends on font-specific symbol glyphs');
+expect(shell.includes("event.key === 'Escape'") && shell.includes("event.key !== 'Tab'"), 'More sheet has Escape and focus containment behavior');
+expect(!shell.includes('分阶段重写队列'), 'mobile fallback no longer exposes development-phase copy');
+
+for (const [name, source] of [['ads',recordViews[0]],['products',recordViews[1]],['inventory',recordViews[2]],['charges',recordViews[3]]]) {
+  expect(source.includes('<button type="button" class="v5-record-card"'), `${name} record cards use native button semantics`);
+  expect(!source.includes('<article class="v5-record-card"'), `${name} has no click-only article records`);
+}
+expect(compare.includes('let lastFocus = null') && compare.includes('focusClose()') && compare.includes('lastFocus.focus'), 'Mobile Compare restores trigger focus');
+expect(compare.includes("event.key !== 'Tab'") && compare.includes("event.key === 'Escape'"), 'Mobile Compare traps focus and supports Escape');
+expect(currentJs.includes('bindMobileOverlayTrap'), 'Period/Search/Detail dialogs receive shared mobile focus containment');
+
+expect(!/font-size\s*:\s*(?:8|9)px\b/i.test(mobileCss), 'loaded native mobile CSS contains no 8px/9px text');
+expect(coreCss.includes('.v5-record-metric span') && coreCss.includes('font-size:10px'), 'record metric labels meet the raised readability floor');
+expect(secondaryCss.includes('.v5-history-metrics small') && secondaryCss.includes('font-size:10px'), 'history metric labels meet the raised readability floor');
+expect(currentCss.includes('font-variant-numeric:tabular-nums'), 'dense mobile numeric surfaces use stable tabular numerals');
+expect(currentCss.includes(':focus-visible'), 'current UI layer encodes a visible keyboard focus state');
+expect(currentCss.includes('prefers-reduced-motion:reduce'), 'current UI layer honors reduced-motion preference');
+
+expect(packageJson.version === '5.0.0', `package version is V5.0.0 (${packageJson.version})`);
+expect(packageJson.scripts?.['check:ui:static'] === 'node scripts/ui-integrity-static-check.mjs', 'package exposes the UI integrity gate');
+expect(packageJson.scripts?.['check:release:static']?.includes('check:v5:mobile:static') && packageJson.scripts?.['check:release:static']?.includes('check:ui:static'), 'release static gate composes V5 architecture + UI integrity');
+expect(/^# YTDBNS Monthly Intelligence V5\.0/m.test(readme), 'README reflects V5.0');
+expect(/Production status/i.test(readme), 'README records current production status');
+expect(/Current production architecture/i.test(architecture), 'architecture document describes the current production architecture');
+
+if (failures.length) {
+  console.error(`\nUI integrity static gate failed: ${failures.length} issue(s).`);
+  process.exit(1);
+}
+console.log('\nUI integrity static gate passed for Desktop + V5 Native Mobile.');
