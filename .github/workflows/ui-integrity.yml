@@ -37,15 +37,16 @@ jobs:
           node --check public/mobile/views/returns.js
           node --check public/mobile/views/history.js
           node --check public/mobile/views/data.js
+          node --check scripts/postinstall-gate.mjs
           node --check scripts/ui-integrity-static-check.mjs
           node --check scripts/v5-native-mobile-static-check.mjs
           node --check scripts/v5-browser-acceptance.mjs
       - name: Desktop + Native Mobile static release gate
         run: npm run check:release:static
-      - name: Install browser acceptance driver
-        run: npm install --no-save --ignore-scripts puppeteer-core@24.16.0
+      - name: Install Playwright Chromium
+        run: npx playwright-core install chromium
       - name: Exact-head Chromium acceptance
-        run: node scripts/v5-browser-acceptance.mjs
+        run: npm run check:v5:browser
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
