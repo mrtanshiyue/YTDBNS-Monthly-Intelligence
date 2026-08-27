@@ -8,6 +8,7 @@
     "check:mobile:static": "node scripts/mobile-responsive-static-check.mjs",
     "check:mobile": "node scripts/mobile-responsive-acceptance.mjs",
     "check:v5:mobile:static": "node scripts/v5-native-mobile-static-check.mjs",
+    "check:v5:mobile": "node scripts/v5-native-mobile-acceptance.mjs",
     "db:create": "wrangler d1 create ytdbns-monthly-db",
     "db:migrate:local": "wrangler d1 migrations apply ytdbns-monthly-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply ytdbns-monthly-db --remote",
