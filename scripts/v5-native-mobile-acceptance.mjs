@@ -79,6 +79,15 @@ async function visibleButtonSizes(page, selector) {
   }));
 }
 
+async function openSearch(page, query) {
+  await page.locator('[data-mobile-action="search"]').click();
+  await page.waitForSelector('[data-v5-search-input]');
+  const input = page.locator('[data-v5-search-input]');
+  await input.fill(query);
+  await page.waitForTimeout(80);
+  return input;
+}
+
 for (const [name, width, height, mobile] of cases) {
   const context = await browser.newContext({ viewport: { width, height }, isMobile: mobile, hasTouch: mobile, deviceScaleFactor: 1 });
   const page = await context.newPage();
@@ -141,17 +150,51 @@ for (const [name, width, height, mobile] of cases) {
     await page.locator('[data-v5-close-overlay]').first().click();
     await page.waitForTimeout(80);
 
-    await page.locator('[data-mobile-action="search"]').click();
-    await page.waitForSelector('[data-v5-search-input]');
-    const searchInput = page.locator('[data-v5-search-input]');
+    const searchInput = await openSearch(page, '商品');
     const searchBox = await box(searchInput);
     assert(parseFloat(searchBox.fontSize) >= 16, `search input font under 16px (${searchBox.fontSize})`, name);
-    await searchInput.fill('商品');
-    await page.waitForTimeout(80);
     assert(await page.locator('[data-v5-search-index]').count() > 0, 'Search returned no module result for 商品', name);
     await page.locator('[data-v5-search-index]').first().click();
     await page.waitForTimeout(100);
     assert(await page.locator('[data-mobile-view="products"]').count() > 0, 'Search result did not navigate through Mobile route bridge', name);
+
+    await openSearch(page, 'ACOS');
+    const metricResult = page.locator('.v5-search-result').filter({ hasText: 'ACOS' }).first();
+    assert(await metricResult.count() > 0, 'Search returned no ACOS metric result', name);
+    if (await metricResult.count()) {
+      await metricResult.click();
+      await page.waitForSelector('.v5-detail-hero');
+      assert((await page.locator('.v5-detail-hero').innerText()).includes('ACOS'), 'metric search did not open ACOS Full-screen Detail', name);
+      await page.locator('[data-v5-close-overlay]').first().click();
+      await page.waitForTimeout(80);
+    } else {
+      await closeAnyMobileOverlay(page);
+    }
+
+    await openSearch(page, '选择期间');
+    const periodAction = page.locator('.v5-search-result').filter({ hasText: '选择期间' }).first();
+    assert(await periodAction.count() > 0, 'Search returned no Period function entry', name);
+    if (await periodAction.count()) {
+      await periodAction.click();
+      await page.waitForSelector('.v5-interaction-sheet');
+      assert(await page.locator('[data-v5-quick]').count() === 5, 'Period function search did not open native Period sheet', name);
+      await page.locator('[data-v5-close-overlay]').first().click();
+      await page.waitForTimeout(80);
+    } else {
+      await closeAnyMobileOverlay(page);
+    }
+
+    await openSearch(page, '对比上期');
+    const compareAction = page.locator('.v5-search-result').filter({ hasText: '对比上期' }).first();
+    assert(await compareAction.count() > 0, 'Search returned no Compare function entry', name);
+    if (await compareAction.count()) {
+      await compareAction.click();
+      await page.waitForSelector('#v5MobileCompareRoot .v5-fullscreen');
+      assert(await page.locator('#v5MobileCompareRoot .v5-fullscreen').isVisible(), 'Compare function search did not open native Compare', name);
+      await closeAnyMobileOverlay(page);
+    } else {
+      await closeAnyMobileOverlay(page);
+    }
 
     let recordRoute = null;
     for (const route of ['products', 'ads', 'inventory']) {
