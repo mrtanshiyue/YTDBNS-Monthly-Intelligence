@@ -20,41 +20,41 @@
     ads: '<circle cx="12" cy="12" r="7.8"/><circle cx="12" cy="12" r="3.7"/><circle cx="12" cy="12" r=".8"/><path d="m16.7 7.3 2.8-2.8M17.7 4.5h1.8v1.8"/>',
     products: '<path d="m12 3.8 6.8 3.5v9.4L12 20.2l-6.8-3.5V7.3L12 3.8Z"/><path d="m5.6 7.5 6.4 3.3 6.4-3.3M12 10.8v9.1"/>',
     inventory: '<rect x="4.3" y="5.2" width="15.4" height="14.5" rx="2"/><path d="M8 5.2V3.8h8v1.4M4.3 10h15.4M9 14h6"/>',
-    more: '<circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>',
+    workspace: '<rect x="4.5" y="4.5" width="6" height="6" rx="1"/><rect x="13.5" y="4.5" width="6" height="6" rx="1"/><rect x="4.5" y="13.5" width="6" height="6" rx="1"/><rect x="13.5" y="13.5" width="6" height="6" rx="1"/>',
     search: '<circle cx="10.7" cy="10.7" r="5.7"/><path d="m15 15 4.2 4.2"/>',
     refresh: '<path d="M19.2 8V4.8h-3.3M4.8 16v3.2h3.3"/><path d="M17.9 6.3a7.6 7.6 0 0 0-12.6 2.1M6.1 17.7a7.6 7.6 0 0 0 12.6-2.1"/>'
   };
-  const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.more}</svg>`;
+  const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.workspace}</svg>`;
 
   const PRIMARY = [
     ['overview', '首页', 'home'],
     ['ads', '广告', 'ads'],
     ['products', '商品', 'products'],
     ['inventory', '库存', 'inventory'],
-    ['more', '更多', 'more']
+    ['workspace', '工作台', 'workspace']
   ];
   const SECONDARY = [
     ['finance', '利润', '贡献利润与结算'],
     ['charges', '扣费', 'Amazon 扣费项目'],
     ['returns', '退货', '退货与退款分析'],
     ['history', '历史', '月度经营趋势'],
-    ['data', '数据', '数据质量与导入状态']
+    ['data', '数据', '数据质量与同步状态']
   ];
   const TITLES = {
     overview: ['经营首页', '本期经营摘要'],
     ads: ['广告', '广告效率与活动'],
     products: ['商品', 'SKU / ASIN 经营表现'],
     inventory: ['库存', '库存资金与风险'],
+    workspace: ['工作台', '利润、扣费、退货、历史与数据'],
     finance: ['利润', '利润与结算'],
     charges: ['扣费', 'Amazon 扣费'],
     returns: ['退货', '退货与退款'],
     history: ['历史', '月度经营趋势'],
-    data: ['数据', '数据质量与导入']
+    data: ['数据', '数据质量与同步']
   };
 
   const ui = {
     route: 'overview',
-    moreOpen: false,
     runtimeState: runtime?.getState?.() || null
   };
 
@@ -63,7 +63,7 @@
   }[char]));
 
   function activePrimary() {
-    return PRIMARY.some(([id]) => id === ui.route) ? ui.route : 'more';
+    return PRIMARY.some(([id]) => id === ui.route) ? ui.route : 'workspace';
   }
 
   function runtimeNoticeMarkup() {
@@ -93,7 +93,26 @@
     return '';
   }
 
+  function workspaceMarkup() {
+    return `
+      <section class="v5-mobile-view v5-core-view v51-workspace" data-mobile-view="workspace" aria-labelledby="v5MobileViewTitle">
+        <div class="v5-mobile-view-heading">
+          <div><span class="v5-mobile-eyebrow">经营工作台</span><h1 id="v5MobileViewTitle">工作台</h1><p>集中查看利润、扣费、退货、历史与数据状态</p></div>
+        </div>
+        <section class="v5-core-section" aria-labelledby="v51WorkspaceModules">
+          <div class="v5-core-section-head"><div><span>常用分析</span><h2 id="v51WorkspaceModules">经营模块</h2></div><small>5 个模块</small></div>
+          <div class="v51-workspace-grid">
+            ${SECONDARY.map(([id, label, subtitle]) => `
+              <button type="button" class="v51-workspace-card" data-mobile-route="${id}">
+                <span><b>${esc(label)}</b><small>${esc(subtitle)}</small></span><i aria-hidden="true">›</i>
+              </button>`).join('')}
+          </div>
+        </section>
+      </section>`;
+  }
+
   function viewMarkup() {
+    if (ui.route === 'workspace') return workspaceMarkup();
     const renderer = window.YT_MOBILE_VIEWS?.[ui.route];
     if (typeof renderer === 'function') return renderer({ runtimeState: ui.runtimeState, route: ui.route, esc });
 
@@ -102,7 +121,7 @@
       <section class="v5-mobile-view" data-mobile-view="${esc(ui.route)}" aria-labelledby="v5MobileViewTitle">
         <div class="v5-mobile-view-heading">
           <div>
-            <span class="v5-mobile-eyebrow">MODULE STATUS</span>
+            <span class="v5-mobile-eyebrow">模块状态</span>
             <h1 id="v5MobileViewTitle">${esc(title)}</h1>
             <p>${esc(subtitle)}</p>
           </div>
@@ -119,33 +138,12 @@
     const active = activePrimary();
     return PRIMARY.map(([id, label, iconName]) => {
       const current = active === id;
-      const moreAttrs = id === 'more' ? ` aria-haspopup="dialog"${ui.moreOpen ? ' aria-controls="v5MoreSheet" aria-expanded="true"' : ' aria-expanded="false"'}` : '';
       return `
-        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}"${current ? ' aria-current="page"' : ''}${moreAttrs}>
+        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}"${current ? ' aria-current="page"' : ''}>
           <span class="v5-mobile-nav-icon" aria-hidden="true">${icon(iconName)}</span>
           <span>${esc(label)}</span>
         </button>`;
     }).join('');
-  }
-
-  function moreMarkup() {
-    if (!ui.moreOpen) return '';
-    return `
-      <div class="v5-mobile-sheet-layer" data-mobile-action="close-more">
-        <section class="v5-mobile-sheet" id="v5MoreSheet" role="dialog" aria-modal="true" aria-labelledby="v5MoreTitle" data-mobile-sheet="more">
-          <div class="v5-mobile-sheet-handle" aria-hidden="true"></div>
-          <div class="v5-mobile-sheet-head">
-            <div><span>ALL MODULES</span><h2 id="v5MoreTitle">更多</h2></div>
-            <button type="button" data-mobile-action="close-more" aria-label="关闭更多模块">×</button>
-          </div>
-          <div class="v5-mobile-module-list">
-            ${SECONDARY.map(([id, label, subtitle]) => `
-              <button type="button" data-mobile-route="${id}">
-                <span><b>${esc(label)}</b><small>${esc(subtitle)}</small></span><i aria-hidden="true">›</i>
-              </button>`).join('')}
-          </div>
-        </section>
-      </div>`;
   }
 
   function selectorForFocus(element) {
@@ -155,6 +153,8 @@
     if (action) return `${tag}[data-mobile-action="${action}"]`;
     const route = element.dataset.mobileRoute;
     if (route) return `${tag}[data-mobile-route="${route}"]`;
+    const filter = element.dataset.v51Filter;
+    if (filter) return `${tag}[data-v51-filter="${filter}"]`;
     return null;
   }
 
@@ -184,16 +184,9 @@
           ${viewMarkup()}
         </main>
         <nav class="v5-mobile-bottom-nav" aria-label="手机端主导航">${navMarkup()}</nav>
-        ${moreMarkup()}
       </div>`;
     refineRenderedSemantics();
     if (focusSelector) requestAnimationFrame(() => root.querySelector(focusSelector)?.focus({ preventScroll: true }));
-  }
-
-  function closeMore() {
-    if (!ui.moreOpen) return;
-    ui.moreOpen = false;
-    render({ focusSelector: '.v5-mobile-bottom-nav [data-mobile-route="more"]' });
   }
 
   function scrollDocumentToTop() {
@@ -214,15 +207,16 @@
     }
   }
 
+  function rerenderView(focusSelector = selectorForFocus(document.activeElement)) {
+    const x = window.scrollX;
+    const y = window.scrollY;
+    render({ focusSelector });
+    requestAnimationFrame(() => window.scrollTo(x, y));
+  }
+
   function setRoute(route) {
-    if (route === 'more') {
-      ui.moreOpen = true;
-      render({ focusSelector: '[data-mobile-sheet="more"] .v5-mobile-sheet-head button' });
-      return;
-    }
     if (!TITLES[route]) return;
     ui.route = route;
-    ui.moreOpen = false;
     render();
     requestAnimationFrame(scrollDocumentToTop);
   }
@@ -256,10 +250,7 @@
     const actionButton = event.target.closest('[data-mobile-action]');
     const action = actionButton?.dataset.mobileAction;
     if (!action) return;
-    if (action === 'close-more') {
-      if (event.target.closest('[data-mobile-sheet]') && !event.target.closest('.v5-mobile-sheet-head button')) return;
-      closeMore();
-    } else if (action === 'refresh') {
+    if (action === 'refresh') {
       if (actionButton.getAttribute('aria-disabled') !== 'true') refresh();
     } else if (action === 'period') {
       if (!actionButton.disabled) root.dispatchEvent(new CustomEvent('v5:period-request', { bubbles: true }));
@@ -268,33 +259,13 @@
     }
   });
 
-  root.addEventListener('keydown', event => {
-    if (!ui.moreOpen) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeMore();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const sheet = root.querySelector('[data-mobile-sheet="more"]');
-    if (!sheet) return;
-    const focusable = [...sheet.querySelectorAll('button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')]
-      .filter(element => element.getClientRects().length > 0);
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  });
-
   root.addEventListener('v5:navigate', event => {
     const route = event.detail?.route;
     if (route) setRoute(route);
+  });
+
+  root.addEventListener('v5:refresh-view', event => {
+    rerenderView(event.detail?.focusSelector || null);
   });
 
   runtime?.subscribe?.(next => {
