@@ -344,10 +344,10 @@
 
   body.v5-native-mobile .v5-mobile-top-actions{gap:2px!important}
   body.v5-native-mobile .v5-mobile-top-actions button{
-    width:42px!important;
-    min-width:42px!important;
-    height:42px!important;
-    min-height:42px!important;
+    width:44px!important;
+    min-width:44px!important;
+    height:44px!important;
+    min-height:44px!important;
     color:#d8e8ec!important;
   }
   body.v5-native-mobile .v5-mobile-top-actions button:active{
