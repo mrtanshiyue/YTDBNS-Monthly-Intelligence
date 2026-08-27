@@ -51,6 +51,7 @@ const v5Css = mobileCssFiles.map(read).join('\n');
 expect(index.includes('id="mobileAppRoot"'), 'independent mobile root exists');
 expect(index.includes('./mobile/mobile-shell.css'), 'mobile Shell CSS is loaded');
 expect(index.includes('./mobile/mobile-interactions.css'), 'mobile interaction CSS is loaded');
+expect(!index.includes('./mobile/interactions.css'), 'dormant alternate interaction CSS is not simultaneously loaded');
 expect(index.includes('./mobile/mobile-compare.css'), 'mobile Compare CSS is loaded');
 expect(index.includes('./shared/runtime.js'), 'shared runtime is loaded');
 expect(index.includes('./shared/formatters.js'), 'shared formatters are loaded');
