@@ -74,6 +74,13 @@
           <span><b>${offline ? '实时数据服务暂时不可用' : '数据读取失败'}</b><small>${esc(state.error)}</small></span>
         </div>`;
     }
+    if (state?.started && state.mode === 'live' && !state.periods?.length) {
+      return `
+        <div class="v5-mobile-runtime-notice empty" role="status">
+          <span class="v5-mobile-runtime-mark" aria-hidden="true">·</span>
+          <span><b>尚无已导入月份</b><small>实时服务已连接，但当前数据库还没有可查看的月度经营数据。</small></span>
+        </div>`;
+    }
     return '';
   }
 
@@ -103,9 +110,9 @@
     const active = activePrimary();
     return PRIMARY.map(([id, label, iconName]) => {
       const current = active === id;
-      const moreAttrs = id === 'more' ? ` aria-haspopup="dialog" aria-controls="v5MoreSheet" aria-expanded="${ui.moreOpen ? 'true' : 'false'}"` : '';
+      const moreAttrs = id === 'more' ? ` aria-haspopup="dialog"${ui.moreOpen ? ' aria-controls="v5MoreSheet" aria-expanded="true"' : ' aria-expanded="false"'}` : '';
       return `
-        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}"${current ? ' aria-current="page"' : ''}${moreAttrs}>
+        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}"${id === ui.route ? ' aria-current="page"' : ''}${moreAttrs}>
           <span class="v5-mobile-nav-icon" aria-hidden="true">${icon(iconName)}</span>
           <span>${esc(label)}</span>
         </button>`;
@@ -143,11 +150,12 @@
   }
 
   function refineRenderedSemantics() {
-    const unavailable = ui.runtimeState?.mode === 'offline';
+    const state = ui.runtimeState;
+    const periodUnavailable = state?.mode === 'offline' || (state?.mode === 'live' && !state.periods?.length);
     root.querySelectorAll('[data-mobile-action="period"]').forEach(button => {
       if (!button.getAttribute('aria-label')) button.setAttribute('aria-label', '选择查看期间');
       button.setAttribute('aria-haspopup', 'dialog');
-      button.disabled = unavailable;
+      button.disabled = Boolean(periodUnavailable);
     });
   }
 
