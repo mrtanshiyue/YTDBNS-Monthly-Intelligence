@@ -67,7 +67,6 @@
     }
   };
   const activeMonthFor = (from, to) => isSingleFullMonth(from, to) ? from.slice(0, 7) : null;
-  const activeMonth = () => activeMonthFor(state.from, state.to);
   const periodMonths = () => state.periods.map(item => typeof item === 'string' ? item : item.month).filter(Boolean);
   const inventoryReferenceMonths = to => {
     const ceiling = (to || state.to)?.slice(0, 7);
@@ -89,33 +88,116 @@
     return null;
   }
 
-  function demoDashboard() {
+  const monthOverlapDays = (month, from, to) => {
+    const start = monthStart(month);
+    const end = monthEnd(month);
+    const left = start > from ? start : from;
+    const right = end < to ? end : to;
+    return left > right ? 0 : daysBetween(left, right);
+  };
+  const proratedMonthly = (key, from, to) => (D.monthly || []).reduce((sum, month) => {
+    const overlap = monthOverlapDays(month.month, from, to);
+    if (!overlap) return sum;
+    return sum + Number(month[key] || 0) * overlap / daysBetween(monthStart(month.month), monthEnd(month.month));
+  }, 0);
+
+  function demoDashboard(from, to) {
     const current = D.current || {};
-    const period = current.meta?.period || D.monthly?.at(-1)?.month || null;
-    const monthly = (D.monthly || []).find(row => row.month === period) || {};
+    const period = activeMonthFor(from, to);
+    const currentPeriod = current.meta?.period || null;
+    const monthly = period ? (D.monthly || []).find(row => row.month === period) || {} : {};
+    const daily = (D.dailyTraffic || []).filter(row => row.date >= from && row.date <= to);
     const overview = current.overview || {};
+
+    let sales = daily.reduce((sum, row) => sum + Number(row.sales || 0), 0);
+    let units = daily.reduce((sum, row) => sum + Number(row.units || 0), 0);
+    let sessions = daily.reduce((sum, row) => sum + Number(row.sessions || 0), 0);
+    let adSpend = proratedMonthly('adSpend', from, to);
+    let adSales = proratedMonthly('adSales', from, to);
+    let profit = null;
+    let profitMargin = null;
+    let inventoryValue = null;
+    let fulfillableUnits = null;
+    let returns = null;
+    let refundSales = null;
+    let cogs = null;
+    let settlement = null;
+    let storageEstimate = null;
+
+    if (period && period === currentPeriod) {
+      sales = overview.businessSales ?? sales;
+      units = overview.businessUnits ?? units;
+      sessions = overview.sessions ?? sessions;
+      adSpend = overview.adSpend ?? adSpend;
+      adSales = overview.adSales ?? adSales;
+      profit = overview.profit ?? null;
+      profitMargin = overview.profitMargin ?? null;
+      inventoryValue = overview.inventoryValue ?? null;
+      fulfillableUnits = overview.fulfillableUnits ?? null;
+      returns = overview.returns ?? null;
+      refundSales = current.finance?.refundSales ?? overview.refundSales ?? null;
+      cogs = overview.cogs ?? null;
+      settlement = overview.settlement ?? null;
+      storageEstimate = overview.storageEstimate ?? null;
+    } else if (period) {
+      sales = monthly.sales ?? sales;
+      units = monthly.units ?? units;
+      sessions = monthly.sessions ?? sessions;
+      adSpend = monthly.adSpend ?? adSpend;
+      adSales = monthly.adSales ?? adSales;
+      profit = monthly.profit ?? null;
+      profitMargin = monthly.profitMargin ?? null;
+      inventoryValue = monthly.inventoryValue ?? null;
+      fulfillableUnits = monthly.fulfillableUnits ?? null;
+      returns = monthly.returns ?? null;
+      refundSales = monthly.refundSales ?? null;
+      cogs = monthly.cogs ?? null;
+      settlement = monthly.settlement ?? null;
+      storageEstimate = monthly.storageEstimate ?? null;
+    }
+
+    const series = daysBetween(from, to) > 100
+      ? (D.monthly || []).filter(row => row.month >= from.slice(0, 7) && row.month <= to.slice(0, 7)).map(row => ({
+          label: row.month,
+          sales: row.sales,
+          adSpend: row.adSpend,
+          adSales: row.adSales,
+          units: row.units || 0,
+          contributionProfit: row.profit ?? null
+        }))
+      : daily.map(row => {
+          const month = (D.monthly || []).find(item => item.month === row.date.slice(0, 7));
+          const divisor = daysBetween(monthStart(row.date.slice(0, 7)), monthEnd(row.date.slice(0, 7)));
+          return {
+            label: row.date,
+            sales: row.sales,
+            units: row.units,
+            sessions: row.sessions,
+            adSpend: month ? Number(month.adSpend || 0) / divisor : 0,
+            adSales: month ? Number(month.adSales || 0) / divisor : 0
+          };
+        });
+
     return {
       summary: {
-        businessSales: overview.businessSales ?? monthly.sales ?? null,
-        contributionProfit: overview.profit ?? monthly.profit ?? null,
-        profitMargin: overview.profitMargin ?? monthly.profitMargin ?? null,
-        adSpend: overview.adSpend ?? monthly.adSpend ?? null,
-        adSales: overview.adSales ?? monthly.adSales ?? null,
-        acos: overview.acos ?? monthly.acos ?? null,
-        tacos: overview.tacos ?? monthly.tacos ?? null,
-        inventoryValue: overview.inventoryValue ?? monthly.inventoryValue ?? null,
-        fulfillableUnits: overview.fulfillableUnits ?? monthly.fulfillableUnits ?? null,
-        businessUnits: overview.businessUnits ?? monthly.units ?? null,
-        sessions: overview.sessions ?? monthly.sessions ?? null,
-        returns: overview.returns ?? monthly.returns ?? null,
-        refundSales: overview.refundSales ?? monthly.refundSales ?? null,
-        cogs: overview.cogs ?? monthly.cogs ?? null,
-        settlement: overview.settlement ?? monthly.settlement ?? null,
-        storageEstimate: overview.storageEstimate ?? monthly.storageEstimate ?? null
+        businessSales: sales,
+        contributionProfit: profit,
+        profitMargin,
+        adSpend,
+        adSales,
+        acos: adSales ? adSpend / adSales : null,
+        tacos: sales ? adSpend / sales : null,
+        inventoryValue,
+        fulfillableUnits,
+        businessUnits: units,
+        sessions,
+        returns,
+        refundSales,
+        cogs,
+        settlement,
+        storageEstimate
       },
-      series: (D.dailyTraffic || [])
-        .filter(row => !period || String(row.date || '').startsWith(period))
-        .map(row => ({ label: row.date, sales: row.sales, units: row.units, sessions: row.sessions }))
+      series
     };
   }
 
@@ -167,7 +249,7 @@
         state.inventoryDetail = inventoryDetail;
         state.charges = charges;
       } else {
-        const dashboard = demoDashboard();
+        const dashboard = demoDashboard(from, to);
         const month = activeMonthFor(from, to);
         const monthDetail = month && month === D.current?.meta?.period ? demoMonthDetail() : null;
         const inventoryMonth = inventoryReferenceMonth(to);
@@ -213,8 +295,11 @@
 
   async function setRange(from, to) {
     if (!from || !to || from > to) throw new Error('Invalid date range');
+    rangeLoadSerial += 1;
     state.from = from;
     state.to = to;
+    state.error = null;
+    clearRangeData();
     publish();
     return loadRange();
   }
