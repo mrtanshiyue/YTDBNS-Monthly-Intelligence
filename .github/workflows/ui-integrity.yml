@@ -1,0 +1,57 @@
+name: UI Integrity
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - audit/v5-pc-mobile-polish
+
+permissions:
+  contents: read
+
+jobs:
+  static-ui-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check public/current-ui.js
+          node --check public/shared/runtime.js
+          node --check public/shared/selectors.js
+          node --check public/shared/secondary-selectors.js
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-compare.js
+          node --check public/mobile/mobile-interactions.js
+          node --check public/mobile/views/overview.js
+          node --check public/mobile/views/ads.js
+          node --check public/mobile/views/products.js
+          node --check public/mobile/views/inventory.js
+          node --check public/mobile/views/finance.js
+          node --check public/mobile/views/charges.js
+          node --check public/mobile/views/returns.js
+          node --check public/mobile/views/history.js
+          node --check public/mobile/views/data.js
+          node --check scripts/postinstall-gate.mjs
+          node --check scripts/ui-integrity-static-check.mjs
+          node --check scripts/v5-native-mobile-static-check.mjs
+          node --check scripts/v5-browser-acceptance.mjs
+      - name: Desktop + Native Mobile static release gate
+        run: npm run check:release:static
+      - name: Install Playwright Chromium
+        run: npx playwright-core install chromium
+      - name: Exact-head Chromium acceptance
+        run: npm run check:v5:browser
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5-browser-acceptance-${{ github.sha }}
+          path: artifacts/v5-browser-acceptance
+          if-no-files-found: ignore
+          retention-days: 7

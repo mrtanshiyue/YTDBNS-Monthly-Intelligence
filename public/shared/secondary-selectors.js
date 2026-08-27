@@ -47,9 +47,16 @@
       share: value(row.share),
       amount: value(row.amount, row.refund_sales)
     })).sort((a, b) => b.count - a.count);
+    const reasonTotal = normalized.reduce((sum, row) => sum + Number(row.count || 0), 0);
+    const hasReasonRefundAmount = normalized.some(row => row.amount != null);
+    const reasonRefundTotal = hasReasonRefundAmount
+      ? normalized.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+      : null;
+    const summary = window.YT_SHARED_SELECTORS.normalizeSummary(runtimeState?.dashboard?.summary || {});
     return Object.freeze({
       rows: normalized,
-      total: normalized.reduce((sum, row) => sum + Number(row.count || 0), 0),
+      total: normalized.length ? reasonTotal : summary.returns,
+      refundSales: summary.refundSales ?? reasonRefundTotal,
       rangeLabel: runtimeState?.rangeLabel || '选择期间'
     });
   }
@@ -88,7 +95,7 @@
       files: value(row.stored_files, row.file_count) ?? 0,
       sources: value(row.source_count) ?? 0,
       createdAt: text(row.created_at)
-    }));
+    })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || (b.month || '').localeCompare(a.month || ''));
     return Object.freeze({ quality, imports, rangeLabel: runtimeState?.rangeLabel || '选择期间' });
   }
 
