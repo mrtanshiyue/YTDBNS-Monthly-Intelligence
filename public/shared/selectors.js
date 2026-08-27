@@ -2,6 +2,7 @@
   'use strict';
 
   const value = (...candidates) => candidates.find(item => item != null && Number.isFinite(Number(item))) ?? null;
+  const text = (...candidates) => candidates.find(item => item != null && String(item).trim()) ?? '';
 
   function normalizeSummary(raw = {}) {
     const sales = value(raw.businessSales, raw.business_sales, raw.sales);
@@ -65,5 +66,114 @@
     });
   }
 
-  window.YT_SHARED_SELECTORS = Object.freeze({ normalizeSummary, overviewInsights, overviewModel });
+  function campaignRows(runtimeState) {
+    const rows = runtimeState?.monthDetail?.campaigns || [];
+    return rows.map((row, index) => ({
+      id: text(row.id, row.campaign_id, row.campaign, `campaign-${index}`),
+      portfolio: text(row.portfolio, row.portfolio_name),
+      campaign: text(row.campaign, row.campaign_name, '未命名活动'),
+      spend: value(row.spend, row.ad_spend) ?? 0,
+      sales: value(row.sales, row.ad_sales) ?? 0,
+      acos: value(row.acos),
+      orders: value(row.orders, row.ad_orders) ?? 0,
+      ctr: value(row.ctr),
+      cvr: value(row.cvr)
+    })).sort((a, b) => b.spend - a.spend);
+  }
+
+  function adsModel(runtimeState) {
+    const campaigns = campaignRows(runtimeState);
+    const spend = campaigns.reduce((sum, row) => sum + Number(row.spend || 0), 0);
+    const sales = campaigns.reduce((sum, row) => sum + Number(row.sales || 0), 0);
+    const orders = campaigns.reduce((sum, row) => sum + Number(row.orders || 0), 0);
+    const summary = normalizeSummary(runtimeState?.dashboard?.summary || {});
+    return Object.freeze({
+      summary,
+      campaigns,
+      totals: Object.freeze({
+        spend: campaigns.length ? spend : summary.adSpend,
+        sales: campaigns.length ? sales : summary.adSales,
+        orders: campaigns.length ? orders : null,
+        acos: campaigns.length && sales ? spend / sales : summary.acos
+      }),
+      rangeLabel: runtimeState?.rangeLabel || '选择期间',
+      detailAvailable: campaigns.length > 0
+    });
+  }
+
+  function productRows(runtimeState) {
+    const rows = runtimeState?.monthDetail?.products || [];
+    return rows.map((row, index) => ({
+      id: text(row.sku, row.asin, `product-${index}`),
+      model: text(row.model, row.product_line),
+      sku: text(row.sku, '—'),
+      asin: text(row.asin, '—'),
+      sales: value(row.sales, row.business_sales) ?? 0,
+      units: value(row.units, row.business_units) ?? 0,
+      sessions: value(row.sessions),
+      cvr: value(row.cvr, row.traffic_cvr),
+      buyBox: value(row.buy_box, row.buyBox)
+    })).sort((a, b) => b.sales - a.sales);
+  }
+
+  function productsModel(runtimeState) {
+    const products = productRows(runtimeState);
+    const sales = products.reduce((sum, row) => sum + Number(row.sales || 0), 0);
+    const units = products.reduce((sum, row) => sum + Number(row.units || 0), 0);
+    const sessions = products.reduce((sum, row) => sum + Number(row.sessions || 0), 0);
+    const summary = normalizeSummary(runtimeState?.dashboard?.summary || {});
+    return Object.freeze({
+      summary,
+      products,
+      totals: Object.freeze({
+        sales: products.length ? sales : summary.sales,
+        units: products.length ? units : summary.units,
+        sessions: products.some(row => row.sessions != null) ? sessions : summary.sessions,
+        cvr: sessions ? units / sessions : null
+      }),
+      rangeLabel: runtimeState?.rangeLabel || '选择期间',
+      detailAvailable: products.length > 0
+    });
+  }
+
+  function inventoryRows(runtimeState) {
+    const rows = runtimeState?.monthDetail?.inventory || [];
+    return rows.map((row, index) => ({
+      id: text(row.sku, row.asin, `inventory-${index}`),
+      model: text(row.model, row.product_line),
+      sku: text(row.sku, '—'),
+      asin: text(row.asin, '—'),
+      fulfillable: value(row.fulfillable) ?? 0,
+      inbound: value(row.inbound) ?? 0,
+      total: value(row.total, row.inventory_units) ?? 0,
+      inventoryValue: value(row.inventory_value, row.inventoryValue) ?? 0,
+      unsellable: value(row.unsellable) ?? 0
+    })).sort((a, b) => b.inventoryValue - a.inventoryValue);
+  }
+
+  function inventoryModel(runtimeState) {
+    const inventory = inventoryRows(runtimeState);
+    return Object.freeze({
+      inventory,
+      totals: Object.freeze({
+        total: inventory.reduce((sum, row) => sum + Number(row.total || 0), 0),
+        fulfillable: inventory.reduce((sum, row) => sum + Number(row.fulfillable || 0), 0),
+        inbound: inventory.reduce((sum, row) => sum + Number(row.inbound || 0), 0),
+        inventoryValue: inventory.reduce((sum, row) => sum + Number(row.inventoryValue || 0), 0),
+        unsellable: inventory.reduce((sum, row) => sum + Number(row.unsellable || 0), 0)
+      }),
+      snapshotDate: runtimeState?.monthDetail?.inventorySnapshotDate || null,
+      rangeLabel: runtimeState?.rangeLabel || '选择期间',
+      detailAvailable: inventory.length > 0
+    });
+  }
+
+  window.YT_SHARED_SELECTORS = Object.freeze({
+    normalizeSummary,
+    overviewInsights,
+    overviewModel,
+    adsModel,
+    productsModel,
+    inventoryModel
+  });
 })();
