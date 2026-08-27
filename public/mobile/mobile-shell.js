@@ -57,6 +57,26 @@
     return PRIMARY.some(([id]) => id === ui.route) ? ui.route : 'more';
   }
 
+  function runtimeNoticeMarkup() {
+    const state = ui.runtimeState;
+    if (state?.loading) {
+      return `
+        <div class="v5-mobile-runtime-notice loading" role="status" aria-live="polite">
+          <span class="v5-mobile-runtime-spinner" aria-hidden="true"></span>
+          <span><b>正在更新经营数据</b><small>保持当前页面，完成后会自动刷新</small></span>
+        </div>`;
+    }
+    if (state?.error) {
+      const offline = state.mode === 'offline';
+      return `
+        <div class="v5-mobile-runtime-notice error" role="alert">
+          <span class="v5-mobile-runtime-mark" aria-hidden="true">!</span>
+          <span><b>${offline ? '实时数据服务暂时不可用' : '数据读取失败'}</b><small>${esc(state.error)}</small></span>
+        </div>`;
+    }
+    return '';
+  }
+
   function viewMarkup() {
     const renderer = window.YT_MOBILE_VIEWS?.[ui.route];
     if (typeof renderer === 'function') return renderer({ runtimeState: ui.runtimeState, route: ui.route, esc });
@@ -85,7 +105,7 @@
       const current = active === id;
       const moreAttrs = id === 'more' ? ` aria-haspopup="dialog" aria-controls="v5MoreSheet" aria-expanded="${ui.moreOpen ? 'true' : 'false'}"` : '';
       return `
-        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}" aria-current="${current ? 'page' : 'false'}"${moreAttrs}>
+        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}"${current ? ' aria-current="page"' : ''}${moreAttrs}>
           <span class="v5-mobile-nav-icon" aria-hidden="true">${icon(iconName)}</span>
           <span>${esc(label)}</span>
         </button>`;
@@ -123,23 +143,29 @@
   }
 
   function refineRenderedSemantics() {
+    const unavailable = ui.runtimeState?.mode === 'offline';
     root.querySelectorAll('[data-mobile-action="period"]').forEach(button => {
       if (!button.getAttribute('aria-label')) button.setAttribute('aria-label', '选择查看期间');
       button.setAttribute('aria-haspopup', 'dialog');
+      button.disabled = unavailable;
     });
   }
 
   function render({ focusSelector = selectorForFocus(document.activeElement) } = {}) {
+    const loading = Boolean(ui.runtimeState?.loading);
     root.innerHTML = `
-      <div class="v5-mobile-app">
+      <div class="v5-mobile-app" aria-busy="${loading ? 'true' : 'false'}">
         <header class="v5-mobile-topbar">
           <div class="v5-mobile-brand"><strong>YTDBNS</strong><span>Intelligence</span></div>
           <div class="v5-mobile-top-actions">
             <button type="button" data-mobile-action="search" aria-label="搜索">${icon('search')}</button>
-            <button type="button" data-mobile-action="refresh" aria-label="刷新">${icon('refresh')}</button>
+            <button type="button" data-mobile-action="refresh" aria-label="刷新" aria-disabled="${loading ? 'true' : 'false'}" class="${loading ? 'is-busy' : ''}">${icon('refresh')}</button>
           </div>
         </header>
-        <main class="v5-mobile-content">${viewMarkup()}</main>
+        <main class="v5-mobile-content">
+          ${runtimeNoticeMarkup()}
+          ${viewMarkup()}
+        </main>
         <nav class="v5-mobile-bottom-nav" aria-label="手机端主导航">${navMarkup()}</nav>
         ${moreMarkup()}
       </div>`;
@@ -167,7 +193,7 @@
   }
 
   async function refresh() {
-    if (!runtime) return;
+    if (!runtime || ui.runtimeState?.loading) return;
     if (typeof runtime.refresh === 'function') {
       await runtime.refresh();
       return;
@@ -192,15 +218,16 @@
       setRoute(routeButton.dataset.mobileRoute);
       return;
     }
-    const action = event.target.closest('[data-mobile-action]')?.dataset.mobileAction;
+    const actionButton = event.target.closest('[data-mobile-action]');
+    const action = actionButton?.dataset.mobileAction;
     if (!action) return;
     if (action === 'close-more') {
       if (event.target.closest('[data-mobile-sheet]') && !event.target.closest('.v5-mobile-sheet-head button')) return;
       closeMore();
     } else if (action === 'refresh') {
-      refresh();
+      if (actionButton.getAttribute('aria-disabled') !== 'true') refresh();
     } else if (action === 'period') {
-      root.dispatchEvent(new CustomEvent('v5:period-request', { bubbles: true }));
+      if (!actionButton.disabled) root.dispatchEvent(new CustomEvent('v5:period-request', { bubbles: true }));
     } else if (action === 'search') {
       root.dispatchEvent(new CustomEvent('v5:search-request', { bubbles: true }));
     }
