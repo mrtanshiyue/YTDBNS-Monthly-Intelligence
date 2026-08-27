@@ -8,8 +8,9 @@
   registry.inventory = ({ runtimeState, esc }) => {
     const model = selectors.inventoryModel(runtimeState);
     const rows = model.inventory.slice(0, 30);
+    const snapshotLabel = model.snapshotDate ? `库存快照 · ${model.snapshotDate}` : model.rangeLabel;
     const empty = !rows.length ? `
-      <div class="v5-core-empty"><strong>当前月份没有库存快照</strong><span>库存使用最近有效快照，不按日期区间累加。</span></div>` : '';
+      <div class="v5-core-empty"><strong>没有可用库存快照</strong><span>所选期间结束月份及之前没有找到真实库存快照；系统不会把未知库存显示为 0。</span></div>` : '';
     const cards = rows.map(row => `
       <button type="button" class="v5-record-card" data-record-type="inventory" data-record-id="${esc(row.id)}" aria-label="查看库存 ${esc(row.sku)} 详情">
         <div class="v5-record-card-head">
@@ -29,7 +30,7 @@
       <section class="v5-mobile-view v5-core-view" data-mobile-view="inventory" aria-labelledby="v5MobileViewTitle">
         <div class="v5-mobile-view-heading">
           <div><span class="v5-mobile-eyebrow">INVENTORY</span><h1 id="v5MobileViewTitle">库存</h1><p>优先看资金占用、可售与不可售风险</p></div>
-          <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(model.snapshotDate || model.rangeLabel)}</span><i aria-hidden="true">›</i></button>
+          <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(snapshotLabel)}</span><i aria-hidden="true">›</i></button>
         </div>
         <section class="v5-core-stat-grid" aria-label="库存核心指标">
           <div class="v5-core-stat"><span>库存资金</span><strong>${fmt.compactMoney(model.totals.inventoryValue)}</strong><small>采购成本资金占用</small></div>
