@@ -39,5 +39,18 @@ jobs:
           node --check public/mobile/views/data.js
           node --check scripts/ui-integrity-static-check.mjs
           node --check scripts/v5-native-mobile-static-check.mjs
+          node --check scripts/v5-browser-acceptance.mjs
       - name: Desktop + Native Mobile static release gate
         run: npm run check:release:static
+      - name: Install browser acceptance driver
+        run: npm install --no-save --ignore-scripts puppeteer-core@24.16.0
+      - name: Exact-head Chromium acceptance
+        run: node scripts/v5-browser-acceptance.mjs
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5-browser-acceptance-${{ github.sha }}
+          path: artifacts/v5-browser-acceptance
+          if-no-files-found: ignore
+          retention-days: 7
