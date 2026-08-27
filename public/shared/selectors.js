@@ -146,8 +146,15 @@
     });
   }
 
+  function inventorySource(runtimeState) {
+    if (runtimeState?.inventoryDetail) return runtimeState.inventoryDetail;
+    const monthDetail = runtimeState?.monthDetail;
+    if (monthDetail && ((Array.isArray(monthDetail.inventory) && monthDetail.inventory.length > 0) || monthDetail.inventorySnapshotDate)) return monthDetail;
+    return null;
+  }
+
   function inventoryRows(runtimeState) {
-    const detail = runtimeState?.monthDetail?.inventory ? runtimeState.monthDetail : runtimeState?.inventoryDetail;
+    const detail = inventorySource(runtimeState);
     const rows = detail?.inventory || [];
     return rows.map((row, index) => ({
       id: text(row.sku, row.asin, `inventory-${index}`),
@@ -163,8 +170,8 @@
   }
 
   function inventoryModel(runtimeState) {
+    const detail = inventorySource(runtimeState);
     const inventory = inventoryRows(runtimeState);
-    const detail = runtimeState?.monthDetail?.inventory ? runtimeState.monthDetail : runtimeState?.inventoryDetail;
     return Object.freeze({
       inventory,
       totals: Object.freeze({
@@ -176,7 +183,7 @@
       }),
       snapshotDate: detail?.inventorySnapshotDate || null,
       rangeLabel: runtimeState?.rangeLabel || '选择期间',
-      detailAvailable: inventory.length > 0
+      detailAvailable: inventory.length > 0 || Boolean(detail?.inventorySnapshotDate)
     });
   }
 
