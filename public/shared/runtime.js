@@ -9,6 +9,7 @@
     loading: false,
     error: null,
     periods: [],
+    imports: [],
     from: null,
     to: null,
     dashboard: null,
@@ -39,6 +40,7 @@
   const snapshot = () => Object.freeze({
     ...state,
     periods: [...state.periods],
+    imports: [...state.imports],
     rangeLabel: rangeLabel(state.from, state.to)
   });
   const publish = () => {
@@ -82,7 +84,11 @@
         fulfillableUnits: overview.fulfillableUnits ?? monthly.fulfillableUnits ?? null,
         businessUnits: overview.businessUnits ?? monthly.units ?? null,
         sessions: overview.sessions ?? monthly.sessions ?? null,
-        returns: overview.returns ?? monthly.returns ?? null
+        returns: overview.returns ?? monthly.returns ?? null,
+        refundSales: overview.refundSales ?? monthly.refundSales ?? null,
+        cogs: overview.cogs ?? monthly.cogs ?? null,
+        settlement: overview.settlement ?? monthly.settlement ?? null,
+        storageEstimate: overview.storageEstimate ?? monthly.storageEstimate ?? null
       },
       series: (D.dailyTraffic || [])
         .filter(row => !period || String(row.date || '').startsWith(period))
@@ -100,7 +106,8 @@
       returns: [...(current.returns?.reasons || [])],
       quality: [...(current.checks || [])],
       charges: [...(current.chargeNames || [])],
-      inventorySnapshotDate: current.inventorySnapshotDate || null
+      inventorySnapshotDate: current.inventorySnapshotDate || null,
+      metrics: current.overview || null
     };
   }
 
@@ -171,10 +178,15 @@
     state.mode = live ? 'live' : 'demo';
     try {
       if (live) {
-        const payload = await requestJson('/api/periods?store=yt-us');
-        state.periods = payload.periods || [];
+        const [periodPayload, importPayload] = await Promise.all([
+          requestJson('/api/periods?store=yt-us'),
+          requestJson('/api/imports?store=yt-us').catch(() => ({ batches: [] }))
+        ]);
+        state.periods = periodPayload.periods || [];
+        state.imports = importPayload.batches || [];
       } else {
         state.periods = [...(D.monthly || [])].reverse();
+        state.imports = [...(D.imports || [])];
       }
       const [from, to] = quickRange('current');
       state.from = from;
