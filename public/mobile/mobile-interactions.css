@@ -6,8 +6,8 @@
   .v5-mobile-overlay-root *,
   .v5-mobile-overlay-root *::before,
   .v5-mobile-overlay-root *::after{box-sizing:border-box}
-  .v5-mobile-overlay-root button,
-  .v5-mobile-overlay-root input{font:inherit}
+  .v5-mobile-overlay-root button{font:inherit}
+  .v5-mobile-overlay-root input{font:inherit;font-size:16px!important}
   .v5-mobile-overlay-root button{min-height:44px;border:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
   .v5-interaction-backdrop{
