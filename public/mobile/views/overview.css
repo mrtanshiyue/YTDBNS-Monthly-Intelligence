@@ -1,0 +1,166 @@
+@media (max-width:860px){
+  .v5-overview{display:grid;gap:20px}
+  .v5-overview-heading{margin-bottom:0}
+
+  .v5-overview-runtime-warning{
+    display:grid;
+    gap:3px;
+    padding:13px 15px;
+    border:1px solid #ead9b5;
+    border-radius:15px;
+    background:#fff9ed;
+  }
+  .v5-overview-runtime-warning b{font-size:13px}
+  .v5-overview-runtime-warning span{overflow-wrap:anywhere;color:#7a6234;font-size:12px;line-height:1.4}
+
+  .v5-overview-summary{
+    display:grid;
+    gap:7px;
+    min-width:0;
+    padding:22px 20px 18px;
+    border:1px solid rgba(35,71,79,.12);
+    border-radius:24px;
+    background:linear-gradient(145deg,#eaf2f2 0%,#f3f5f2 55%,#f8f5ef 100%);
+    box-shadow:0 10px 30px rgba(36,59,63,.055);
+  }
+  .v5-overview-summary>span{color:#607176;font-size:12px;font-weight:650}
+  .v5-overview-summary>strong{
+    overflow:hidden;
+    color:#21383e;
+    font-size:40px;
+    font-weight:710;
+    line-height:1.02;
+    letter-spacing:-.045em;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .v5-overview-summary>div{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin-top:9px;
+  }
+  .v5-overview-summary>div>span{
+    display:grid;
+    min-width:0;
+    gap:3px;
+    padding:11px 12px;
+    border:1px solid rgba(255,255,255,.72);
+    border-radius:15px;
+    background:rgba(255,255,255,.55);
+  }
+  .v5-overview-summary small{color:#68777b;font-size:10px}
+  .v5-overview-summary b{overflow:hidden;font-size:17px;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}
+
+  .v5-overview-kpis{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+  .v5-overview-kpis button{
+    display:grid;
+    min-width:0;
+    min-height:118px;
+    align-content:start;
+    gap:5px;
+    padding:15px;
+    border:1px solid rgba(0,0,0,.06);
+    border-radius:19px;
+    background:#fff;
+    color:#1d1d1f;
+    text-align:left;
+    box-shadow:0 5px 18px rgba(0,0,0,.03);
+  }
+  .v5-overview-kpis button:active{transform:scale(.985);background:#f7f7f8}
+  .v5-overview-kpis span{color:#6e6e73;font-size:11px;font-weight:600}
+  .v5-overview-kpis strong{
+    overflow:hidden;
+    margin-top:3px;
+    font-size:27px;
+    font-weight:690;
+    line-height:1.08;
+    letter-spacing:-.035em;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .v5-overview-kpis small{margin-top:auto;overflow:hidden;color:#8a8a8f;font-size:10px;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
+
+  .v5-overview-section{display:grid;gap:10px;min-width:0}
+  .v5-overview-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 2px}
+  .v5-overview-section-head>div{min-width:0}
+  .v5-overview-section-head span{display:block;margin-bottom:2px;color:#8a8a8f;font-size:9px;font-weight:750;letter-spacing:.09em}
+  .v5-overview-section-head h2{margin:0;font-size:21px;line-height:1.15;letter-spacing:-.025em}
+  .v5-overview-section-head>small{flex:0 0 auto;color:#8a8a8f;font-size:10px}
+
+  .v5-overview-insights{display:grid;gap:8px}
+  .v5-overview-insight{
+    display:grid;
+    grid-template-columns:10px minmax(0,1fr) 16px;
+    min-height:68px;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    padding:11px 13px;
+    border:1px solid rgba(0,0,0,.055)!important;
+    border-radius:17px;
+    background:#fff;
+    color:#1d1d1f;
+    text-align:left;
+  }
+  .v5-overview-insight:active{background:#f4f4f6}
+  .v5-overview-insight-dot{width:8px;height:8px;border-radius:50%;background:#8b999c}
+  .v5-overview-insight.positive .v5-overview-insight-dot{background:#5f8378}
+  .v5-overview-insight.warning .v5-overview-insight-dot{background:#b88a3c}
+  .v5-overview-insight.critical .v5-overview-insight-dot{background:#ad625d}
+  .v5-overview-insight-copy{display:grid;min-width:0;gap:2px}
+  .v5-overview-insight-copy b{font-size:13px;line-height:1.25}
+  .v5-overview-insight-copy small{color:#737378;font-size:11px;line-height:1.4}
+  .v5-overview-insight>i{color:#a0a0a5;font-size:20px;font-style:normal}
+  .v5-overview-empty-note{padding:16px;border-radius:16px;background:#fff;color:#77777c;font-size:12px;text-align:center}
+
+  .v5-overview-chart-card{
+    min-width:0;
+    padding:16px 14px 10px;
+    border:1px solid rgba(0,0,0,.055);
+    border-radius:21px;
+    background:#fff;
+    box-shadow:0 5px 18px rgba(0,0,0,.025);
+  }
+  .v5-overview-chart-value{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 4px 5px}
+  .v5-overview-chart-value span{color:#737378;font-size:11px}
+  .v5-overview-chart-value strong{font-size:19px;letter-spacing:-.02em}
+  .v5-overview-chart{position:relative;min-width:0;width:100%}
+  .v5-overview-chart svg{display:block;width:100%;height:auto;overflow:visible}
+  .v5-chart-axis{stroke:#e8e8eb;stroke-width:1}
+  .v5-chart-sales-line{fill:none;stroke:#557b84;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+  .v5-chart-edge-labels{display:flex;justify-content:space-between;margin-top:-18px;padding:0 7px;color:#96969b;font-size:9px}
+  .v5-overview-chart-empty{display:grid;place-items:center;gap:4px;min-height:132px;text-align:center}
+  .v5-overview-chart-empty strong{font-size:13px}
+  .v5-overview-chart-empty span{color:#8b8b90;font-size:10px}
+
+  .v5-overview-shortcuts{display:grid;gap:8px}
+  .v5-overview-shortcuts button{
+    display:flex;
+    width:100%;
+    min-width:0;
+    min-height:64px;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 14px;
+    border:1px solid rgba(0,0,0,.055);
+    border-radius:17px;
+    background:#fff;
+    color:#1d1d1f;
+    text-align:left;
+  }
+  .v5-overview-shortcuts button>span{display:grid;min-width:0;gap:2px}
+  .v5-overview-shortcuts b{font-size:14px}
+  .v5-overview-shortcuts small{color:#7e7e83;font-size:11px}
+  .v5-overview-shortcuts i{color:#96969b;font-size:21px;font-style:normal}
+
+  @media(max-width:375px){
+    .v5-overview-summary>strong{font-size:36px}
+    .v5-overview-kpis strong{font-size:24px}
+  }
+}
