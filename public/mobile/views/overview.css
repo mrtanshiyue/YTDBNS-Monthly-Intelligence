@@ -1,4 +1,5 @@
 @media (max-width:860px){
+  .v5-mobile-content{background:#edf2f5}
   .v5-overview{display:grid;gap:20px}
   .v5-overview-heading{margin-bottom:0}
 
