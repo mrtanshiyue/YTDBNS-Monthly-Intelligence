@@ -71,7 +71,16 @@ expect(primaryRoutes.length === 5, `exactly five primary mobile destinations (${
 expect(primaryRoutes.join('|') === 'overview|ads|products|inventory|workspace', 'primary navigation matches V5.1 product hierarchy');
 expect(shell.includes('function workspaceMarkup()') && shell.includes('data-mobile-view="workspace"'), 'Workspace is a persistent route rather than a transient More sheet');
 expect(!shell.includes('v5MoreSheet') && !shell.includes("route === 'more'"), 'legacy More sheet navigation is removed');
-expect(shell.includes('document.scrollingElement') && shell.includes('requestAnimationFrame(scrollDocumentToTop)'), 'route navigation resets the document scroller predictably');
+expect(
+  shell.includes('document.scrollingElement') &&
+  shell.includes('function applyRouteScrollReset()') &&
+  shell.includes('function resetRouteScroll()') &&
+  shell.includes('queueMicrotask(applyRouteScrollReset)') &&
+  shell.includes('requestAnimationFrame(applyRouteScrollReset)') &&
+  shell.includes('setTimeout(applyRouteScrollReset, 60)') &&
+  shell.includes('resetRouteScroll();'),
+  'route navigation resets the document scroller predictably'
+);
 
 const expectedViews = ['overview', 'ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data'];
 for (const view of expectedViews) {
@@ -117,7 +126,6 @@ expect(compare.includes("['ACOS', 'acos', 'pct', 'down']") && compare.includes("
 expect(compare.includes("['广告花费', 'adSpend', 'money', 'neutral']"), 'Compare keeps ad-spend movement semantically neutral');
 expect(compareTrigger.includes('data-v5-open-compare'), 'Overview exposes a one-tap mobile Compare action');
 expect(compareCss.includes('.v5-compare-row') && compareCss.includes('.v5-compare-range'), 'Compare has an independent mobile presentation');
-
 expect(runtime.includes('inventoryDetail: null') && runtime.includes('inventoryReferenceMonth'), 'shared runtime models inventory as a dedicated snapshot detail');
 expect(runtime.includes('month <= ceiling'), 'inventory snapshot reference cannot move later than the selected period');
 expect(selectors.includes('runtimeState?.inventoryDetail'), 'Inventory selector consumes the dedicated snapshot detail');
