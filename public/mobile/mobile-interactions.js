@@ -10,7 +10,6 @@
   const overlayRoot = document.createElement('div');
   overlayRoot.id = 'v5MobileOverlayRoot';
   overlayRoot.className = 'v5-mobile-overlay-root';
-  overlayRoot.setAttribute('aria-live', 'polite');
   document.body.appendChild(overlayRoot);
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -51,7 +50,7 @@
     overlay = null;
     overlayRoot.innerHTML = '';
     lock(false);
-    if (restoreFocus && lastFocus instanceof HTMLElement) lastFocus.focus({ preventScroll: true });
+    if (restoreFocus && lastFocus instanceof HTMLElement && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
     lastFocus = null;
   }
 
@@ -75,7 +74,7 @@
     return d.toISOString().slice(0, 10);
   }
   function latestMonth(state) {
-    return state.periods?.map(item => typeof item === 'string' ? item : item.month).find(Boolean)
+    return state.periods?.map(item => typeof item === 'string' ? item : item.month).filter(Boolean).sort((a, b) => b.localeCompare(a))[0]
       || window.YT_DEMO?.current?.meta?.period
       || window.YT_DEMO?.monthly?.at(-1)?.month
       || null;
@@ -153,9 +152,10 @@
   function buildSearchIndex() {
     const state = runtime.getState();
     const detail = state.monthDetail || {};
+    const inventoryDetail = state.inventoryDetail || detail;
     const demo = state.mode === 'live' || !state.monthDetail ? null : window.YT_DEMO?.current;
     const rows = MODULES.map(([route, title, subtitle]) => normalizeRecord(route, 'module', title, subtitle, 'MODULE', {}));
-    const summary = selectors?.normalizeSummary?.(state.dashboard?.summary || {}) || {};
+    const summary = selectors?.overviewModel?.(state)?.summary || selectors?.normalizeSummary?.(state.dashboard?.summary || {}) || {};
 
     METRICS.forEach(([label, key, route, type, definition]) => {
       rows.push(normalizeRecord(route, 'metric', label, `${formatMetric(summary[key], type)} · ${definition}`, 'METRIC', {
@@ -181,7 +181,7 @@
       }
     )));
 
-    const inventory = detail.inventory || demo?.inventoryRows || [];
+    const inventory = inventoryDetail.inventory || demo?.inventoryRows || [];
     inventory.slice(0, 160).forEach(row => rows.push(normalizeRecord(
       'inventory', 'inventory', pick(row.sku, row.asin), pick(row.asin, row.model, '库存'), 'INVENTORY', {
         Fulfillable: row.fulfillable, Inbound: row.inbound, Total: row.total, 'Inventory Value': pick(row.inventory_value, row.inventoryValue), Unsellable: row.unsellable
@@ -307,8 +307,14 @@
     if (quick) {
       const button = event.target.closest('[data-v5-quick]');
       button.disabled = true;
-      try { await runtime.setQuickRange(quick); closeOverlay(); }
-      catch (error) { button.disabled = false; overlayRoot.querySelector('[data-v5-period-note]').textContent = error?.message || '期间切换失败'; }
+      try {
+        await runtime.setQuickRange(quick);
+        closeOverlay();
+      } catch (error) {
+        button.disabled = false;
+        const note = overlayRoot.querySelector('[data-v5-period-note]');
+        if (overlay === 'period' && note) note.textContent = error?.message || '期间切换失败';
+      }
       return;
     }
     if (event.target.closest('[data-v5-apply-custom]')) {
@@ -316,8 +322,12 @@
       const to = overlayRoot.querySelector('[data-v5-date-to]')?.value;
       const note = overlayRoot.querySelector('[data-v5-period-note]');
       if (!from || !to || from > to) { if (note) note.textContent = '日期区间无效，请检查开始和结束日期。'; return; }
-      try { await runtime.setRange(from, to); closeOverlay(); }
-      catch (error) { if (note) note.textContent = error?.message || '期间切换失败'; }
+      try {
+        await runtime.setRange(from, to);
+        closeOverlay();
+      } catch (error) {
+        if (overlay === 'period' && note) note.textContent = error?.message || '期间切换失败';
+      }
       return;
     }
     const resultButton = event.target.closest('[data-v5-search-index]');
