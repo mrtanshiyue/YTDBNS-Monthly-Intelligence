@@ -62,7 +62,8 @@
     const items = $$('.nav-item', nav);
     items.forEach(button => {
       const active = button.classList.contains('active');
-      button.setAttribute('aria-current', active ? 'page' : 'false');
+      if (active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
       button.tabIndex = active ? 0 : -1;
     });
 
@@ -85,7 +86,7 @@
   }
 
   const GROUPS = [
-    ['.v43-tabs', true],
+    ['.v43-tabs', false],
     ['.period-tabs', true],
     ['.charge-project-tabs', true],
     ['.quick-range', false],
@@ -95,15 +96,30 @@
   function syncGroup(group, isTabs) {
     const buttons = $$(':scope > button', group);
     if (!buttons.length) return;
+    const isSectionNav = group.matches('.v43-tabs');
+    const isToggleGroup = group.matches('.quick-range,.studio-mode-switch');
+
     if (isTabs) group.setAttribute('role', 'tablist');
+    else group.removeAttribute('role');
+
     buttons.forEach((button, index) => {
       const active = button.classList.contains('active');
       if (isTabs) {
         button.setAttribute('role', 'tab');
         button.setAttribute('aria-selected', active ? 'true' : 'false');
+        button.removeAttribute('aria-pressed');
+        button.removeAttribute('aria-current');
         button.tabIndex = active ? 0 : -1;
-      } else if (!buttons.some(item => item === document.activeElement)) {
-        button.tabIndex = active || (!buttons.some(item => item.classList.contains('active')) && index === 0) ? 0 : -1;
+      } else {
+        button.removeAttribute('role');
+        button.removeAttribute('aria-selected');
+        if (isToggleGroup) button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        else button.removeAttribute('aria-pressed');
+        if (isSectionNav && active) button.setAttribute('aria-current', 'location');
+        else if (isSectionNav) button.removeAttribute('aria-current');
+        if (!buttons.some(item => item === document.activeElement)) {
+          button.tabIndex = active || (!buttons.some(item => item.classList.contains('active')) && index === 0) ? 0 : -1;
+        }
       }
     });
 
@@ -209,15 +225,26 @@
     }
   }
 
-  function bindDesktopModalTrap() {
-    if (document.documentElement.dataset.currentUiDesktopTrap) return;
-    document.documentElement.dataset.currentUiDesktopTrap = '1';
+  function bindDesktopKeyboard() {
+    if (document.documentElement.dataset.currentUiDesktopKeys) return;
+    document.documentElement.dataset.currentUiDesktopKeys = '1';
     document.addEventListener('keydown', event => {
-      if (event.key !== 'Tab' || !desktop.matches) return;
-      const modal = [...DIALOGS].reverse().find(([selector,, isModal]) => isModal && surfaceOpen($(selector)));
-      if (!modal) return;
-      const dialog = $(modal[0]);
-      if (dialog) trapTab(event, dialog);
+      if (!desktop.matches) return;
+      if (event.key === 'Tab') {
+        const modal = [...DIALOGS].reverse().find(([selector,, isModal]) => isModal && surfaceOpen($(selector)));
+        if (!modal) return;
+        const dialog = $(modal[0]);
+        if (dialog) trapTab(event, dialog);
+        return;
+      }
+      if (event.key !== 'Escape') return;
+      const importDrawer = $('#importDrawer');
+      if (surfaceOpen(importDrawer)) {
+        $('#drawerClose')?.click();
+        return;
+      }
+      const period = $('#periodPopover');
+      if (surfaceOpen(period)) period.classList.remove('show');
     });
   }
 
@@ -241,7 +268,7 @@
       syncGroups();
       syncDialogSemantics();
       syncDisclosureStates();
-      bindDesktopModalTrap();
+      bindDesktopKeyboard();
       bindMobileOverlayTrap();
       requestAnimationFrame(fitDesktopNumerals);
     });
@@ -255,6 +282,12 @@
   [...new Set([...DISCLOSURES.map(([, surface]) => surface), ...DIALOGS.map(([surface]) => surface)])].forEach(surfaceSelector => {
     const surface = $(surfaceSelector);
     if (surface) new MutationObserver(() => { syncDisclosureStates(); syncDialogSemantics(); }).observe(surface, { attributes: true, attributeFilter: ['class','style'] });
+  });
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('.v43-tabs>button,.period-tabs>button,.charge-project-tabs>button,.quick-range>button,.studio-mode-switch>button')) {
+      requestAnimationFrame(schedule);
+    }
   });
 
   if ('ResizeObserver' in window && content) new ResizeObserver(schedule).observe(content);
