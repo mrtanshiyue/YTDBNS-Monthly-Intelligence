@@ -301,7 +301,7 @@
   body.v5-native-mobile .v5-mobile-app{
     min-height:100svh!important;
     min-height:100dvh!important;
-    padding-bottom:0!important;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom))!important;
     background:var(--mi-iphone-shell)!important;
   }
 
@@ -356,9 +356,9 @@
 
   body.v5-native-mobile .v5-mobile-content{
     min-height:calc(100dvh - 62px - env(safe-area-inset-top));
-    padding:16px clamp(14px,4vw,18px) calc(84px + max(env(safe-area-inset-bottom),0px))!important;
+    padding:16px clamp(14px,4vw,18px) 24px!important;
     border-radius:24px 24px 0 0;
-    background:linear-gradient(180deg,#edf4f7 0%,#f4f7f9 34%,#f5f7f8 100%)!important;
+    background:#eef4f7!important;
     box-shadow:0 -1px 0 rgba(255,255,255,.45),0 -12px 30px rgba(2,15,21,.08);
   }
 
@@ -379,7 +379,7 @@
   }
   body.v5-native-mobile .v5-mobile-view-heading p{
     margin-top:7px!important;
-    color:#62747d!important;
+    color:#596d77!important;
     font-size:14px!important;
     line-height:1.35!important;
   }
@@ -426,7 +426,7 @@
     font-size:22px!important;
   }
   body.v5-native-mobile .v5-overview-section-head>small{
-    color:#60747d!important;
+    color:#596d77!important;
     font-size:12px!important;
   }
 
@@ -435,7 +435,8 @@
     padding:20px 18px 16px!important;
     border:1px solid rgba(69,145,176,.20)!important;
     border-radius:22px!important;
-    background:linear-gradient(145deg,#f7fbff 0%,#eef6fb 55%,#f7faf8 100%)!important;
+    background-color:#f5fafc!important;
+    background-image:linear-gradient(145deg,#f7fbff 0%,#eef6fb 55%,#f7faf8 100%)!important;
     box-shadow:0 10px 28px rgba(33,74,91,.065)!important;
   }
   body.v5-native-mobile .v5-overview-summary>span{
@@ -463,7 +464,7 @@
     box-shadow:0 2px 10px rgba(44,73,83,.025);
   }
   body.v5-native-mobile .v5-overview-summary small{
-    color:#667982!important;
+    color:#596d77!important;
     font-size:12px!important;
   }
   body.v5-native-mobile .v5-overview-summary b{
