@@ -173,6 +173,11 @@
     }
   });
 
+  root.addEventListener('v5:navigate', event => {
+    const route = event.detail?.route;
+    if (route) setRoute(route);
+  });
+
   runtime?.subscribe?.(next => {
     ui.runtimeState = next;
     if (media.matches) render();
