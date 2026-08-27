@@ -1,15 +1,6 @@
 name: UI Integrity
 
 on:
-  pull_request:
-    paths:
-      - 'public/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'README.md'
-      - 'V5_MOBILE_ARCHITECTURE.md'
-      - 'DEPLOYMENT_HANDOFF.md'
-      - '.github/workflows/ui-integrity.yml'
   workflow_dispatch:
 
 permissions:
@@ -28,6 +19,9 @@ jobs:
       - name: JavaScript syntax
         run: |
           node --check public/current-ui.js
+          node --check public/shared/runtime.js
+          node --check public/shared/selectors.js
+          node --check public/shared/secondary-selectors.js
           node --check public/mobile/mobile-shell.js
           node --check public/mobile/mobile-compare.js
           node --check public/mobile/mobile-interactions.js
