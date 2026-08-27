@@ -45,10 +45,12 @@
   }
 
   const standaloneMedia = window.matchMedia('(display-mode: standalone)');
+  const mobileTheme = document.querySelector('meta[name="theme-color"][media*="max-width"]');
   function syncStandaloneMode() {
     const standalone = Boolean(standaloneMedia.matches || window.navigator.standalone === true);
     document.documentElement.classList.toggle('v5-standalone', standalone);
     document.documentElement.dataset.v5Display = standalone ? 'standalone' : 'browser';
+    if (mobileTheme) mobileTheme.setAttribute('content', standalone ? '#061A24' : '#F5F5F7');
   }
   syncStandaloneMode();
   standaloneMedia.addEventListener?.('change', syncStandaloneMode);
