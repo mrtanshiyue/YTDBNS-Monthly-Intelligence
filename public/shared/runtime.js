@@ -64,6 +64,32 @@
   };
   const activeMonth = () => isSingleFullMonth(state.from, state.to) ? state.from.slice(0, 7) : null;
 
+  function demoDashboard() {
+    const current = D.current || {};
+    const period = current.meta?.period || D.monthly?.at(-1)?.month || null;
+    const monthly = (D.monthly || []).find(row => row.month === period) || {};
+    const overview = current.overview || {};
+    return {
+      summary: {
+        businessSales: overview.businessSales ?? monthly.sales ?? null,
+        contributionProfit: overview.profit ?? monthly.profit ?? null,
+        profitMargin: overview.profitMargin ?? monthly.profitMargin ?? null,
+        adSpend: overview.adSpend ?? monthly.adSpend ?? null,
+        adSales: overview.adSales ?? monthly.adSales ?? null,
+        acos: overview.acos ?? monthly.acos ?? null,
+        tacos: overview.tacos ?? monthly.tacos ?? null,
+        inventoryValue: overview.inventoryValue ?? monthly.inventoryValue ?? null,
+        fulfillableUnits: overview.fulfillableUnits ?? monthly.fulfillableUnits ?? null,
+        businessUnits: overview.businessUnits ?? monthly.units ?? null,
+        sessions: overview.sessions ?? monthly.sessions ?? null,
+        returns: overview.returns ?? monthly.returns ?? null
+      },
+      series: (D.dailyTraffic || [])
+        .filter(row => !period || String(row.date || '').startsWith(period))
+        .map(row => ({ label: row.date, sales: row.sales, units: row.units, sessions: row.sessions }))
+    };
+  }
+
   async function loadRange() {
     if (!state.from || !state.to) return snapshot();
     state.loading = true;
@@ -76,7 +102,7 @@
         state.monthDetail = month ? await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(month)}`).catch(() => null) : null;
         state.charges = await requestJson(`/api/charges?store=yt-us&from=${encodeURIComponent(state.from)}&to=${encodeURIComponent(state.to)}`).catch(() => null);
       } else {
-        state.dashboard = null;
+        state.dashboard = demoDashboard();
         state.monthDetail = null;
         state.charges = null;
       }
