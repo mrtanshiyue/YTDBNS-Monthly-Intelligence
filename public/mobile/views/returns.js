@@ -18,17 +18,17 @@
       </div>`;
     }).join('');
     const topShare = rows[0] ? (rows[0].share != null ? Number(rows[0].share) : total ? Number(rows[0].count || 0) / total : null) : null;
-    const refundAmount = rows.reduce((sum,row)=>sum+Number(row.amount||0),0);
+    const refundAmount = m.refundSales;
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="returns" aria-labelledby="v5MobileViewTitle">
-        <div class="v5-mobile-view-heading"><div><span class="v5-mobile-eyebrow">RETURN INTELLIGENCE</span><h1 id="v5MobileViewTitle">退货</h1><p>数量、原因占比与退款影响集中扫描</p></div><button class="v5-mobile-period-trigger" type="button" data-mobile-action="period"><span>${esc(m.rangeLabel)}</span><i>›</i></button></div>
+        <div class="v5-mobile-view-heading"><div><span class="v5-mobile-eyebrow">RETURN INTELLIGENCE</span><h1 id="v5MobileViewTitle">退货</h1><p>数量、原因占比与退款影响集中扫描</p></div><button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(m.rangeLabel)}</span><i aria-hidden="true">›</i></button></div>
         <section class="v5-secondary-hero" aria-label="退货件数"><span>TOTAL RETURNS</span><strong>${fmt.number(m.total)}</strong><div><small>${rows.length ? `${fmt.number(m.rows.length)} 个原因` : '原因明细仅完整月份可用'}</small><small>Refund ${fmt.compactMoney(refundAmount)}</small></div></section>
         <section class="v5-intel-ops" aria-label="退货状态">
           <div class="v5-intel-op"><span>Reasons</span><strong>${fmt.number(m.rows.length)}</strong><small>Categories</small></div>
           <div class="v5-intel-op"><span>Top Share</span><strong>${fmt.percent(topShare)}</strong><small>Reason</small></div>
           <div class="v5-intel-op"><span>Top Count</span><strong>${rows[0] ? fmt.number(rows[0].count) : '—'}</strong><small>${rows[0] ? esc(rows[0].reason) : '—'}</small></div>
-          <div class="v5-intel-op"><span>Refund</span><strong>${fmt.compactMoney(refundAmount)}</strong><small>Reason rows</small></div>
+          <div class="v5-intel-op"><span>Refund</span><strong>${fmt.compactMoney(refundAmount)}</strong><small>${refundAmount == null ? 'No data' : 'Summary'}</small></div>
         </section>
         <section class="v5-core-section"><div class="v5-core-section-head"><div><span>REASON MATRIX</span><h2>主要退货原因</h2></div><small>${rows.length ? `Top ${rows.length}` : '月级明细'}</small></div><div class="v5-secondary-list">${cards || '<div class="v5-core-empty"><strong>当前期间没有原因级明细</strong><span>退货件数仍使用所选期间汇总；完整月份可进一步查看 return reason 数据。</span></div>'}</div></section>
       </section>`;
