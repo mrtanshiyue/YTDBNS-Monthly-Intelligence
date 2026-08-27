@@ -6,12 +6,23 @@
 
   const media = window.matchMedia('(max-width: 860px)');
   const runtime = window.YT_SHARED_RUNTIME;
+  const ICONS = {
+    home: '<path d="M4.5 10.7 12 4.5l7.5 6.2"/><path d="M6.5 9.8v9.2h11V9.8M9.5 19v-5.2h5V19"/>',
+    ads: '<circle cx="12" cy="12" r="7.8"/><circle cx="12" cy="12" r="3.7"/><circle cx="12" cy="12" r=".8"/><path d="m16.7 7.3 2.8-2.8M17.7 4.5h1.8v1.8"/>',
+    products: '<path d="m12 3.8 6.8 3.5v9.4L12 20.2l-6.8-3.5V7.3L12 3.8Z"/><path d="m5.6 7.5 6.4 3.3 6.4-3.3M12 10.8v9.1"/>',
+    inventory: '<rect x="4.3" y="5.2" width="15.4" height="14.5" rx="2"/><path d="M8 5.2V3.8h8v1.4M4.3 10h15.4M9 14h6"/>',
+    more: '<circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>',
+    search: '<circle cx="10.7" cy="10.7" r="5.7"/><path d="m15 15 4.2 4.2"/>',
+    refresh: '<path d="M19.2 8V4.8h-3.3M4.8 16v3.2h3.3"/><path d="M17.9 6.3a7.6 7.6 0 0 0-12.6 2.1M6.1 17.7a7.6 7.6 0 0 0 12.6-2.1"/>'
+  };
+  const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.more}</svg>`;
+
   const PRIMARY = [
-    ['overview', '首页', '⌂'],
-    ['ads', '广告', '◎'],
-    ['products', '商品', '◇'],
-    ['inventory', '库存', '▦'],
-    ['more', '更多', '•••']
+    ['overview', '首页', 'home'],
+    ['ads', '广告', 'ads'],
+    ['products', '商品', 'products'],
+    ['inventory', '库存', 'inventory'],
+    ['more', '更多', 'more']
   ];
   const SECONDARY = [
     ['finance', '利润', '贡献利润与结算'],
@@ -48,50 +59,44 @@
 
   function viewMarkup() {
     const renderer = window.YT_MOBILE_VIEWS?.[ui.route];
-    if (typeof renderer === 'function') {
-      return renderer({ runtimeState: ui.runtimeState, route: ui.route, esc });
-    }
+    if (typeof renderer === 'function') return renderer({ runtimeState: ui.runtimeState, route: ui.route, esc });
 
     const [title, subtitle] = TITLES[ui.route] || TITLES.overview;
-    const state = ui.runtimeState;
-    const loading = Boolean(state?.loading);
-    const status = state?.mode === 'live' ? 'LIVE DATA' : state?.mode === 'demo' ? 'PREVIEW' : 'CONNECTING';
-    const range = state?.rangeLabel || '选择期间';
-
     return `
       <section class="v5-mobile-view" data-mobile-view="${esc(ui.route)}" aria-labelledby="v5MobileViewTitle">
         <div class="v5-mobile-view-heading">
           <div>
-            <span class="v5-mobile-eyebrow">${esc(status)}</span>
+            <span class="v5-mobile-eyebrow">MODULE STATUS</span>
             <h1 id="v5MobileViewTitle">${esc(title)}</h1>
             <p>${esc(subtitle)}</p>
           </div>
-          <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="查看当前期间">
-            <span>${esc(range)}</span><i aria-hidden="true">›</i>
-          </button>
         </div>
         <div class="v5-mobile-phase-card" role="status">
-          <span>${loading ? '正在读取经营数据' : 'V5.0 Native Mobile'}</span>
-          <strong>${esc(title)}独立视图已接入 Shell</strong>
-          <p>该模块仍处于 V5 分阶段重写队列中。Mobile View 不复用 Desktop 主 DOM，后续会以移动端任务流替换当前占位视图。</p>
+          <span>暂时不可用</span>
+          <strong>${esc(title)}视图未能完成渲染</strong>
+          <p>请刷新页面后重试。该状态不会触发任何数据写入。</p>
         </div>
       </section>`;
   }
 
   function navMarkup() {
     const active = activePrimary();
-    return PRIMARY.map(([id, label, icon]) => `
-      <button class="v5-mobile-nav-item ${active === id ? 'active' : ''}" type="button" data-mobile-route="${id}" aria-current="${active === id ? 'page' : 'false'}">
-        <span class="v5-mobile-nav-icon" aria-hidden="true">${esc(icon)}</span>
-        <span>${esc(label)}</span>
-      </button>`).join('');
+    return PRIMARY.map(([id, label, iconName]) => {
+      const current = active === id;
+      const moreAttrs = id === 'more' ? ` aria-haspopup="dialog" aria-controls="v5MoreSheet" aria-expanded="${ui.moreOpen ? 'true' : 'false'}"` : '';
+      return `
+        <button class="v5-mobile-nav-item ${current ? 'active' : ''}" type="button" data-mobile-route="${id}" aria-current="${current ? 'page' : 'false'}"${moreAttrs}>
+          <span class="v5-mobile-nav-icon" aria-hidden="true">${icon(iconName)}</span>
+          <span>${esc(label)}</span>
+        </button>`;
+    }).join('');
   }
 
   function moreMarkup() {
     if (!ui.moreOpen) return '';
     return `
       <div class="v5-mobile-sheet-layer" data-mobile-action="close-more">
-        <section class="v5-mobile-sheet" role="dialog" aria-modal="true" aria-labelledby="v5MoreTitle" data-mobile-sheet="more">
+        <section class="v5-mobile-sheet" id="v5MoreSheet" role="dialog" aria-modal="true" aria-labelledby="v5MoreTitle" data-mobile-sheet="more">
           <div class="v5-mobile-sheet-handle" aria-hidden="true"></div>
           <div class="v5-mobile-sheet-head">
             <div><span>ALL MODULES</span><h2 id="v5MoreTitle">更多</h2></div>
@@ -117,21 +122,35 @@
     return null;
   }
 
+  function refineRenderedSemantics() {
+    root.querySelectorAll('[data-mobile-action="period"]').forEach(button => {
+      if (!button.getAttribute('aria-label')) button.setAttribute('aria-label', '选择查看期间');
+      button.setAttribute('aria-haspopup', 'dialog');
+    });
+  }
+
   function render({ focusSelector = selectorForFocus(document.activeElement) } = {}) {
     root.innerHTML = `
       <div class="v5-mobile-app">
         <header class="v5-mobile-topbar">
           <div class="v5-mobile-brand"><strong>YTDBNS</strong><span>Intelligence</span></div>
           <div class="v5-mobile-top-actions">
-            <button type="button" data-mobile-action="search" aria-label="搜索"><span aria-hidden="true">⌕</span></button>
-            <button type="button" data-mobile-action="refresh" aria-label="刷新"><span aria-hidden="true">↻</span></button>
+            <button type="button" data-mobile-action="search" aria-label="搜索">${icon('search')}</button>
+            <button type="button" data-mobile-action="refresh" aria-label="刷新">${icon('refresh')}</button>
           </div>
         </header>
         <main class="v5-mobile-content">${viewMarkup()}</main>
         <nav class="v5-mobile-bottom-nav" aria-label="手机端主导航">${navMarkup()}</nav>
         ${moreMarkup()}
       </div>`;
+    refineRenderedSemantics();
     if (focusSelector) requestAnimationFrame(() => root.querySelector(focusSelector)?.focus({ preventScroll: true }));
+  }
+
+  function closeMore() {
+    if (!ui.moreOpen) return;
+    ui.moreOpen = false;
+    render({ focusSelector: '.v5-mobile-bottom-nav [data-mobile-route="more"]' });
   }
 
   function setRoute(route) {
@@ -173,14 +192,37 @@
     if (!action) return;
     if (action === 'close-more') {
       if (event.target.closest('[data-mobile-sheet]') && !event.target.closest('.v5-mobile-sheet-head button')) return;
-      ui.moreOpen = false;
-      render({ focusSelector: '.v5-mobile-bottom-nav [data-mobile-route="more"]' });
+      closeMore();
     } else if (action === 'refresh') {
       refresh();
     } else if (action === 'period') {
       root.dispatchEvent(new CustomEvent('v5:period-request', { bubbles: true }));
     } else if (action === 'search') {
       root.dispatchEvent(new CustomEvent('v5:search-request', { bubbles: true }));
+    }
+  });
+
+  root.addEventListener('keydown', event => {
+    if (!ui.moreOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMore();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const sheet = root.querySelector('[data-mobile-sheet="more"]');
+    if (!sheet) return;
+    const focusable = [...sheet.querySelectorAll('button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')]
+      .filter(element => element.getClientRects().length > 0);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
     }
   });
 
