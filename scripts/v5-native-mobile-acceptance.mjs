@@ -125,10 +125,19 @@ for (const [name, width, height, mobile] of cases) {
       await assertNoHorizontalOverflow(page, `${name}/${route}`);
     }
 
-    await page.locator('.v5-mobile-bottom-nav [data-mobile-route="more"]').click();
+    const moreTrigger = page.locator('.v5-mobile-bottom-nav [data-mobile-route="more"]');
+    await moreTrigger.click();
     await page.waitForSelector('[data-mobile-sheet="more"]');
+    const moreClose = page.locator('[data-mobile-sheet="more"] .v5-mobile-sheet-head button');
+    assert(await moreClose.evaluate(el => document.activeElement === el), 'More sheet did not move focus into the dialog', name);
     const secondaryButtons = page.locator('[data-mobile-sheet="more"] [data-mobile-route]');
     assert(await secondaryButtons.count() >= 5, `expected secondary modules in More sheet, got ${await secondaryButtons.count()}`, name);
+    await moreClose.click();
+    await page.waitForTimeout(80);
+    assert(await moreTrigger.evaluate(el => document.activeElement === el), 'More sheet did not restore focus to its trigger', name);
+
+    await moreTrigger.click();
+    await page.waitForSelector('[data-mobile-sheet="more"]');
     await page.locator('[data-mobile-sheet="more"] [data-mobile-route="finance"]').click();
     await page.waitForTimeout(100);
     assert(await page.locator('[data-mobile-view="finance"]').count() > 0, 'Finance did not route from More sheet', name);
@@ -153,13 +162,40 @@ for (const [name, width, height, mobile] of cases) {
     await page.waitForSelector('.v5-interaction-sheet', { state: 'detached', timeout: 15000 });
     await page.locator('.v5-mobile-bottom-nav [data-mobile-route="inventory"]').click();
     await page.waitForTimeout(150);
-    const snapshotState = await page.evaluate(() => ({
-      rows: window.YT_SHARED_RUNTIME?.getState?.().inventoryDetail?.inventory?.length || 0,
-      snapshotDate: window.YT_SHARED_RUNTIME?.getState?.().inventoryDetail?.inventorySnapshotDate || null
-    }));
-    assert(snapshotState.rows > 0, '30-day range lost the latest valid inventory snapshot rows', name);
-    assert(Boolean(snapshotState.snapshotDate), '30-day range has no inventory snapshot date', name);
-    assert(await page.locator('[data-mobile-view="inventory"] .v5-record-card').count() > 0, 'Inventory view is empty after switching to 30-day range', name);
+    const inventoryEvidence = await page.evaluate(async () => {
+      const state = window.YT_SHARED_RUNTIME?.getState?.() || {};
+      const rows = state.inventoryDetail?.inventory?.length || 0;
+      const snapshotDate = state.inventoryDetail?.inventorySnapshotDate || null;
+      const ceiling = state.to?.slice(0, 7) || null;
+      const months = (state.periods || [])
+        .map(item => typeof item === 'string' ? item : item.month)
+        .filter(month => month && (!ceiling || month <= ceiling));
+      let sourceSnapshot = null;
+      for (const month of months) {
+        try {
+          const response = await fetch(`/api/month?store=yt-us&month=${encodeURIComponent(month)}`, { method: 'GET' });
+          const detail = await response.json();
+          const sourceRows = Array.isArray(detail?.inventory) ? detail.inventory.length : 0;
+          const sourceDate = detail?.inventorySnapshotDate || null;
+          if (sourceRows > 0 || sourceDate) {
+            sourceSnapshot = { month, rows: sourceRows, snapshotDate: sourceDate };
+            break;
+          }
+        } catch {
+          // Source availability is best-effort evidence; runtime assertions remain authoritative.
+        }
+      }
+      return { rows, snapshotDate, sourceSnapshot };
+    });
+    const inventoryCards = await page.locator('[data-mobile-view="inventory"] .v5-record-card').count();
+    const inventoryEmpty = await page.locator('[data-mobile-view="inventory"] .v5-core-empty').count();
+    if (inventoryEvidence.sourceSnapshot) {
+      assert(inventoryEvidence.rows > 0 || Boolean(inventoryEvidence.snapshotDate), '30-day range lost the latest valid inventory snapshot', name);
+      if (inventoryEvidence.rows > 0) assert(inventoryCards > 0, 'Inventory snapshot rows exist but Mobile record cards are missing', name);
+    } else {
+      assert(inventoryEvidence.rows === 0 && !inventoryEvidence.snapshotDate, 'Mobile runtime fabricated an inventory snapshot with no source snapshot', name);
+      assert(inventoryEmpty > 0, 'Inventory has no source snapshot but the Mobile empty state is missing', name);
+    }
 
     await page.locator('[data-mobile-action="period"]').first().click();
     await page.waitForSelector('.v5-interaction-sheet');
@@ -179,8 +215,8 @@ for (const [name, width, height, mobile] of cases) {
     assert(await page.locator('[data-mobile-view="products"]').count() > 0, 'Search result did not navigate through Mobile route bridge', name);
 
     await openSearch(page, 'ACOS');
-    const metricResult = page.locator('.v5-search-result').filter({ hasText: 'ACOS' }).first();
-    assert(await metricResult.count() > 0, 'Search returned no ACOS metric result', name);
+    const metricResult = page.locator('.v5-search-result').filter({ hasText: /^ACOS\b/ }).first();
+    assert(await metricResult.count() > 0, 'Search returned no exact ACOS metric result', name);
     if (await metricResult.count()) {
       await metricResult.click();
       await page.waitForSelector('.v5-detail-hero');
@@ -222,7 +258,17 @@ for (const [name, width, height, mobile] of cases) {
       await page.waitForTimeout(100);
       if (await page.locator('.v5-record-card').count()) { recordRoute = route; break; }
     }
-    assert(Boolean(recordRoute), 'no Mobile record card available for full-screen Detail acceptance', name);
+    const sourceRecords = await page.evaluate(() => {
+      const state = window.YT_SHARED_RUNTIME?.getState?.() || {};
+      return (state.monthDetail?.products?.length || 0)
+        + (state.monthDetail?.campaigns?.length || 0)
+        + (state.inventoryDetail?.inventory?.length || 0);
+    });
+    if (sourceRecords > 0) {
+      assert(Boolean(recordRoute), 'source record data exists but no Mobile record card is available for Detail acceptance', name);
+    } else {
+      assert(await page.locator('.v5-core-empty').count() > 0, 'no source record data exists and no Mobile empty state is rendered', name);
+    }
     if (recordRoute) {
       await page.locator('.v5-record-card').first().click();
       await page.waitForSelector('.v5-detail-hero');
@@ -242,6 +288,21 @@ for (const [name, width, height, mobile] of cases) {
       assert(await page.locator('#v5MobileCompareRoot .v5-compare-unavailable').count() > 0, 'Preview Compare must explicitly refuse simulated prior-period data', name);
     }
     await closeAnyMobileOverlay(page);
+
+    await page.evaluate(() => window.YT_MOBILE_APP?.navigate?.('history'));
+    await page.waitForTimeout(100);
+    const scrollEvidence = await page.evaluate(() => {
+      window.scrollTo(0, 0);
+      const height = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, document.getElementById('mobileAppRoot')?.scrollHeight || 0);
+      window.scrollTo(0, Math.min(160, Math.max(0, height - innerHeight)));
+      const top = document.querySelector('.v5-mobile-topbar')?.getBoundingClientRect();
+      const navBox = document.querySelector('.v5-mobile-bottom-nav')?.getBoundingClientRect();
+      return { scrollY, top: top?.top ?? null, navBottom: navBox?.bottom ?? null, innerHeight };
+    });
+    assert(scrollEvidence.scrollY > 0, 'History view does not provide vertical scrolling for sticky/fixed acceptance', name);
+    assert(Math.abs(scrollEvidence.top || 0) <= 1.5, `sticky topbar moved offscreen (${scrollEvidence.top})`, name);
+    assert(Math.abs((scrollEvidence.navBottom || 0) - scrollEvidence.innerHeight) <= 2, `fixed bottom nav drifted from viewport bottom (${scrollEvidence.navBottom}/${scrollEvidence.innerHeight})`, name);
+    await page.evaluate(() => window.scrollTo(0, 0));
 
     const rootTargets = await visibleButtonSizes(page, '#mobileAppRoot button');
     assert(rootTargets.every(item => item.width >= 44 && item.height >= 44), `visible Mobile button under 44×44: ${JSON.stringify(rootTargets.filter(item => item.width < 44 || item.height < 44))}`, name);
