@@ -136,6 +136,14 @@
     ['#viewMenuBtn', '#viewPopover'],
     ['#topImportBtn', '#importDrawer']
   ];
+  const DIALOGS = [
+    ['#periodPopover', null],
+    ['#viewPopover', null],
+    ['#importDrawer', 'importDrawerTitle'],
+    ['#detailDrawer', 'detailTitle'],
+    ['#panelModal', 'panelModalTitle'],
+    ['#commandPalette', null]
+  ];
 
   function surfaceOpen(surface) {
     if (!surface) return false;
@@ -149,23 +157,43 @@
       const trigger = $(triggerSelector);
       const surface = $(surfaceSelector);
       if (!trigger || !surface) return;
-      trigger.setAttribute('aria-expanded', surfaceOpen(surface) ? 'true' : 'false');
+      const open = surfaceOpen(surface);
+      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      surface.setAttribute('aria-hidden', open ? 'false' : 'true');
     });
   }
 
   function syncDialogSemantics() {
-    const dialogs = [
-      ['#importDrawer', 'importDrawerTitle'],
-      ['#detailDrawer', 'detailTitle'],
-      ['#panelModal', 'panelModalTitle'],
-      ['#commandPalette', null]
-    ];
-    dialogs.forEach(([selector, labelledBy]) => {
+    DIALOGS.forEach(([selector, labelledBy]) => {
       const dialog = $(selector);
       if (!dialog) return;
       dialog.setAttribute('role', 'dialog');
-      dialog.setAttribute('aria-modal', 'true');
+      if (['#importDrawer','#detailDrawer','#panelModal','#commandPalette'].includes(selector)) dialog.setAttribute('aria-modal', 'true');
       if (labelledBy) dialog.setAttribute('aria-labelledby', labelledBy);
+      dialog.setAttribute('aria-hidden', surfaceOpen(dialog) ? 'false' : 'true');
+    });
+  }
+
+  function bindMobileOverlayTrap() {
+    const overlayRoot = $('#v5MobileOverlayRoot');
+    if (!overlayRoot || overlayRoot.dataset.currentUiTrap) return;
+    overlayRoot.dataset.currentUiTrap = '1';
+    overlayRoot.addEventListener('keydown', event => {
+      if (event.key !== 'Tab') return;
+      const dialog = overlayRoot.querySelector('[role="dialog"][aria-modal="true"]');
+      if (!dialog) return;
+      const focusable = [...dialog.querySelectorAll('button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')]
+        .filter(element => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     });
   }
 
@@ -178,6 +206,7 @@
       syncGroups();
       syncDialogSemantics();
       syncDisclosureStates();
+      bindMobileOverlayTrap();
       requestAnimationFrame(fitDesktopNumerals);
     });
   }
@@ -187,9 +216,9 @@
   const nav = $('#mainNav');
   if (nav) new MutationObserver(schedule).observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
-  DISCLOSURES.forEach(([, surfaceSelector]) => {
+  [...new Set([...DISCLOSURES.map(([, surface]) => surface), ...DIALOGS.map(([surface]) => surface)])].forEach(surfaceSelector => {
     const surface = $(surfaceSelector);
-    if (surface) new MutationObserver(syncDisclosureStates).observe(surface, { attributes: true, attributeFilter: ['class','style','aria-hidden'] });
+    if (surface) new MutationObserver(() => { syncDisclosureStates(); syncDialogSemantics(); }).observe(surface, { attributes: true, attributeFilter: ['class','style'] });
   });
 
   if ('ResizeObserver' in window && content) new ResizeObserver(schedule).observe(content);
