@@ -25,6 +25,15 @@ jobs:
           node --check public/mobile/mobile-shell.js
           node --check public/mobile/mobile-compare.js
           node --check public/mobile/mobile-interactions.js
+          node --check public/mobile/views/overview.js
+          node --check public/mobile/views/ads.js
+          node --check public/mobile/views/products.js
+          node --check public/mobile/views/inventory.js
+          node --check public/mobile/views/finance.js
+          node --check public/mobile/views/charges.js
+          node --check public/mobile/views/returns.js
+          node --check public/mobile/views/history.js
+          node --check public/mobile/views/data.js
           node --check scripts/ui-integrity-static-check.mjs
           node --check scripts/v5-native-mobile-static-check.mjs
       - name: Desktop + Native Mobile static release gate
