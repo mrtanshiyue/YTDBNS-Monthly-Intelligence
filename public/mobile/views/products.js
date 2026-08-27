@@ -27,6 +27,9 @@
         </div>
       </button>`).join('');
 
+    const cvrMeter = Math.max(0, Math.min(100, Number(model.totals.cvr || 0) / .20 * 100));
+    const buyBoxMeter = Math.max(0, Math.min(100, Number(avgBuyBox || 0) * 100));
+
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="products" aria-labelledby="v5MobileViewTitle">
         <div class="v5-mobile-view-heading">
@@ -34,14 +37,14 @@
           <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(model.rangeLabel)}</span><i aria-hidden="true">›</i></button>
         </div>
         <section class="v5-intel-efficiency" aria-label="商品核心指标">
-          <div class="v5-intel-metric"><div class="v5-intel-metric-head"><span>Sales</span><small>${summaryGrain}</small></div><strong>${fmt.compactMoney(model.totals.sales)}</strong><div class="v5-intel-meter" style="--v5-meter:100%"><i></i></div></div>
-          <div class="v5-intel-metric"><div class="v5-intel-metric-head"><span>Units</span><small>销量</small></div><strong>${fmt.number(model.totals.units)}</strong><div class="v5-intel-meter" style="--v5-meter:72%"><i></i></div></div>
-          <div class="v5-intel-metric"><div class="v5-intel-metric-head"><span>Sessions</span><small>Traffic</small></div><strong>${fmt.number(model.totals.sessions)}</strong><div class="v5-intel-meter" style="--v5-meter:64%"><i></i></div></div>
-          <div class="v5-intel-metric"><div class="v5-intel-metric-head"><span>CVR</span><small>Units / Sessions</small></div><strong>${fmt.percent(model.totals.cvr)}</strong><div class="v5-intel-meter" style="--v5-meter:${Math.max(0,Math.min(100,Number(model.totals.cvr || 0) / .20 * 100)).toFixed(1)}%"><i></i></div></div>
+          <div class="v5-intel-metric"><div class="v5-intel-metric-head"><span>Sales</span><small>${summaryGrain}</small></div><strong>${fmt.compactMoney(model.totals.sales)}</strong></div>
+          <div class="v5-intel-metric"><div class="v5-intel-metric-head"><span>Units</span><small>销量</small></div><strong>${fmt.number(model.totals.units)}</strong></div>
+          <div class="v5-intel-metric"><div class="v5-intel-metric-head"><span>Sessions</span><small>Traffic</small></div><strong>${fmt.number(model.totals.sessions)}</strong></div>
+          <div class="v5-intel-metric"><div class="v5-intel-metric-head"><span>CVR</span><small>20% scale</small></div><strong>${fmt.percent(model.totals.cvr)}</strong><div class="v5-intel-meter" style="--v5-meter:${cvrMeter.toFixed(1)}%"><i></i></div></div>
         </section>
         <section class="v5-intel-ops" aria-label="商品状态">
           <div class="v5-intel-op"><span>SKU</span><strong>${fmt.number(model.products.length)}</strong><small>Records</small></div>
-          <div class="v5-intel-op"><span>Avg Buy Box</span><strong>${fmt.percent(avgBuyBox)}</strong><small>Available rows</small></div>
+          <div class="v5-intel-op"><span>Avg Buy Box</span><strong>${fmt.percent(avgBuyBox)}</strong><small>${avgBuyBox == null ? 'No data' : `${buyBoxMeter.toFixed(0)}%`}</small></div>
           <div class="v5-intel-op"><span>Top Sales</span><strong>${rows[0] ? fmt.compactMoney(rows[0].sales) : '—'}</strong><small>${rows[0] ? esc(rows[0].sku) : 'SKU'}</small></div>
           <div class="v5-intel-op"><span>Detail</span><strong>${model.detailAvailable ? 'LIVE' : 'SUM'}</strong><small>${model.detailAvailable ? 'Month SKU' : 'Range total'}</small></div>
         </section>
