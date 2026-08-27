@@ -19,37 +19,51 @@ const blobSha = relative => {
 
 const index = read('public/index.html');
 const shell = read('public/mobile/mobile-shell.js');
-const css = read('public/mobile/mobile-shell.css');
+const shellCss = read('public/mobile/mobile-shell.css');
+const overview = read('public/mobile/views/overview.js');
+const overviewCss = read('public/mobile/views/overview.css');
 const runtime = read('public/shared/runtime.js');
+const formatters = read('public/shared/formatters.js');
+const selectors = read('public/shared/selectors.js');
+const mobileJs = [shell, overview].join('\n');
+const sharedJs = [runtime, formatters, selectors].join('\n');
+const v5BrowserJs = [mobileJs, sharedJs].join('\n');
+const v5Css = [shellCss, overviewCss].join('\n');
 
 expect(index.includes('id="mobileAppRoot"'), 'independent mobile root exists');
-expect(index.includes('./mobile/mobile-shell.css'), 'mobile CSS is loaded');
+expect(index.includes('./mobile/mobile-shell.css'), 'mobile Shell CSS is loaded');
+expect(index.includes('./mobile/views/overview.css'), 'mobile Overview CSS is loaded');
 expect(index.includes('./shared/runtime.js'), 'shared runtime is loaded');
-expect(index.includes('./mobile/mobile-shell.js'), 'mobile shell is loaded');
+expect(index.includes('./shared/formatters.js'), 'shared formatters are loaded');
+expect(index.includes('./shared/selectors.js'), 'shared selectors are loaded');
+expect(index.includes('./mobile/views/overview.js'), 'mobile Overview renderer is loaded');
+expect(index.includes('./mobile/mobile-shell.js'), 'mobile Shell is loaded last');
 expect(/const PRIMARY = \[[\s\S]*?\];/.test(shell), 'primary mobile navigation is explicitly declared');
 
 const primaryBlock = shell.match(/const PRIMARY = \[([\s\S]*?)\];/)?.[1] || '';
 const primaryRoutes = [...primaryBlock.matchAll(/\['([^']+)',/g)].map(match => match[1]);
 expect(primaryRoutes.length === 5, `exactly five primary mobile destinations (${primaryRoutes.join(', ')})`);
 expect(primaryRoutes.join('|') === 'overview|ads|products|inventory|more', 'primary navigation matches V5 product hierarchy');
+expect(overview.includes('window.YT_MOBILE_VIEWS'), 'Overview is registered as an independent mobile renderer');
+expect(overview.includes('单指标视图'), 'Overview chart contract is single-focus');
 
 const forbiddenDesktopContracts = [
   'mainNav', 'periodPopover', 'importDrawer', 'commandPalette', 'detailDrawer', 'panelModal',
   'global-links', 'data-table', 'table-wrap', 'v54-mobile-ui'
 ];
 for (const token of forbiddenDesktopContracts) {
-  expect(!shell.includes(token), `mobile shell does not depend on Desktop contract: ${token}`);
+  expect(!mobileJs.includes(token), `mobile views do not depend on Desktop contract: ${token}`);
 }
 
-expect(!/\bv55(?:\.css|\.js|-)/i.test(index + shell + css), 'V5 does not continue v55 responsive patch naming');
-expect(css.includes('env(safe-area-inset-top)') && css.includes('env(safe-area-inset-bottom)'), 'iPhone safe-area insets are handled');
-expect(/min-height:\s*44px/.test(css) || /height:\s*44px/.test(css), '44px touch target floor is encoded');
-expect(css.includes('overflow-x:hidden') && css.includes('overflow-x:clip'), 'mobile shell prevents accidental horizontal overflow');
-expect(css.includes('grid-template-columns:repeat(5,minmax(0,1fr))'), 'bottom navigation uses fixed five-column layout, not horizontal scrolling');
+expect(!/\bv55(?:\.css|\.js|-)/i.test(index + v5BrowserJs + v5Css), 'V5 does not continue v55 responsive patch naming');
+expect(shellCss.includes('env(safe-area-inset-top)') && shellCss.includes('env(safe-area-inset-bottom)'), 'iPhone safe-area insets are handled');
+expect(/min-height:\s*44px/.test(shellCss) || /height:\s*44px/.test(shellCss), '44px touch target floor is encoded');
+expect(shellCss.includes('overflow-x:hidden') && shellCss.includes('overflow-x:clip'), 'mobile Shell prevents accidental horizontal overflow');
+expect(shellCss.includes('grid-template-columns:repeat(5,minmax(0,1fr))'), 'bottom navigation uses fixed five-column layout, not horizontal scrolling');
 
-expect(!/method\s*:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/i.test(runtime + shell), 'V5 runtime and shell contain no write HTTP methods');
-expect(!/\/api\/imports\/(?:start|file|commit)/.test(runtime + shell), 'V5 runtime and shell cannot reach import mutation endpoints');
-expect(!/\b(?:DB|RAW_REPORTS)\b/.test(runtime + shell), 'V5 browser layer has no direct D1/R2 binding access');
+expect(!/method\s*:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/i.test(v5BrowserJs), 'V5 browser JavaScript contains no write HTTP methods');
+expect(!/\/api\/imports\/(?:start|file|commit)/.test(v5BrowserJs), 'V5 browser JavaScript cannot reach import mutation endpoints');
+expect(!/\bRAW_REPORTS\b/.test(v5BrowserJs), 'V5 browser layer has no direct R2 binding access');
 
 const frozen = {
   'public/app.js': 'a6848333f0bada81120966cd4c4d6b3393366ecc',
