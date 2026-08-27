@@ -27,10 +27,11 @@ const secondarySelectors = read('public/shared/secondary-selectors.js');
 const coreCss = read('public/mobile/views/core.css');
 const secondaryCss = read('public/mobile/views/secondary.css');
 const overviewCss = read('public/mobile/views/overview.css');
+const v51Css = read('public/mobile/v51-mobile.css');
 const overview = read('public/mobile/views/overview.js');
 const returnsView = read('public/mobile/views/returns.js');
 const compareCss = read('public/mobile/mobile-compare.css');
-const mobileCss = [shellCss, read('public/mobile/mobile-interactions.css'), compareCss, overviewCss, coreCss, secondaryCss].join('\n');
+const mobileCss = [shellCss, read('public/mobile/mobile-interactions.css'), compareCss, overviewCss, coreCss, secondaryCss, v51Css].join('\n');
 const recordViews = ['ads','products','inventory','charges'].map(name => read(`public/mobile/views/${name}.js`));
 
 expect(/<title>YTDBNS Monthly Intelligence<\/title>/.test(index), 'document title reflects the current product');
@@ -47,7 +48,7 @@ expect(desktopRoutes.length === 9, `desktop navigation keeps nine destinations (
 expect(desktopRoutes.join('|') === 'overview|finance|charges|ads|products|inventory|returns|history|data', 'desktop navigation order is stable');
 expect(currentCss.includes('content:"V5.0"'), 'desktop wordmark version badge is current');
 expect(currentCss.includes('@media (min-width:861px)') && currentCss.includes('.global-links{gap:0!important}'), 'desktop nine-item navigation fit rule is preserved');
-expect(currentJs.includes("dataset.uiVersion = '5.0'"), 'runtime exposes current UI version');
+expect(currentJs.includes("dataset.uiVersion = '5.0'"), 'runtime exposes current desktop UI version');
 expect(currentJs.includes('FIT_RULES') && currentJs.includes('fitDesktopNumerals'), 'desktop large-number fit behavior is consolidated');
 expect(currentJs.includes('syncTopNavigation') && currentJs.includes('syncGroups'), 'desktop keyboard and ARIA behavior is consolidated');
 expect(currentJs.includes("['.v43-tabs', false]") && currentJs.includes("aria-current', 'location'"), 'section anchors are not misrepresented as ARIA tabs');
@@ -70,23 +71,25 @@ expect(index.includes('id="toastStack" aria-live="polite"'), 'Desktop toast regi
 expect(!exists('public/mobile/interactions.css'), 'dormant alternate mobile interaction stylesheet is removed');
 expect(shell.includes('const ICONS = {') && shell.includes("['overview', '首页', 'home']"), 'native mobile shell uses deterministic SVG iconography');
 expect(!/[⌂◎◇▦]/.test(shell), 'native mobile primary navigation no longer depends on font-specific symbol glyphs');
-expect(shell.includes("event.key === 'Escape'") && shell.includes("event.key !== 'Tab'"), 'More sheet has Escape and focus containment behavior');
+expect(shell.includes("['workspace', '工作台', 'workspace']") && shell.includes('function workspaceMarkup()') && !shell.includes('v5MoreSheet'), 'Workspace is a persistent fifth route and legacy More sheet is removed');
 expect(shell.includes("typeof runtime.refresh === 'function'") && shell.includes('await runtime.refresh()'), 'mobile refresh can re-detect runtime availability');
 expect(shell.includes('runtimeNoticeMarkup') && shell.includes("state.mode === 'offline'"), 'mobile shell exposes explicit loading/error/offline status');
+expect(shell.includes('state?.loading') && shell.includes('正在更新经营数据'), 'mobile runtime notice owns loading state instead of duplicating it inside Overview');
 expect(shell.includes('aria-busy=') && shell.includes('aria-disabled='), 'mobile shell publishes refresh busy semantics without stealing focus');
 expect(shellCss.includes('.v5-mobile-runtime-notice') && shellCss.includes('.v5-mobile-runtime-spinner'), 'mobile runtime state has a dedicated visual treatment');
-expect(shellCss.includes('background:var(--mi-bg,#edf2f5)!important'), 'mobile content canvas stays neutral below the graphite topbar');
+expect(shellCss.includes('background:var(--mi-bg,#edf2f5)!important'), 'mobile content canvas stays neutral below the topbar');
 expect(!shell.includes('分阶段重写队列'), 'mobile fallback no longer exposes development-phase copy');
 
 for (const [name, source] of [['ads',recordViews[0]],['products',recordViews[1]],['inventory',recordViews[2]],['charges',recordViews[3]]]) {
   expect(/<button type="button" class="[^"]*\bv5-record-card\b[^"]*"/.test(source), `${name} record cards use native button semantics`);
   expect(!source.includes('<article class="v5-record-card"'), `${name} has no click-only article records`);
 }
-expect(currentCss.includes('V5 Mobile Intelligence Terminal') && currentCss.includes('.v5-intel-status') && currentCss.includes('.v5-intel-efficiency'), 'mobile high-density intelligence visual system is encoded in the canonical UI layer');
-expect(overview.includes('v5-intel-status') && overview.includes('v5-intel-primary') && overview.includes('v5-intel-ops'), 'Overview renders status, primary business and operational intelligence tiers');
-expect(overview.includes('data-v5-open-compare') && overview.includes('s.fulfillableUnits') && overview.includes('s.cvr') && overview.includes('s.returns'), 'Overview exposes compare and dense operational metrics from real selectors');
-expect(overview.includes('const isLoading = Boolean(runtimeState?.loading)') && overview.includes("isLoading ? 'Updating'"), 'Overview data-health state cannot report Ready while range data is loading');
-expect(recordViews[0].includes('const adSalesShare') && recordViews[0].includes('Number(adSalesShare || 0) * 100'), 'Ads Ad Sales micro bar is driven by real ad-sales share instead of decorative ROAS reuse');
+expect(v51Css.includes('Authoritative mobile readability/responsive layer') && v51Css.includes('Operational controls for Ads / Products / Inventory'), 'V5.1 mobile UX ownership is centralized in the authoritative hardening layer');
+expect(overview.includes('v51-overview-results') && overview.includes('v51-overview-priority') && overview.includes('v5OverviewTrend'), 'Overview renders result, action-priority and single-trend tiers');
+expect(overview.includes('data-v5-open-compare') && overview.includes("data-mobile-route=\"ads\"") && overview.includes('model.insights') && !overview.includes('快速工作区'), 'Overview exposes comparison and decision actions without duplicate workspace shortcuts');
+expect(recordViews[0].includes('data-v51-ads-filter') && recordViews[0].includes('data-v51-ads-sort'), 'Ads exposes operational filters and sorting');
+expect(recordViews[1].includes('data-v51-products-filter') && recordViews[1].includes('data-v51-products-sort'), 'Products exposes anomaly filters and sorting');
+expect(recordViews[2].includes('data-v51-inventory-filter') && recordViews[2].includes('data-v51-inventory-sort'), 'Inventory exposes risk filters and sorting');
 expect(compare.includes('let lastFocus = null') && compare.includes('focusClose()') && compare.includes('lastFocus.focus'), 'Mobile Compare restores trigger focus');
 expect(compare.includes("event.key !== 'Tab'") && compare.includes("event.key === 'Escape'"), 'Mobile Compare traps focus and supports Escape');
 expect(compare.includes('let requestSerial = 0') && compare.includes('requestId !== requestSerial'), 'Mobile Compare ignores stale async responses after close');
@@ -112,16 +115,18 @@ expect(secondarySelectors.includes('refundSales: summary.refundSales ?? reasonRe
 expect(secondarySelectors.includes("(b.createdAt || '').localeCompare(a.createdAt || '')"), 'Data latest import is resolved deterministically by creation time');
 
 expect(!/font-size\s*:\s*(?:8|9)px\b/i.test(mobileCss), 'loaded native mobile CSS contains no 8px/9px text');
-expect(coreCss.includes('.v5-record-metric span') && coreCss.includes('font-size:10px'), 'record metric labels meet the raised readability floor');
-expect(secondaryCss.includes('.v5-history-metrics small') && secondaryCss.includes('font-size:10px'), 'history metric labels meet the raised readability floor');
+expect(v51Css.includes('.v5-record-metric span') && v51Css.includes('font-size:11.5px!important'), 'record metric labels meet the V5.1 readability floor');
+expect(v51Css.includes('.v5-history-metrics small') && v51Css.includes('font-size:11.5px!important'), 'history metric labels meet the V5.1 readability floor');
+expect(v51Css.includes('@media(max-width:390px)') && v51Css.includes('.v5-record-metrics') && v51Css.includes('grid-template-columns:repeat(2,minmax(0,1fr))!important'), '<=390 record metrics restore a two-column layout');
+expect(v51Css.includes('.v5-history-metrics') && v51Css.includes('grid-template-columns:repeat(2,minmax(0,1fr))!important'), '<=390 history metrics restore a two-column layout');
 expect(currentCss.includes('font-variant-numeric:tabular-nums'), 'dense mobile numeric surfaces use stable tabular numerals');
 expect(currentCss.includes(':focus-visible'), 'current UI layer encodes a visible keyboard focus state');
 expect(currentCss.includes('prefers-reduced-motion:reduce'), 'current UI layer honors reduced-motion preference');
 
-expect(packageJson.version === '5.0.0', `package version is V5.0.0 (${packageJson.version})`);
+expect(packageJson.version === '5.0.0', `package version remains V5.0 baseline while V5.1 Mobile UX hardening is feature-scoped (${packageJson.version})`);
 expect(packageJson.scripts?.['check:ui:static'] === 'node scripts/ui-integrity-static-check.mjs', 'package exposes the UI integrity gate');
 expect(packageJson.scripts?.['check:release:static']?.includes('check:v5:mobile:static') && packageJson.scripts?.['check:release:static']?.includes('check:ui:static'), 'release static gate composes V5 architecture + UI integrity');
-expect(/^# YTDBNS Monthly Intelligence V5\.0/m.test(readme), 'README reflects V5.0');
+expect(/^# YTDBNS Monthly Intelligence V5\.0/m.test(readme), 'README retains the V5.0 production baseline during V5.1 feature hardening');
 expect(/Production status/i.test(readme), 'README records current production status');
 expect(/Current production architecture/i.test(architecture), 'architecture document describes the current production architecture');
 
@@ -129,4 +134,4 @@ if (failures.length) {
   console.error(`\nUI integrity static gate failed: ${failures.length} issue(s).`);
   process.exit(1);
 }
-console.log('\nUI integrity static gate passed for Desktop + V5 Native Mobile.');
+console.log('\nUI integrity static gate passed for Desktop + V5.1 Native Mobile.');
