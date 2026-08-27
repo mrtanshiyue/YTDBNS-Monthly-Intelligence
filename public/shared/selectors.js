@@ -53,11 +53,17 @@
 
   function overviewModel(runtimeState) {
     const rawSummary = runtimeState?.dashboard?.summary || {};
-    const summary = normalizeSummary(rawSummary);
+    const baseSummary = normalizeSummary(rawSummary);
+    const inventory = inventoryModel(runtimeState);
+    const summary = Object.freeze({
+      ...baseSummary,
+      inventoryValue: baseSummary.inventoryValue ?? (inventory.detailAvailable ? inventory.totals.inventoryValue : null),
+      fulfillableUnits: baseSummary.fulfillableUnits ?? (inventory.detailAvailable ? inventory.totals.fulfillable : null)
+    });
     const series = Array.isArray(runtimeState?.dashboard?.series) ? runtimeState.dashboard.series : [];
     return Object.freeze({
       summary,
-      insights: overviewInsights(rawSummary),
+      insights: overviewInsights(summary),
       salesSeries: series.map(row => ({ label: row.label, value: value(row.sales, row.businessSales, row.business_sales) })).filter(row => row.value != null),
       loading: Boolean(runtimeState?.loading),
       mode: runtimeState?.mode || 'unknown',
