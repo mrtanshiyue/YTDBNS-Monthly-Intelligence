@@ -105,6 +105,7 @@
     max-width:100%;
     overflow-x:clip;
     padding:18px 16px 24px;
+    background:var(--mi-bg,#edf2f5)!important;
   }
 
   .v5-mobile-runtime-notice{
