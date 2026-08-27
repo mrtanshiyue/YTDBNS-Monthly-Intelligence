@@ -107,7 +107,16 @@
       </div>`;
   }
 
-  function render() {
+  function selectorForFocus(element) {
+    if (!(element instanceof HTMLElement) || !root.contains(element)) return null;
+    const action = element.dataset.mobileAction;
+    if (action) return `[data-mobile-action="${action}"]`;
+    const route = element.dataset.mobileRoute;
+    if (route) return `[data-mobile-route="${route}"]`;
+    return null;
+  }
+
+  function render({ focusSelector = selectorForFocus(document.activeElement) } = {}) {
     root.innerHTML = `
       <div class="v5-mobile-app">
         <header class="v5-mobile-topbar">
@@ -121,12 +130,13 @@
         <nav class="v5-mobile-bottom-nav" aria-label="手机端主导航">${navMarkup()}</nav>
         ${moreMarkup()}
       </div>`;
+    if (focusSelector) requestAnimationFrame(() => root.querySelector(focusSelector)?.focus({ preventScroll: true }));
   }
 
   function setRoute(route) {
     if (route === 'more') {
       ui.moreOpen = true;
-      render();
+      render({ focusSelector: '[data-mobile-sheet="more"] .v5-mobile-sheet-head button' });
       return;
     }
     if (!TITLES[route]) return;
@@ -163,7 +173,7 @@
     if (action === 'close-more') {
       if (event.target.closest('[data-mobile-sheet]') && !event.target.closest('.v5-mobile-sheet-head button')) return;
       ui.moreOpen = false;
-      render();
+      render({ focusSelector: '.v5-mobile-bottom-nav [data-mobile-route="more"]' });
     } else if (action === 'refresh') {
       refresh();
     } else if (action === 'period') {
