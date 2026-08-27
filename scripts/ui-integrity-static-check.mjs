@@ -28,6 +28,7 @@ const coreCss = read('public/mobile/views/core.css');
 const secondaryCss = read('public/mobile/views/secondary.css');
 const overviewCss = read('public/mobile/views/overview.css');
 const overview = read('public/mobile/views/overview.js');
+const returnsView = read('public/mobile/views/returns.js');
 const compareCss = read('public/mobile/mobile-compare.css');
 const mobileCss = [shellCss, read('public/mobile/mobile-interactions.css'), compareCss, overviewCss, coreCss, secondaryCss].join('\n');
 const recordViews = ['ads','products','inventory','charges'].map(name => read(`public/mobile/views/${name}.js`));
@@ -74,6 +75,7 @@ expect(shell.includes("typeof runtime.refresh === 'function'") && shell.includes
 expect(shell.includes('runtimeNoticeMarkup') && shell.includes("state.mode === 'offline'"), 'mobile shell exposes explicit loading/error/offline status');
 expect(shell.includes('aria-busy=') && shell.includes('aria-disabled='), 'mobile shell publishes refresh busy semantics without stealing focus');
 expect(shellCss.includes('.v5-mobile-runtime-notice') && shellCss.includes('.v5-mobile-runtime-spinner'), 'mobile runtime state has a dedicated visual treatment');
+expect(shellCss.includes('background:var(--mi-bg,#edf2f5)!important'), 'mobile content canvas stays neutral below the graphite topbar');
 expect(!shell.includes('分阶段重写队列'), 'mobile fallback no longer exposes development-phase copy');
 
 for (const [name, source] of [['ads',recordViews[0]],['products',recordViews[1]],['inventory',recordViews[2]],['charges',recordViews[3]]]) {
@@ -83,6 +85,8 @@ for (const [name, source] of [['ads',recordViews[0]],['products',recordViews[1]]
 expect(currentCss.includes('V5 Mobile Intelligence Terminal') && currentCss.includes('.v5-intel-status') && currentCss.includes('.v5-intel-efficiency'), 'mobile high-density intelligence visual system is encoded in the canonical UI layer');
 expect(overview.includes('v5-intel-status') && overview.includes('v5-intel-primary') && overview.includes('v5-intel-ops'), 'Overview renders status, primary business and operational intelligence tiers');
 expect(overview.includes('data-v5-open-compare') && overview.includes('s.fulfillableUnits') && overview.includes('s.cvr') && overview.includes('s.returns'), 'Overview exposes compare and dense operational metrics from real selectors');
+expect(overview.includes('const isLoading = Boolean(runtimeState?.loading)') && overview.includes("isLoading ? 'Updating'"), 'Overview data-health state cannot report Ready while range data is loading');
+expect(recordViews[0].includes('const adSalesShare') && recordViews[0].includes('Number(adSalesShare || 0) * 100'), 'Ads Ad Sales micro bar is driven by real ad-sales share instead of decorative ROAS reuse');
 expect(compare.includes('let lastFocus = null') && compare.includes('focusClose()') && compare.includes('lastFocus.focus'), 'Mobile Compare restores trigger focus');
 expect(compare.includes("event.key !== 'Tab'") && compare.includes("event.key === 'Escape'"), 'Mobile Compare traps focus and supports Escape');
 expect(compare.includes('let requestSerial = 0') && compare.includes('requestId !== requestSerial'), 'Mobile Compare ignores stale async responses after close');
@@ -104,6 +108,8 @@ expect(selectors.includes('function inventorySource(runtimeState)') && selectors
 expect(selectors.includes('const cvrFallback') && selectors.includes('cvr: value(raw.cvr, raw.traffic_cvr, cvrFallback)'), 'summary CVR has a units/sessions fallback');
 expect(selectors.includes('hasProductSessions') && selectors.includes('summary.cvr'), 'product totals preserve summary CVR when row detail is unavailable');
 expect(secondarySelectors.includes('normalized.length ? reasonTotal : summary.returns'), 'returns summary remains truthful without reason-level detail');
+expect(secondarySelectors.includes('refundSales: summary.refundSales ?? reasonRefundTotal') && returnsView.includes('const refundAmount = m.refundSales'), 'returns refund amount uses complete summary or all reason rows and never truncates to Top 30');
+expect(secondarySelectors.includes("(b.createdAt || '').localeCompare(a.createdAt || '')"), 'Data latest import is resolved deterministically by creation time');
 
 expect(!/font-size\s*:\s*(?:8|9)px\b/i.test(mobileCss), 'loaded native mobile CSS contains no 8px/9px text');
 expect(coreCss.includes('.v5-record-metric span') && coreCss.includes('font-size:10px'), 'record metric labels meet the raised readability floor');
