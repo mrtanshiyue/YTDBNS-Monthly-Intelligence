@@ -3,6 +3,7 @@
 
   const mobileRoot = document.getElementById('mobileAppRoot');
   const runtime = window.YT_SHARED_RUNTIME;
+  const fmt = window.YT_SHARED_FORMATTERS;
   if (!mobileRoot || !runtime) return;
 
   const overlayRoot = document.createElement('div');
@@ -136,30 +137,31 @@
   function buildSearchIndex() {
     const state = runtime.getState();
     const detail = state.monthDetail || {};
+    const demo = state.mode === 'live' ? null : window.YT_DEMO?.current;
     const rows = MODULES.map(([route, title, subtitle]) => normalizeRecord(route, 'module', title, subtitle, 'MODULE', {}));
 
-    const campaigns = detail.campaigns || window.YT_DEMO?.current?.campaigns || [];
+    const campaigns = detail.campaigns || demo?.campaigns || [];
     campaigns.slice(0, 120).forEach(row => rows.push(normalizeRecord(
       'ads', 'campaign', pick(row.campaign, row.name, row.campaign_name), pick(row.portfolio, '广告活动'), 'CAMPAIGN', {
         Spend: pick(row.spend, row.ad_spend), Sales: pick(row.sales, row.ad_sales), ACOS: row.acos, Orders: row.orders, CTR: row.ctr, CVR: row.cvr
       }
     )));
 
-    const products = detail.products || window.YT_DEMO?.current?.skus || [];
+    const products = detail.products || demo?.skus || [];
     products.slice(0, 160).forEach(row => rows.push(normalizeRecord(
       'products', 'product', pick(row.sku, row.asin), pick(row.asin, row.model, '商品'), 'SKU / ASIN', {
         Sales: row.sales, Units: row.units, Sessions: row.sessions, CVR: row.cvr, 'Buy Box': pick(row.buy_box, row.buyBox)
       }
     )));
 
-    const inventory = detail.inventory || window.YT_DEMO?.current?.inventoryRows || [];
+    const inventory = detail.inventory || demo?.inventoryRows || [];
     inventory.slice(0, 160).forEach(row => rows.push(normalizeRecord(
       'inventory', 'inventory', pick(row.sku, row.asin), pick(row.asin, row.model, '库存'), 'INVENTORY', {
         Fulfillable: row.fulfillable, Inbound: row.inbound, Total: row.total, 'Inventory Value': pick(row.inventory_value, row.inventoryValue), Unsellable: row.unsellable
       }
     )));
 
-    const charges = state.charges?.rows || detail.charges || window.YT_DEMO?.current?.chargeNames || [];
+    const charges = state.charges?.rows || detail.charges || demo?.chargeNames || [];
     charges.slice(0, 100).forEach(row => rows.push(normalizeRecord(
       'charges', 'charge', pick(row.name, row.charge_name), pick(row.category, 'Amazon 扣费'), 'CHARGE', {
         Debit: pick(row.debit, row.gross_debit), Credit: pick(row.credit, row.credits), Amount: pick(row.amount, row.net_cost), Count: pick(row.count, row.row_count)
@@ -206,13 +208,12 @@
     renderSearchResults('');
   }
 
-  function formatDetailValue(value) {
+  function formatDetailValue(label, value) {
     if (value == null || value === '') return '—';
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      if (Math.abs(value) <= 1 && value !== 0) return `${(value * 100).toFixed(1)}%`;
-      return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
-    }
-    return String(value);
+    if (typeof value !== 'number' || !Number.isFinite(value)) return String(value);
+    if (/ACOS|TACOS|CTR|CVR|BUY BOX|RATE|MARGIN/i.test(label)) return fmt?.percent ? fmt.percent(value) : `${(value * 100).toFixed(1)}%`;
+    if (/SPEND|SALES|VALUE|AMOUNT|DEBIT|CREDIT|PROFIT|REFUND/i.test(label)) return fmt?.money ? fmt.money(value, 2) : `$${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+    return fmt?.number ? fmt.number(value, 2) : value.toLocaleString('en-US', { maximumFractionDigits: 2 });
   }
 
   function openDetail(record) {
@@ -230,7 +231,7 @@
             <small>${esc(record.subtitle || '当前期间经营记录')}</small>
           </section>
           <section class="v5-detail-grid" aria-label="详情指标">
-            ${metrics.length ? metrics.map(([label, value]) => `<div class="v5-detail-metric"><span>${esc(label)}</span><strong>${esc(formatDetailValue(value))}</strong></div>`).join('') : '<div class="v5-detail-metric"><span>状态</span><strong>暂无更多字段</strong></div>'}
+            ${metrics.length ? metrics.map(([label, value]) => `<div class="v5-detail-metric"><span>${esc(label)}</span><strong>${esc(formatDetailValue(label, value))}</strong></div>`).join('') : '<div class="v5-detail-metric"><span>状态</span><strong>暂无更多字段</strong></div>'}
           </section>
           <p class="v5-detail-footnote">这是 V5.0 Mobile Full-screen Detail，不使用 Desktop Detail Drawer。当前为只读查看，不触发任何数据写入。</p>
         </div>
