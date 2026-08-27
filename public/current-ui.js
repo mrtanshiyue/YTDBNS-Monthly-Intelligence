@@ -78,7 +78,7 @@
         if (event.key === 'ArrowLeft') index = (index - 1 + buttons.length) % buttons.length;
         if (event.key === 'Home') index = 0;
         if (event.key === 'End') index = buttons.length - 1;
-        buttons[index].tabIndex = 0;
+        buttons.forEach((button, buttonIndex) => { button.tabIndex = buttonIndex === index ? 0 : -1; });
         buttons[index].focus({ preventScroll: true });
         event.preventDefault();
       });
@@ -134,7 +134,7 @@
         if (event.key === 'ArrowLeft') index = (index - 1 + enabled.length) % enabled.length;
         if (event.key === 'Home') index = 0;
         if (event.key === 'End') index = enabled.length - 1;
-        enabled[index].tabIndex = 0;
+        enabled.forEach((button, buttonIndex) => { button.tabIndex = buttonIndex === index ? 0 : -1; });
         enabled[index].focus();
         enabled[index].click();
         event.preventDefault();
@@ -175,10 +175,17 @@
       const trigger = $(triggerSelector);
       const surface = $(surfaceSelector);
       if (!trigger || !surface) return;
-      const open = surfaceOpen(surface);
-      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
-      surface.setAttribute('aria-hidden', open ? 'false' : 'true');
+      trigger.setAttribute('aria-expanded', surfaceOpen(surface) ? 'true' : 'false');
     });
+  }
+
+  function syncDesktopModalLock() {
+    if (!desktop.matches) {
+      body.classList.remove('drawer-lock');
+      return;
+    }
+    const modalOpen = DIALOGS.some(([selector,, modal]) => modal && surfaceOpen($(selector)));
+    body.classList.toggle('drawer-lock', modalOpen);
   }
 
   function syncDialogSemantics() {
@@ -191,19 +198,23 @@
       if (modal) dialog.setAttribute('aria-modal', 'true');
       else dialog.removeAttribute('aria-modal');
       if (labelledBy) dialog.setAttribute('aria-labelledby', labelledBy);
-      dialog.setAttribute('aria-hidden', open ? 'false' : 'true');
 
       if (open && !wasOpen) {
+        dialog.setAttribute('aria-hidden', 'false');
         const active = document.activeElement;
         if (active instanceof HTMLElement && !dialog.contains(active)) dialogReturnFocus.set(dialog, active);
         if (initialFocus) requestAnimationFrame(() => dialog.querySelector(initialFocus)?.focus({ preventScroll: true }));
       } else if (!open && wasOpen) {
         const target = dialogReturnFocus.get(dialog);
-        if (target instanceof HTMLElement && target.isConnected) requestAnimationFrame(() => target.focus({ preventScroll: true }));
+        if (target instanceof HTMLElement && target.isConnected) target.focus({ preventScroll: true });
         dialogReturnFocus.delete(dialog);
+        dialog.setAttribute('aria-hidden', 'true');
+      } else {
+        dialog.setAttribute('aria-hidden', open ? 'false' : 'true');
       }
       dialogState.set(dialog, open);
     });
+    syncDesktopModalLock();
   }
 
   function visibleFocusable(root) {
@@ -225,6 +236,24 @@
     }
   }
 
+  function closeTopmostDesktopSurface() {
+    const candidates = [
+      ['#commandPalette', () => $('#commandBackdrop')?.click()],
+      ['#panelModal', () => $('#panelModalClose')?.click()],
+      ['#detailDrawer', () => $('#detailClose')?.click()],
+      ['#importDrawer', () => $('#drawerClose')?.click()],
+      ['#viewPopover', surface => surface.classList.remove('show')],
+      ['#periodPopover', surface => surface.classList.remove('show')]
+    ];
+    for (const [selector, close] of candidates) {
+      const surface = $(selector);
+      if (!surfaceOpen(surface)) continue;
+      close(surface);
+      return true;
+    }
+    return false;
+  }
+
   function bindDesktopKeyboard() {
     if (document.documentElement.dataset.currentUiDesktopKeys) return;
     document.documentElement.dataset.currentUiDesktopKeys = '1';
@@ -238,14 +267,11 @@
         return;
       }
       if (event.key !== 'Escape') return;
-      const importDrawer = $('#importDrawer');
-      if (surfaceOpen(importDrawer)) {
-        $('#drawerClose')?.click();
-        return;
+      if (closeTopmostDesktopSurface()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
       }
-      const period = $('#periodPopover');
-      if (surfaceOpen(period)) period.classList.remove('show');
-    });
+    }, true);
   }
 
   function bindMobileOverlayTrap() {
@@ -281,7 +307,7 @@
 
   [...new Set([...DISCLOSURES.map(([, surface]) => surface), ...DIALOGS.map(([surface]) => surface)])].forEach(surfaceSelector => {
     const surface = $(surfaceSelector);
-    if (surface) new MutationObserver(() => { syncDisclosureStates(); syncDialogSemantics(); }).observe(surface, { attributes: true, attributeFilter: ['class','style'] });
+    if (surface) new MutationObserver(() => { syncDialogSemantics(); syncDisclosureStates(); }).observe(surface, { attributes: true, attributeFilter: ['class','style'] });
   });
 
   document.addEventListener('click', event => {
