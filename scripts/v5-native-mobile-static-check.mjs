@@ -91,6 +91,9 @@ expect(interactions.includes("mount('search'") && interactions.includes('v5-full
 expect(interactions.includes("mount('detail'") && interactions.includes('v5-fullscreen'), 'Detail uses a full-screen mobile surface');
 expect(interactions.includes('data-v5-date-from') && interactions.includes('data-v5-date-to'), 'Period supports mobile custom date controls');
 expect(interactions.includes("state.mode === 'live' || !state.monthDetail ? null"), 'Search never falls back to stale Demo detail outside the active Demo month');
+expect(interactions.includes('const METRICS = [') && interactions.includes("['ACOS', 'acos', 'ads'") && interactions.includes("['库存资金', 'inventoryValue', 'inventory'"), 'Search index includes core business metrics');
+expect(interactions.includes("'function', '选择期间'") && interactions.includes("'function', '对比上期'"), 'Search index includes mobile function entries');
+expect(interactions.includes("item.action === 'period'") && interactions.includes("item.action === 'compare'"), 'Search actions open native Period and Compare surfaces');
 expect(interactions.includes('inputmode="search"'), 'Search uses a mobile search keyboard contract');
 expect(interactionCss.includes('.v5-search-field input') && interactionCss.includes('font-size:16px'), 'mobile inputs use 16px text to avoid iOS focus zoom');
 expect(interactionCss.includes('overscroll-behavior:contain'), 'interaction surfaces own their scrolling');
