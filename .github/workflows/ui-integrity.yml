@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - v51-mobile-ux-hardening
+      - v51-iphone15-edge-to-edge
 
 permissions:
   contents: read
