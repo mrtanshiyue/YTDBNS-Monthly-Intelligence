@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="./v54.css" />
   <link rel="stylesheet" href="./v54-acceptance.css" />
   <link rel="stylesheet" href="./mobile/mobile-shell.css" />
+  <link rel="stylesheet" href="./mobile/mobile-interactions.css" />
   <link rel="stylesheet" href="./mobile/views/overview.css" />
   <link rel="stylesheet" href="./mobile/views/core.css" />
   <link rel="stylesheet" href="./mobile/views/secondary.css" />
@@ -65,7 +66,7 @@
             <div class="period-pane active" data-pane="quick">
               <button data-quick="current">当前月份</button><button data-quick="previous">上一个月</button><button data-quick="30">最近30天</button><button data-quick="90">最近90天</button><button data-quick="ytd">今年至今</button>
             </div>
-            <div class="period-pane" data-pane="month">
+            <div class="period-pane active" data-pane="month">
               <label>选择月份<select id="monthSelect"></select></label>
               <button class="apply-btn" id="applyMonth">应用</button>
             </div>
@@ -203,5 +204,7 @@
   <script src="./mobile/views/history.js"></script>
   <script src="./mobile/views/data.js"></script>
   <script src="./mobile/mobile-shell.js"></script>
+  <script src="./mobile/mobile-app-bridge.js"></script>
+  <script src="./mobile/mobile-interactions.js"></script>
 </body>
 </html>
