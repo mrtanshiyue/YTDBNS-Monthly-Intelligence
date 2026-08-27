@@ -169,6 +169,16 @@
     return setRange(from, to);
   }
 
+  async function comparePrevious() {
+    if (!state.from || !state.to) return null;
+    const days = daysBetween(state.from, state.to);
+    const to = addDays(state.from, -1);
+    const from = addDays(to, -(days - 1));
+    if (state.mode !== 'live') return Object.freeze({ from, to, dashboard: null, unavailable: true });
+    const dashboard = await requestJson(`/api/dashboard?store=yt-us&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    return Object.freeze({ from, to, dashboard, unavailable: false });
+  }
+
   async function start() {
     if (state.started) return snapshot();
     state.started = true;
@@ -211,6 +221,7 @@
     },
     setRange,
     setQuickRange,
+    comparePrevious,
     helpers: Object.freeze({ monthStart, monthEnd, addDays, daysBetween, rangeLabel, isSingleFullMonth })
   });
 })();
