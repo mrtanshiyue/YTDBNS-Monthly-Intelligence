@@ -11,7 +11,7 @@
     const empty = !rows.length ? `
       <div class="v5-core-empty"><strong>当前期间没有 SKU 明细</strong><span>商品明细使用完整月份数据；顶部汇总仍保留所选期间经营口径。</span></div>` : '';
     const cards = rows.map(row => `
-      <article class="v5-record-card" data-record-type="product" data-record-id="${esc(row.id)}">
+      <button type="button" class="v5-record-card" data-record-type="product" data-record-id="${esc(row.id)}" aria-label="查看商品 ${esc(row.sku)} 详情">
         <div class="v5-record-card-head">
           <div class="v5-record-card-title"><span>${esc(row.model || 'PRODUCT')}</span><strong>${esc(row.sku)}</strong><small>${esc(row.asin)}</small></div>
           <div class="v5-record-primary"><span>Sales</span><strong>${fmt.compactMoney(row.sales)}</strong></div>
@@ -23,13 +23,13 @@
           <div class="v5-record-metric"><span>Buy Box</span><strong>${fmt.percent(row.buyBox)}</strong></div>
         </div>
         <div class="v5-record-card-foot"><span class="v5-record-chip">SKU / ASIN</span><span>详情 ›</span></div>
-      </article>`).join('');
+      </button>`).join('');
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="products" aria-labelledby="v5MobileViewTitle">
         <div class="v5-mobile-view-heading">
           <div><span class="v5-mobile-eyebrow">PRODUCTS</span><h1 id="v5MobileViewTitle">商品</h1><p>用 SKU 卡片替代宽表扫描</p></div>
-          <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period"><span>${esc(model.rangeLabel)}</span><i>›</i></button>
+          <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(model.rangeLabel)}</span><i aria-hidden="true">›</i></button>
         </div>
         <section class="v5-core-stat-grid" aria-label="商品核心指标">
           <div class="v5-core-stat"><span>销售额</span><strong>${fmt.compactMoney(model.totals.sales)}</strong><small>SKU 明细合计</small></div>
