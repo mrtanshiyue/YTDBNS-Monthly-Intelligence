@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - audit/v5-pc-mobile-polish
+      - v51-mobile-ux-hardening
 
 permissions:
   contents: read
