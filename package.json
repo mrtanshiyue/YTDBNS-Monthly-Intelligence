@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "check:mobile:static": "node scripts/mobile-responsive-static-check.mjs",
+    "check:mobile": "node scripts/mobile-responsive-acceptance.mjs",
     "db:create": "wrangler d1 create ytdbns-monthly-db",
     "db:migrate:local": "wrangler d1 migrations apply ytdbns-monthly-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply ytdbns-monthly-db --remote",
     "r2:create": "wrangler r2 bucket create ytdbns-monthly-raw-reports"
   },
   "devDependencies": {
+    "playwright-core": "1.62.1",
     "wrangler": "^4.0.0"
   }
 }
