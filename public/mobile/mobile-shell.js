@@ -13,6 +13,46 @@
     document.head.appendChild(link);
   }
 
+  const standaloneStyleId = 'v51IphoneStandaloneStyles';
+  if (!document.getElementById(standaloneStyleId)) {
+    const link = document.createElement('link');
+    link.id = standaloneStyleId;
+    link.rel = 'stylesheet';
+    link.href = './mobile/iphone-standalone.css';
+    document.head.appendChild(link);
+  }
+
+  if (!document.querySelector('link[rel="manifest"]')) {
+    const manifest = document.createElement('link');
+    manifest.rel = 'manifest';
+    manifest.href = './manifest.webmanifest';
+    document.head.appendChild(manifest);
+  }
+
+  if (!document.querySelector('link[rel="icon"]')) {
+    const iconLink = document.createElement('link');
+    iconLink.rel = 'icon';
+    iconLink.type = 'image/svg+xml';
+    iconLink.href = './yt-icon.svg';
+    document.head.appendChild(iconLink);
+  }
+
+  if (!document.querySelector('meta[name="mobile-web-app-capable"]')) {
+    const capable = document.createElement('meta');
+    capable.name = 'mobile-web-app-capable';
+    capable.content = 'yes';
+    document.head.appendChild(capable);
+  }
+
+  const standaloneMedia = window.matchMedia('(display-mode: standalone)');
+  function syncStandaloneMode() {
+    const standalone = Boolean(standaloneMedia.matches || window.navigator.standalone === true);
+    document.documentElement.classList.toggle('v5-standalone', standalone);
+    document.documentElement.dataset.v5Display = standalone ? 'standalone' : 'browser';
+  }
+  syncStandaloneMode();
+  standaloneMedia.addEventListener?.('change', syncStandaloneMode);
+
   const media = window.matchMedia('(max-width: 860px)');
   const runtime = window.YT_SHARED_RUNTIME;
   const ICONS = {
@@ -255,6 +295,7 @@
 
   function activate() {
     const mobile = media.matches;
+    syncStandaloneMode();
     root.hidden = !mobile;
     root.setAttribute('aria-hidden', mobile ? 'false' : 'true');
     document.body.classList.toggle('v5-native-mobile', mobile);
