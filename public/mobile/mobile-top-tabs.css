@@ -1,0 +1,102 @@
+/* YTDBNS Mobile — nine-route top navigation parity for iPhone 15+.
+   Loaded after the shell convergence layers by mobile-app-bridge.js. */
+
+@media (max-width:860px){
+  body.v5-native-mobile .v5-mobile-app{
+    padding-bottom:0!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-bottom-nav.v5-mobile-top-tabs{
+    position:sticky!important;
+    z-index:29!important;
+    top:var(--v5-mobile-topbar-height,62px)!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    display:grid!important;
+    width:100%!important;
+    min-height:54px!important;
+    grid-template-columns:repeat(9,minmax(0,1fr))!important;
+    gap:0!important;
+    padding:5px 6px!important;
+    overflow:visible!important;
+    border:0!important;
+    border-bottom:1px solid rgba(112,204,216,.13)!important;
+    border-radius:0!important;
+    background:rgba(6,26,36,.97)!important;
+    box-shadow:0 8px 24px rgba(2,14,20,.13)!important;
+    -webkit-backdrop-filter:saturate(145%) blur(18px)!important;
+    backdrop-filter:saturate(145%) blur(18px)!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-bottom-nav.v5-mobile-top-tabs .v5-mobile-nav-item{
+    position:relative!important;
+    display:flex!important;
+    min-width:0!important;
+    width:auto!important;
+    height:44px!important;
+    min-height:44px!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:0!important;
+    padding:0 2px!important;
+    border-radius:11px!important;
+    background:transparent!important;
+    color:#78909a!important;
+    font-size:12px!important;
+    font-weight:680!important;
+    line-height:1!important;
+    letter-spacing:0!important;
+    white-space:nowrap!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-bottom-nav.v5-mobile-top-tabs .v5-mobile-nav-item.active{
+    background:rgba(64,201,214,.13)!important;
+    color:#4bd0db!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-bottom-nav.v5-mobile-top-tabs .v5-mobile-nav-item.active::before{
+    display:none!important;
+    content:none!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-bottom-nav.v5-mobile-top-tabs .v5-mobile-nav-icon{
+    display:none!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-content{
+    padding-bottom:calc(28px + env(safe-area-inset-bottom))!important;
+  }
+}
+
+@supports (-webkit-touch-callout:none){
+  @media (max-width:860px){
+    html[data-v5-display="browser"] body.v5-native-mobile .v5-mobile-bottom-nav.v5-mobile-top-tabs{
+      border-bottom:1px solid rgba(17,38,47,.08)!important;
+      background:rgba(250,250,252,.94)!important;
+      box-shadow:0 6px 18px rgba(27,48,57,.055)!important;
+      -webkit-backdrop-filter:saturate(180%) blur(24px)!important;
+      backdrop-filter:saturate(180%) blur(24px)!important;
+    }
+
+    html[data-v5-display="browser"] body.v5-native-mobile .v5-mobile-bottom-nav.v5-mobile-top-tabs .v5-mobile-nav-item{
+      color:#61747d!important;
+    }
+
+    html[data-v5-display="browser"] body.v5-native-mobile .v5-mobile-bottom-nav.v5-mobile-top-tabs .v5-mobile-nav-item.active{
+      background:rgba(42,181,195,.11)!important;
+      color:#147f8d!important;
+    }
+
+    html[data-v5-display="browser"] body.v5-native-mobile .v5-mobile-content{
+      padding-bottom:calc(96px + env(safe-area-inset-bottom))!important;
+    }
+  }
+}
+
+@media (max-width:860px) and (display-mode:standalone){
+  html.v5-standalone body.v5-native-mobile .v5-mobile-content{
+    padding-bottom:calc(30px + env(safe-area-inset-bottom))!important;
+  }
+}
