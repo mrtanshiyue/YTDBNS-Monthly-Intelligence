@@ -38,7 +38,7 @@ async function box(locator) {
   return locator.evaluate(el => {
     const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);
-    return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom, display: s.display, visibility: s.visibility, overflowX: s.overflowX, overflowY: s.overflowY, position: s.position, fontSize: s.fontSize };
+    return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom, display: s.display, visibility: s.visibility, overflowX: s.overflowX, overflowY: s.overflowY, position: s.position, fontSize: s.fontSize, touchAction: s.touchAction };
   });
 }
 
@@ -147,12 +147,32 @@ for (const [name, width, height, mobile] of cases) {
     assert(parseFloat(dateBox.fontSize) >= 16, `period date input font under 16px (${dateBox.fontSize})`, name);
     const periodSheet = await box(page.locator('.v5-interaction-sheet'));
     assert(['auto', 'scroll'].includes(periodSheet.overflowY), `Period sheet does not own vertical scrolling (${periodSheet.overflowY})`, name);
-    await page.locator('[data-v5-close-overlay]').first().click();
-    await page.waitForTimeout(80);
+    assert(periodSheet.touchAction === 'pan-y', `Period sheet touch-action is ${periodSheet.touchAction}, expected pan-y`, name);
+
+    await page.locator('[data-v5-quick="30"]').click();
+    await page.waitForSelector('.v5-interaction-sheet', { state: 'detached', timeout: 15000 });
+    await page.locator('.v5-mobile-bottom-nav [data-mobile-route="inventory"]').click();
+    await page.waitForTimeout(150);
+    const snapshotState = await page.evaluate(() => ({
+      rows: window.YT_SHARED_RUNTIME?.getState?.().inventoryDetail?.inventory?.length || 0,
+      snapshotDate: window.YT_SHARED_RUNTIME?.getState?.().inventoryDetail?.inventorySnapshotDate || null
+    }));
+    assert(snapshotState.rows > 0, '30-day range lost the latest valid inventory snapshot rows', name);
+    assert(Boolean(snapshotState.snapshotDate), '30-day range has no inventory snapshot date', name);
+    assert(await page.locator('[data-mobile-view="inventory"] .v5-record-card').count() > 0, 'Inventory view is empty after switching to 30-day range', name);
+
+    await page.locator('[data-mobile-action="period"]').first().click();
+    await page.waitForSelector('.v5-interaction-sheet');
+    await page.locator('[data-v5-quick="current"]').click();
+    await page.waitForSelector('.v5-interaction-sheet', { state: 'detached', timeout: 15000 });
+    await page.locator('.v5-mobile-bottom-nav [data-mobile-route="overview"]').click();
+    await page.waitForTimeout(100);
 
     const searchInput = await openSearch(page, '商品');
     const searchBox = await box(searchInput);
     assert(parseFloat(searchBox.fontSize) >= 16, `search input font under 16px (${searchBox.fontSize})`, name);
+    const fullscreenBody = await box(page.locator('#v5MobileOverlayRoot .v5-fullscreen-body'));
+    assert(fullscreenBody.touchAction === 'pan-y', `Full-screen body touch-action is ${fullscreenBody.touchAction}, expected pan-y`, name);
     assert(await page.locator('[data-v5-search-index]').count() > 0, 'Search returned no module result for 商品', name);
     await page.locator('[data-v5-search-index]').first().click();
     await page.waitForTimeout(100);
