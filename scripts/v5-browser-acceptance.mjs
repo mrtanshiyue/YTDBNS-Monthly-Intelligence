@@ -2,24 +2,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import puppeteer from 'puppeteer-core';
+import { chromium } from 'playwright-core';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;
+const localEntry = pathToFileURL(path.join(root, 'public', 'index.html')).href;
+const entry = process.env.V5_ACCEPTANCE_URL || localEntry;
 const artifactDir = path.join(root, 'artifacts', 'v5-browser-acceptance');
 fs.mkdirSync(artifactDir, { recursive: true });
 
-const chromeCandidates = [
-  process.env.CHROME_BIN,
-  process.env.PUPPETEER_EXECUTABLE_PATH,
-  '/usr/bin/google-chrome',
-  '/usr/bin/google-chrome-stable',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser'
-].filter(Boolean);
-const executablePath = chromeCandidates.find(candidate => fs.existsSync(candidate));
-if (!executablePath) throw new Error(`Chromium executable not found. Checked: ${chromeCandidates.join(', ')}`);
+const executablePath = chromium.executablePath();
+if (!executablePath || !fs.existsSync(executablePath)) {
+  throw new Error(`Playwright Chromium executable not found at ${executablePath || 'unknown path'}. Run: npx playwright-core install chromium`);
+}
 
 const MOBILE = [
   { width: 375, height: 812 },
@@ -32,8 +27,9 @@ const DESKTOP = [
   { width: 1920, height: 1080 }
 ];
 const MOBILE_VIEWS = ['overview', 'ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data'];
+const SECONDARY_VIEWS = new Set(['finance', 'charges', 'returns', 'history', 'data']);
 const failures = [];
-const report = { exactEntry: entry, executablePath, mobile: [], desktop: [] };
+const report = { exactEntry: entry, localEntry, driver: 'playwright-core', executablePath, mobile: [], desktop: [] };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function pass(message) { console.log(`PASS  ${message}`); }
@@ -72,9 +68,13 @@ async function visible(page, selector) {
   }).catch(() => false);
 }
 
+async function activeMatches(page, selector) {
+  return page.evaluate(target => document.activeElement instanceof HTMLElement && document.activeElement.matches(target), selector).catch(() => false);
+}
+
 async function mobileRoute(page, route) {
   await page.evaluate(target => window.YT_MOBILE_APP?.navigate?.(target), route);
-  await page.waitForSelector(`[data-mobile-view="${route}"]`, { visible: true, timeout: 5_000 });
+  await page.waitForSelector(`[data-mobile-view="${route}"]`, { state: 'visible', timeout: 5_000 });
   await sleep(60);
 }
 
@@ -151,62 +151,68 @@ async function testMobileInteractions(page, label) {
   const searchButton = '[data-mobile-action="search"]';
   expect(await visible(page, searchButton), `${label}: Search trigger visible`);
   await page.click(searchButton);
-  await page.waitForSelector('.v5-search-field input', { visible: true, timeout: 4_000 });
+  await page.waitForSelector('.v5-search-field input', { state: 'visible', timeout: 4_000 });
   expect(await visible(page, '.v5-fullscreen'), `${label}: Search opens native full-screen surface`);
   await page.keyboard.press('Escape');
-  await sleep(80);
+  await sleep(100);
   expect(!(await visible(page, '.v5-search-field input')), `${label}: Search closes with Escape`);
+  expect(await activeMatches(page, searchButton), `${label}: Search restores trigger focus`);
 
   const periodButton = '[data-mobile-action="period"]';
   expect(await visible(page, periodButton), `${label}: Period trigger visible`);
   await page.click(periodButton);
-  await page.waitForSelector('.v5-interaction-sheet', { visible: true, timeout: 4_000 });
+  await page.waitForSelector('.v5-interaction-sheet', { state: 'visible', timeout: 4_000 });
   expect(await visible(page, '.v5-interaction-sheet'), `${label}: Period opens native bottom sheet`);
   await page.keyboard.press('Escape');
-  await sleep(80);
+  await sleep(100);
   expect(!(await visible(page, '.v5-interaction-sheet')), `${label}: Period closes with Escape`);
+  expect(await activeMatches(page, periodButton), `${label}: Period restores trigger focus`);
 
   const compareButton = '[data-v5-open-compare]';
   expect(await visible(page, compareButton), `${label}: Compare trigger visible`);
   await page.click(compareButton);
-  await page.waitForSelector('#v5MobileCompareRoot .v5-fullscreen', { visible: true, timeout: 4_000 });
+  await page.waitForSelector('#v5MobileCompareRoot .v5-fullscreen', { state: 'visible', timeout: 4_000 });
   expect(await visible(page, '#v5MobileCompareRoot .v5-fullscreen'), `${label}: Compare opens native full-screen surface`);
   await page.keyboard.press('Escape');
-  await sleep(80);
+  await sleep(100);
   expect(!(await visible(page, '#v5MobileCompareRoot .v5-fullscreen')), `${label}: Compare closes with Escape`);
+  expect(await activeMatches(page, compareButton), `${label}: Compare restores trigger focus`);
 
   const moreButton = '[data-mobile-route="more"]';
   expect(await visible(page, moreButton), `${label}: More trigger visible`);
   await page.click(moreButton);
-  await page.waitForSelector('.v5-mobile-sheet', { visible: true, timeout: 4_000 });
+  await page.waitForSelector('.v5-mobile-sheet', { state: 'visible', timeout: 4_000 });
   expect(await visible(page, '.v5-mobile-sheet'), `${label}: More opens native module sheet`);
   await page.keyboard.press('Escape');
-  await sleep(80);
+  await sleep(100);
   expect(!(await visible(page, '.v5-mobile-sheet')), `${label}: More closes with Escape`);
+  expect(await activeMatches(page, moreButton), `${label}: More restores trigger focus`);
 
   await mobileRoute(page, 'ads');
   const cardCount = await page.$$eval('.v5-record-card', cards => cards.length);
   expect(cardCount > 0, `${label}: Ads exposes record cards for Detail acceptance`, `count=${cardCount}`);
   if (cardCount > 0) {
-    await page.click('.v5-record-card');
-    await page.waitForSelector('#v5MobileOverlayRoot .v5-fullscreen', { visible: true, timeout: 4_000 });
+    const detailTrigger = '.v5-record-card';
+    await page.click(detailTrigger);
+    await page.waitForSelector('#v5MobileOverlayRoot .v5-fullscreen', { state: 'visible', timeout: 4_000 });
     expect(await visible(page, '#v5MobileOverlayRoot .v5-fullscreen'), `${label}: record Detail opens native full-screen surface`);
     await page.keyboard.press('Escape');
-    await sleep(80);
+    await sleep(100);
     expect(!(await visible(page, '#v5MobileOverlayRoot .v5-fullscreen')), `${label}: Detail closes with Escape`);
+    expect(await activeMatches(page, detailTrigger), `${label}: Detail restores record focus`);
   }
 }
 
 async function runMobile(browser, viewport) {
   const label = `Mobile ${viewport.width}x${viewport.height}`;
-  const page = await browser.newPage();
-  await page.setViewport({ ...viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
   const signals = await capturePageSignals(page);
   const row = { viewport, views: {}, signals };
   report.mobile.push(row);
   try {
     await load(page);
-    await page.waitForSelector('#mobileAppRoot:not([hidden])', { visible: true, timeout: 8_000 });
+    await page.waitForSelector('#mobileAppRoot:not([hidden])', { state: 'visible', timeout: 8_000 });
     expect(await page.evaluate(() => document.body.classList.contains('v5-native-mobile')), `${label}: Native Mobile runtime selected`);
     expect(await visible(page, '.v5-mobile-bottom-nav'), `${label}: fixed five-item bottom navigation visible`);
     const navCount = await page.$$eval('.v5-mobile-bottom-nav .v5-mobile-nav-item', items => items.length);
@@ -216,6 +222,10 @@ async function runMobile(browser, viewport) {
       await mobileRoute(page, route);
       const overflow = await assertNoHorizontalOverflow(page, `${label} / ${route}`);
       row.views[route] = { overflow };
+      if (SECONDARY_VIEWS.has(route)) {
+        const moreCurrent = await page.$eval('[data-mobile-route="more"]', element => element.getAttribute('aria-current') === 'page');
+        expect(moreCurrent, `${label} / ${route}: More exposes active-group aria-current`);
+      }
     }
 
     await mobileRoute(page, 'overview');
@@ -247,20 +257,20 @@ async function runMobile(browser, viewport) {
   } catch (error) {
     fail(`${label}: Chromium acceptance execution`, error?.stack || error?.message || String(error));
   } finally {
-    await page.close();
+    await context.close();
   }
 }
 
 async function runDesktop(browser, viewport) {
   const label = `Desktop ${viewport.width}x${viewport.height}`;
-  const page = await browser.newPage();
-  await page.setViewport({ ...viewport, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  const page = await context.newPage();
   const signals = await capturePageSignals(page);
   const row = { viewport, signals };
   report.desktop.push(row);
   try {
     await load(page);
-    await page.waitForSelector('.global-nav', { visible: true, timeout: 8_000 });
+    await page.waitForSelector('.global-nav', { state: 'visible', timeout: 8_000 });
     expect(!(await page.evaluate(() => document.body.classList.contains('v5-native-mobile'))), `${label}: Desktop runtime remains Desktop`);
     expect(await visible(page, '.global-nav'), `${label}: Desktop global navigation visible`);
     expect(!(await visible(page, '#mobileAppRoot')), `${label}: Native Mobile root hidden`);
@@ -281,15 +291,17 @@ async function runDesktop(browser, viewport) {
     await sleep(60);
     expect(await page.$eval('#commandPalette', element => element.getAttribute('aria-hidden') === 'false'), `${label}: command palette opens`);
     await page.keyboard.press('Escape');
-    await sleep(60);
+    await sleep(100);
     expect(await page.$eval('#commandPalette', element => element.getAttribute('aria-hidden') === 'true'), `${label}: command palette closes with Escape`);
+    expect(await activeMatches(page, '#commandButton'), `${label}: command palette restores trigger focus`);
 
     await page.click('#periodButton');
     await sleep(60);
     expect(await page.$eval('#periodPopover', element => element.getAttribute('aria-hidden') === 'false'), `${label}: period dialog opens`);
     await page.keyboard.press('Escape');
-    await sleep(60);
+    await sleep(100);
     expect(await page.$eval('#periodPopover', element => element.getAttribute('aria-hidden') === 'true'), `${label}: period dialog closes with Escape`);
+    expect(await activeMatches(page, '#periodButton'), `${label}: period dialog restores trigger focus`);
 
     const nonGet = signals.apiRequests.filter(request => request.method !== 'GET');
     expect(nonGet.length === 0, `${label}: browser emits no write /api methods`, JSON.stringify(nonGet));
@@ -302,12 +314,11 @@ async function runDesktop(browser, viewport) {
   } catch (error) {
     fail(`${label}: Chromium acceptance execution`, error?.stack || error?.message || String(error));
   } finally {
-    await page.close();
+    await context.close();
   }
 }
 
-const browser = await puppeteer.launch({
-  executablePath,
+const browser = await chromium.launch({
   headless: true,
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files', '--disable-gpu']
 });
