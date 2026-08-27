@@ -11,7 +11,7 @@
     const empty = !rows.length ? `
       <div class="v5-core-empty"><strong>当前期间没有 Campaign 明细</strong><span>Campaign 明细使用完整月份数据；自定义日期仍可查看顶部汇总指标。</span></div>` : '';
     const cards = rows.map(row => `
-      <article class="v5-record-card" data-record-type="campaign" data-record-id="${esc(row.id)}">
+      <button type="button" class="v5-record-card" data-record-type="campaign" data-record-id="${esc(row.id)}" aria-label="查看广告活动 ${esc(row.campaign)} 详情">
         <div class="v5-record-card-head">
           <div class="v5-record-card-title"><span>${esc(row.portfolio || 'CAMPAIGN')}</span><strong>${esc(row.campaign)}</strong><small>广告活动</small></div>
           <div class="v5-record-primary"><span>Spend</span><strong>${fmt.money(row.spend, 0)}</strong></div>
@@ -23,13 +23,13 @@
           <div class="v5-record-metric"><span>CTR</span><strong>${fmt.percent(row.ctr, 2)}</strong></div>
         </div>
         <div class="v5-record-card-foot"><span class="v5-record-chip">${esc(row.optimizationLabel)}</span><span>详情 ›</span></div>
-      </article>`).join('');
+      </button>`).join('');
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="ads" aria-labelledby="v5MobileViewTitle">
         <div class="v5-mobile-view-heading">
           <div><span class="v5-mobile-eyebrow">ADVERTISING</span><h1 id="v5MobileViewTitle">广告</h1><p>先看效率，再处理高花费活动</p></div>
-          <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period"><span>${esc(model.rangeLabel)}</span><i>›</i></button>
+          <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(model.rangeLabel)}</span><i aria-hidden="true">›</i></button>
         </div>
         <section class="v5-core-stat-grid" aria-label="广告核心指标">
           <div class="v5-core-stat"><span>ACOS</span><strong>${fmt.percent(model.totals.acos)}</strong><small>Spend / Ad Sales</small></div>
