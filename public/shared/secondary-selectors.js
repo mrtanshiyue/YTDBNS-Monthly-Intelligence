@@ -48,10 +48,15 @@
       amount: value(row.amount, row.refund_sales)
     })).sort((a, b) => b.count - a.count);
     const reasonTotal = normalized.reduce((sum, row) => sum + Number(row.count || 0), 0);
+    const hasReasonRefundAmount = normalized.some(row => row.amount != null);
+    const reasonRefundTotal = hasReasonRefundAmount
+      ? normalized.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+      : null;
     const summary = window.YT_SHARED_SELECTORS.normalizeSummary(runtimeState?.dashboard?.summary || {});
     return Object.freeze({
       rows: normalized,
       total: normalized.length ? reasonTotal : summary.returns,
+      refundSales: summary.refundSales ?? reasonRefundTotal,
       rangeLabel: runtimeState?.rangeLabel || '选择期间'
     });
   }
