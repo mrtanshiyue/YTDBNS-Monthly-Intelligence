@@ -6,15 +6,17 @@
   function normalizeSummary(raw = {}) {
     const sales = value(raw.businessSales, raw.business_sales, raw.sales);
     const profit = value(raw.contributionProfit, raw.contribution_profit, raw.profit);
-    const profitMargin = value(raw.profitMargin, raw.profit_margin, sales ? Number(profit) / Number(sales) : null);
     const adSpend = value(raw.adSpend, raw.ad_spend);
     const adSales = value(raw.adSales, raw.ad_sales);
+    const profitMarginFallback = sales != null && Number(sales) !== 0 && profit != null ? Number(profit) / Number(sales) : null;
+    const acosFallback = adSales != null && Number(adSales) !== 0 && adSpend != null ? Number(adSpend) / Number(adSales) : null;
+    const tacosFallback = sales != null && Number(sales) !== 0 && adSpend != null ? Number(adSpend) / Number(sales) : null;
     return Object.freeze({
       sales,
       profit,
-      profitMargin,
-      acos: value(raw.acos, adSales ? Number(adSpend) / Number(adSales) : null),
-      tacos: value(raw.tacos, sales ? Number(adSpend) / Number(sales) : null),
+      profitMargin: value(raw.profitMargin, raw.profit_margin, profitMarginFallback),
+      acos: value(raw.acos, acosFallback),
+      tacos: value(raw.tacos, tacosFallback),
       adSpend,
       adSales,
       inventoryValue: value(raw.inventoryValue, raw.inventory_value),
