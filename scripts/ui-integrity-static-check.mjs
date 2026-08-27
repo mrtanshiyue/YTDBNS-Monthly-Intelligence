@@ -86,9 +86,9 @@ expect(runtime.includes('let rangeLoadSerial = 0'), 'shared runtime serializes r
 expect(runtime.includes('requestId !== rangeLoadSerial'), 'stale range responses cannot overwrite the active range');
 expect(runtime.includes('clearRangeData();') && runtime.includes('state.from = from') && runtime.includes('state.to = to'), 'range changes clear old data before publishing a new period');
 expect(runtime.includes('async function refresh()') && runtime.includes("state.error = '实时数据服务暂时不可用，请稍后刷新重试。'"), 'runtime refresh re-detects API without silently falling back from live data');
-expect(runtime.includes('function demoDashboard(from, to)') && runtime.includes("daysBetween(from, to) > 100"), 'demo runtime honors the selected range instead of pinning current month data');
+expect(runtime.includes('function demoDashboard(from, to)') && runtime.includes('daysBetween(from, to) > 100'), 'demo runtime honors the selected range instead of pinning current month data');
 expect(runtime.includes('resolveLiveInventoryDetail') && runtime.includes('hasInventorySnapshot'), 'inventory runtime resolves the nearest valid snapshot');
-expect(selectors.includes('runtimeState?.inventoryDetail ||'), 'inventory selector consumes the resolved inventory snapshot first');
+expect(selectors.includes('function inventorySource(runtimeState)') && selectors.includes('if (runtimeState?.inventoryDetail) return runtimeState.inventoryDetail;'), 'inventory selector consumes the resolved inventory snapshot first');
 
 expect(!/font-size\s*:\s*(?:8|9)px\b/i.test(mobileCss), 'loaded native mobile CSS contains no 8px/9px text');
 expect(coreCss.includes('.v5-record-metric span') && coreCss.includes('font-size:10px'), 'record metric labels meet the raised readability floor');
