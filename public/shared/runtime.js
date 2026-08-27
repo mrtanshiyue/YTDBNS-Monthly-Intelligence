@@ -67,11 +67,25 @@
   };
   const activeMonth = () => isSingleFullMonth(state.from, state.to) ? state.from.slice(0, 7) : null;
   const periodMonths = () => state.periods.map(item => typeof item === 'string' ? item : item.month).filter(Boolean);
-  const inventoryReferenceMonth = () => {
-    if (!state.to) return null;
+  const inventoryReferenceMonths = () => {
+    if (!state.to) return [];
     const ceiling = state.to.slice(0, 7);
-    return periodMonths().find(month => month <= ceiling) || null;
+    return periodMonths().filter(month => month <= ceiling);
   };
+  const inventoryReferenceMonth = () => inventoryReferenceMonths()[0] || null;
+  const hasInventorySnapshot = detail => Boolean(
+    detail && ((Array.isArray(detail.inventory) && detail.inventory.length > 0) || detail.inventorySnapshotDate)
+  );
+
+  async function resolveLiveInventoryDetail(month, monthDetail) {
+    for (const candidate of inventoryReferenceMonths()) {
+      const detail = candidate === month && monthDetail
+        ? monthDetail
+        : await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(candidate)}`).catch(() => null);
+      if (hasInventorySnapshot(detail)) return detail;
+    }
+    return null;
+  }
 
   function demoDashboard() {
     const current = D.current || {};
@@ -128,21 +142,17 @@
         state.dashboard = await requestJson(`/api/dashboard?store=yt-us&from=${encodeURIComponent(state.from)}&to=${encodeURIComponent(state.to)}`);
         const month = activeMonth();
         state.monthDetail = month ? await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(month)}`).catch(() => null) : null;
-        const inventoryMonth = inventoryReferenceMonth();
-        state.inventoryDetail = month && state.monthDetail && inventoryMonth === month
-          ? state.monthDetail
-          : inventoryMonth
-            ? await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(inventoryMonth)}`).catch(() => null)
-            : null;
+        state.inventoryDetail = await resolveLiveInventoryDetail(month, state.monthDetail);
         state.charges = await requestJson(`/api/charges?store=yt-us&from=${encodeURIComponent(state.from)}&to=${encodeURIComponent(state.to)}`).catch(() => null);
       } else {
         state.dashboard = demoDashboard();
         const month = activeMonth();
         state.monthDetail = month && month === D.current?.meta?.period ? demoMonthDetail() : null;
         const inventoryMonth = inventoryReferenceMonth();
-        state.inventoryDetail = inventoryMonth && inventoryMonth === D.current?.meta?.period
+        const candidate = inventoryMonth && inventoryMonth === D.current?.meta?.period
           ? (state.monthDetail || demoMonthDetail())
           : null;
+        state.inventoryDetail = hasInventorySnapshot(candidate) ? candidate : null;
         state.charges = state.monthDetail?.charges?.length ? { rows: state.monthDetail.charges } : null;
       }
     } catch (error) {
