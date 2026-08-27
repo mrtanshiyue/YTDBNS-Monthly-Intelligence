@@ -17,6 +17,7 @@
     inventoryDetail: null,
     charges: null
   };
+  let rangeLoadSerial = 0;
 
   const monthStart = month => `${month}-01`;
   const monthEnd = month => {
@@ -65,20 +66,21 @@
       return false;
     }
   };
-  const activeMonth = () => isSingleFullMonth(state.from, state.to) ? state.from.slice(0, 7) : null;
+  const activeMonthFor = (from, to) => isSingleFullMonth(from, to) ? from.slice(0, 7) : null;
+  const activeMonth = () => activeMonthFor(state.from, state.to);
   const periodMonths = () => state.periods.map(item => typeof item === 'string' ? item : item.month).filter(Boolean);
-  const inventoryReferenceMonths = () => {
-    if (!state.to) return [];
-    const ceiling = state.to.slice(0, 7);
+  const inventoryReferenceMonths = to => {
+    const ceiling = (to || state.to)?.slice(0, 7);
+    if (!ceiling) return [];
     return periodMonths().filter(month => month <= ceiling);
   };
-  const inventoryReferenceMonth = () => inventoryReferenceMonths()[0] || null;
+  const inventoryReferenceMonth = to => inventoryReferenceMonths(to)[0] || null;
   const hasInventorySnapshot = detail => Boolean(
     detail && ((Array.isArray(detail.inventory) && detail.inventory.length > 0) || detail.inventorySnapshotDate)
   );
 
-  async function resolveLiveInventoryDetail(month, monthDetail) {
-    for (const candidate of inventoryReferenceMonths()) {
+  async function resolveLiveInventoryDetail(month, monthDetail, to) {
+    for (const candidate of inventoryReferenceMonths(to)) {
       const detail = candidate === month && monthDetail
         ? monthDetail
         : await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(candidate)}`).catch(() => null);
@@ -132,34 +134,61 @@
     };
   }
 
+  function clearRangeData() {
+    state.dashboard = null;
+    state.monthDetail = null;
+    state.inventoryDetail = null;
+    state.charges = null;
+  }
+
   async function loadRange() {
-    if (!state.from || !state.to) return snapshot();
+    const from = state.from;
+    const to = state.to;
+    if (!from || !to) return snapshot();
+    const requestId = ++rangeLoadSerial;
     state.loading = true;
     state.error = null;
     publish();
+
     try {
       if (state.mode === 'live') {
-        state.dashboard = await requestJson(`/api/dashboard?store=yt-us&from=${encodeURIComponent(state.from)}&to=${encodeURIComponent(state.to)}`);
-        const month = activeMonth();
-        state.monthDetail = month ? await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(month)}`).catch(() => null) : null;
-        state.inventoryDetail = await resolveLiveInventoryDetail(month, state.monthDetail);
-        state.charges = await requestJson(`/api/charges?store=yt-us&from=${encodeURIComponent(state.from)}&to=${encodeURIComponent(state.to)}`).catch(() => null);
+        const dashboard = await requestJson(`/api/dashboard?store=yt-us&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        if (requestId !== rangeLoadSerial) return snapshot();
+        const month = activeMonthFor(from, to);
+        const monthDetail = month ? await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(month)}`).catch(() => null) : null;
+        if (requestId !== rangeLoadSerial) return snapshot();
+        const inventoryDetail = await resolveLiveInventoryDetail(month, monthDetail, to);
+        if (requestId !== rangeLoadSerial) return snapshot();
+        const charges = await requestJson(`/api/charges?store=yt-us&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).catch(() => null);
+        if (requestId !== rangeLoadSerial) return snapshot();
+
+        state.dashboard = dashboard;
+        state.monthDetail = monthDetail;
+        state.inventoryDetail = inventoryDetail;
+        state.charges = charges;
       } else {
-        state.dashboard = demoDashboard();
-        const month = activeMonth();
-        state.monthDetail = month && month === D.current?.meta?.period ? demoMonthDetail() : null;
-        const inventoryMonth = inventoryReferenceMonth();
+        const dashboard = demoDashboard();
+        const month = activeMonthFor(from, to);
+        const monthDetail = month && month === D.current?.meta?.period ? demoMonthDetail() : null;
+        const inventoryMonth = inventoryReferenceMonth(to);
         const candidate = inventoryMonth && inventoryMonth === D.current?.meta?.period
-          ? (state.monthDetail || demoMonthDetail())
+          ? (monthDetail || demoMonthDetail())
           : null;
+        if (requestId !== rangeLoadSerial) return snapshot();
+        state.dashboard = dashboard;
+        state.monthDetail = monthDetail;
         state.inventoryDetail = hasInventorySnapshot(candidate) ? candidate : null;
-        state.charges = state.monthDetail?.charges?.length ? { rows: state.monthDetail.charges } : null;
+        state.charges = monthDetail?.charges?.length ? { rows: monthDetail.charges } : null;
       }
     } catch (error) {
+      if (requestId !== rangeLoadSerial) return snapshot();
+      clearRangeData();
       state.error = error instanceof Error ? error.message : String(error);
     } finally {
-      state.loading = false;
-      publish();
+      if (requestId === rangeLoadSerial) {
+        state.loading = false;
+        publish();
+      }
     }
     return snapshot();
   }
@@ -206,6 +235,47 @@
     return Object.freeze({ from, to, dashboard, unavailable: false });
   }
 
+  async function loadLiveMetadata() {
+    const [periodPayload, importPayload] = await Promise.all([
+      requestJson('/api/periods?store=yt-us'),
+      requestJson('/api/imports?store=yt-us').catch(() => ({ batches: [] }))
+    ]);
+    state.periods = periodPayload.periods || [];
+    state.imports = importPayload.batches || [];
+  }
+
+  function loadDemoMetadata() {
+    state.periods = [...(D.monthly || [])].reverse();
+    state.imports = [...(D.imports || [])];
+  }
+
+  async function refresh() {
+    const live = await detectApi();
+    if (live) {
+      state.mode = 'live';
+      try {
+        await loadLiveMetadata();
+        state.error = null;
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+      }
+      return loadRange();
+    }
+
+    if (state.mode === 'live') {
+      rangeLoadSerial += 1;
+      state.loading = false;
+      clearRangeData();
+      state.error = '实时数据服务暂时不可用，请稍后刷新重试。';
+      publish();
+      return snapshot();
+    }
+
+    state.mode = 'demo';
+    loadDemoMetadata();
+    return loadRange();
+  }
+
   async function start() {
     if (state.started) return snapshot();
     state.started = true;
@@ -214,17 +284,8 @@
     const live = await detectApi();
     state.mode = live ? 'live' : 'demo';
     try {
-      if (live) {
-        const [periodPayload, importPayload] = await Promise.all([
-          requestJson('/api/periods?store=yt-us'),
-          requestJson('/api/imports?store=yt-us').catch(() => ({ batches: [] }))
-        ]);
-        state.periods = periodPayload.periods || [];
-        state.imports = importPayload.batches || [];
-      } else {
-        state.periods = [...(D.monthly || [])].reverse();
-        state.imports = [...(D.imports || [])];
-      }
+      if (live) await loadLiveMetadata();
+      else loadDemoMetadata();
       const [from, to] = quickRange('current');
       state.from = from;
       state.to = to;
@@ -239,6 +300,7 @@
 
   window.YT_SHARED_RUNTIME = Object.freeze({
     start,
+    refresh,
     getState: snapshot,
     subscribe(listener) {
       if (typeof listener !== 'function') return () => {};
