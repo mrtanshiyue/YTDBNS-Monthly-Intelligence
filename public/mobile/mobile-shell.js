@@ -189,36 +189,58 @@
     if (focusSelector) requestAnimationFrame(() => root.querySelector(focusSelector)?.focus({ preventScroll: true }));
   }
 
-  function scrollDocumentToTop() {
+  function applyRouteScrollReset() {
     const scrollingElement = document.scrollingElement || document.documentElement;
-    try {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    } catch {
-      window.scrollTo(0, 0);
-    }
+    const mobileContent = root.querySelector('.v5-mobile-content');
     if (scrollingElement) {
       scrollingElement.scrollTop = 0;
       scrollingElement.scrollLeft = 0;
     }
-    const mobileContent = root.querySelector('.v5-mobile-content');
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     if (mobileContent) {
       mobileContent.scrollTop = 0;
       mobileContent.scrollLeft = 0;
     }
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }
+
+  function resetRouteScroll() {
+    /* Full-route DOM replacement can trigger browser scroll anchoring/focus adjustment
+       after the click handler. Reset in the current task and again after layout settles. */
+    applyRouteScrollReset();
+    queueMicrotask(applyRouteScrollReset);
+    requestAnimationFrame(() => {
+      applyRouteScrollReset();
+      requestAnimationFrame(applyRouteScrollReset);
+    });
+    setTimeout(applyRouteScrollReset, 0);
+    setTimeout(applyRouteScrollReset, 60);
   }
 
   function rerenderView(focusSelector = selectorForFocus(document.activeElement)) {
-    const x = window.scrollX;
-    const y = window.scrollY;
+    const scrollingElement = document.scrollingElement || document.documentElement;
+    const x = scrollingElement?.scrollLeft ?? window.scrollX;
+    const y = scrollingElement?.scrollTop ?? window.scrollY;
     render({ focusSelector });
-    requestAnimationFrame(() => window.scrollTo(x, y));
+    requestAnimationFrame(() => {
+      if (scrollingElement) {
+        scrollingElement.scrollLeft = x;
+        scrollingElement.scrollTop = y;
+      }
+      window.scrollTo(x, y);
+    });
   }
 
   function setRoute(route) {
     if (!TITLES[route]) return;
     ui.route = route;
     render();
-    requestAnimationFrame(scrollDocumentToTop);
+    resetRouteScroll();
   }
 
   async function refresh() {
@@ -243,6 +265,7 @@
   root.addEventListener('click', event => {
     const routeButton = event.target.closest('[data-mobile-route]');
     if (routeButton) {
+      event.preventDefault();
       event.stopPropagation();
       setRoute(routeButton.dataset.mobileRoute);
       return;
