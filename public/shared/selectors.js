@@ -177,18 +177,20 @@
   function inventoryModel(runtimeState) {
     const detail = inventorySource(runtimeState);
     const inventory = inventoryRows(runtimeState);
+    const detailAvailable = inventory.length > 0 || Boolean(detail?.inventorySnapshotDate);
+    const totalFor = key => detailAvailable ? inventory.reduce((sum, row) => sum + Number(row[key] || 0), 0) : null;
     return Object.freeze({
       inventory,
       totals: Object.freeze({
-        total: inventory.reduce((sum, row) => sum + Number(row.total || 0), 0),
-        fulfillable: inventory.reduce((sum, row) => sum + Number(row.fulfillable || 0), 0),
-        inbound: inventory.reduce((sum, row) => sum + Number(row.inbound || 0), 0),
-        inventoryValue: inventory.reduce((sum, row) => sum + Number(row.inventoryValue || 0), 0),
-        unsellable: inventory.reduce((sum, row) => sum + Number(row.unsellable || 0), 0)
+        total: totalFor('total'),
+        fulfillable: totalFor('fulfillable'),
+        inbound: totalFor('inbound'),
+        inventoryValue: totalFor('inventoryValue'),
+        unsellable: totalFor('unsellable')
       }),
       snapshotDate: detail?.inventorySnapshotDate || null,
       rangeLabel: runtimeState?.rangeLabel || '选择期间',
-      detailAvailable: inventory.length > 0 || Boolean(detail?.inventorySnapshotDate)
+      detailAvailable
     });
   }
 
