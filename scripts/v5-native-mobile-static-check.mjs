@@ -40,6 +40,7 @@ const compare = read('public/mobile/mobile-compare.js');
 const compareCss = read('public/mobile/mobile-compare.css');
 const compareTrigger = read('public/mobile/mobile-compare-trigger.js');
 const runtime = read('public/shared/runtime.js');
+const selectors = read('public/shared/selectors.js');
 const mobileJsFiles = filesUnder('public/mobile', '.js');
 const mobileCssFiles = filesUnder('public/mobile', '.css');
 const sharedJsFiles = filesUnder('public/shared', '.js');
@@ -97,6 +98,9 @@ expect(interactions.includes("item.action === 'period'") && interactions.include
 expect(interactions.includes('inputmode="search"'), 'Search uses a mobile search keyboard contract');
 expect(interactionCss.includes('.v5-search-field input') && interactionCss.includes('font-size:16px'), 'mobile inputs use 16px text to avoid iOS focus zoom');
 expect(interactionCss.includes('overscroll-behavior:contain'), 'interaction surfaces own their scrolling');
+expect(!/v5-mobile-overlay-open\{[^}]*touch-action\s*:\s*none/i.test(interactionCss), 'background lock does not disable descendant touch gestures');
+expect(interactionCss.includes('v5-interaction-sheet') && interactionCss.includes('touch-action:pan-y'), 'Bottom Sheet explicitly preserves vertical touch scrolling');
+expect(interactionCss.includes('.v5-fullscreen-body') && interactionCss.includes('touch-action:pan-y'), 'Full-screen body explicitly preserves vertical touch scrolling');
 expect(bridge.includes("new CustomEvent('v5:navigate'"), 'Search navigation crosses the explicit mobile route bridge');
 expect(shell.includes("root.addEventListener('v5:navigate'"), 'Mobile Shell owns route changes requested by interaction layer');
 
@@ -107,6 +111,10 @@ expect(compare.includes("['ACOS', 'acos', 'pct', 'down']") && compare.includes("
 expect(compare.includes("['广告花费', 'adSpend', 'money', 'neutral']"), 'Compare keeps ad-spend movement semantically neutral');
 expect(compareTrigger.includes('data-v5-open-compare'), 'Overview exposes a one-tap mobile Compare action');
 expect(compareCss.includes('.v5-compare-row') && compareCss.includes('.v5-compare-range'), 'Compare has an independent mobile presentation');
+
+expect(runtime.includes('inventoryDetail: null') && runtime.includes('inventoryReferenceMonth'), 'shared runtime models inventory as a dedicated snapshot detail');
+expect(runtime.includes('month <= ceiling'), 'inventory snapshot reference cannot move later than the selected period');
+expect(selectors.includes('runtimeState?.inventoryDetail'), 'Inventory selector consumes the dedicated snapshot detail');
 
 expect(!/\bv55(?:\.css|\.js|-)/i.test(index + v5BrowserJs + v5Css), 'V5 does not continue v55 responsive patch naming');
 expect(shellCss.includes('env(safe-area-inset-top)') && shellCss.includes('env(safe-area-inset-bottom)'), 'iPhone safe-area insets are handled');
