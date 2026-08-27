@@ -47,6 +47,11 @@
   }
 
   function viewMarkup() {
+    const renderer = window.YT_MOBILE_VIEWS?.[ui.route];
+    if (typeof renderer === 'function') {
+      return renderer({ runtimeState: ui.runtimeState, route: ui.route, esc });
+    }
+
     const [title, subtitle] = TITLES[ui.route] || TITLES.overview;
     const state = ui.runtimeState;
     const loading = Boolean(state?.loading);
@@ -68,7 +73,7 @@
         <div class="v5-mobile-phase-card" role="status">
           <span>${loading ? '正在读取经营数据' : 'V5.0 Native Mobile'}</span>
           <strong>${esc(title)}独立视图已接入 Shell</strong>
-          <p>当前 Phase 1 只建立原生手机导航、safe area、独立 view host 与只读数据通道。业务页面将在后续 Phase 逐个替换，不复用 Desktop 主 DOM。</p>
+          <p>该模块仍处于 V5 分阶段重写队列中。Mobile View 不复用 Desktop 主 DOM，后续会以移动端任务流替换当前占位视图。</p>
         </div>
       </section>`;
   }
