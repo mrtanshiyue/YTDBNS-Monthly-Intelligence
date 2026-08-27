@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "YTDBNS Intelligence",
+  "short_name": "YTDBNS",
+  "description": "YTDBNS Monthly Intelligence mobile operating dashboard",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "portrait",
+  "background_color": "#061A24",
+  "theme_color": "#061A24",
+  "icons": [
+    {
+      "src": "./yt-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

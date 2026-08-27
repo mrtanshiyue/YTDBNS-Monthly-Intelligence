@@ -1,0 +1,57 @@
+/* YTDBNS iPhone 15+ standalone shell.
+   This layer is only active when the site is launched from the iOS Home Screen / standalone display mode. */
+
+@media (max-width:860px) and (display-mode:standalone){
+  html.v5-standalone,
+  html.v5-standalone body{
+    width:100%;
+    min-width:0;
+    min-height:100%;
+    min-height:100svh;
+    min-height:100dvh;
+    margin:0;
+    background:#061a24;
+  }
+
+  html.v5-standalone body.v5-native-mobile{
+    min-height:100svh!important;
+    min-height:100dvh!important;
+    background:#061a24!important;
+    overscroll-behavior:none;
+  }
+
+  html.v5-standalone body.v5-native-mobile .v5-mobile-root,
+  html.v5-standalone body.v5-native-mobile .v5-mobile-app{
+    width:100%;
+    min-height:100svh!important;
+    min-height:100dvh!important;
+    background:#061a24!important;
+  }
+
+  html.v5-standalone body.v5-native-mobile .v5-mobile-topbar{
+    top:0;
+    padding-top:max(10px,env(safe-area-inset-top))!important;
+    background:#061a24!important;
+  }
+
+  html.v5-standalone body.v5-native-mobile .v5-mobile-content{
+    min-height:calc(100dvh - 62px - env(safe-area-inset-top));
+    padding-bottom:calc(90px + env(safe-area-inset-bottom))!important;
+  }
+
+  html.v5-standalone body.v5-native-mobile .v5-mobile-bottom-nav{
+    bottom:0;
+    padding-bottom:max(6px,env(safe-area-inset-bottom))!important;
+    background:#041720!important;
+  }
+
+  html.v5-standalone body.v5-native-mobile .v5-mobile-sheet-layer,
+  html.v5-standalone body.v5-native-mobile .v5-fullscreen{
+    min-height:100dvh;
+  }
+}
+
+/* iOS exposes navigator.standalone in addition to display-mode. */
+html.v5-standalone body.v5-native-mobile{
+  background:#061a24!important;
+}
