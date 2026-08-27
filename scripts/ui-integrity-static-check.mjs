@@ -18,21 +18,17 @@ const packageJson = JSON.parse(read('package.json'));
 const readme = read('README.md');
 const architecture = read('V5_MOBILE_ARCHITECTURE.md');
 const shell = read('public/mobile/mobile-shell.js');
+const shellCss = read('public/mobile/mobile-shell.css');
+const interactions = read('public/mobile/mobile-interactions.js');
 const compare = read('public/mobile/mobile-compare.js');
 const runtime = read('public/shared/runtime.js');
 const selectors = read('public/shared/selectors.js');
+const secondarySelectors = read('public/shared/secondary-selectors.js');
 const coreCss = read('public/mobile/views/core.css');
 const secondaryCss = read('public/mobile/views/secondary.css');
 const overviewCss = read('public/mobile/views/overview.css');
 const compareCss = read('public/mobile/mobile-compare.css');
-const mobileCss = [
-  read('public/mobile/mobile-shell.css'),
-  read('public/mobile/mobile-interactions.css'),
-  compareCss,
-  overviewCss,
-  coreCss,
-  secondaryCss
-].join('\n');
+const mobileCss = [shellCss, read('public/mobile/mobile-interactions.css'), compareCss, overviewCss, coreCss, secondaryCss].join('\n');
 const recordViews = ['ads','products','inventory','charges'].map(name => read(`public/mobile/views/${name}.js`));
 
 expect(/<title>YTDBNS Monthly Intelligence<\/title>/.test(index), 'document title reflects the current product');
@@ -52,6 +48,9 @@ expect(currentCss.includes('@media (min-width:861px)') && currentCss.includes('.
 expect(currentJs.includes("dataset.uiVersion = '5.0'"), 'runtime exposes current UI version');
 expect(currentJs.includes('FIT_RULES') && currentJs.includes('fitDesktopNumerals'), 'desktop large-number fit behavior is consolidated');
 expect(currentJs.includes('syncTopNavigation') && currentJs.includes('syncGroups'), 'desktop keyboard and ARIA behavior is consolidated');
+expect(currentJs.includes("['.v43-tabs', false]") && currentJs.includes("aria-current', 'location'"), 'section anchors are not misrepresented as ARIA tabs');
+expect(currentJs.includes('syncDesktopModalLock') && currentJs.includes('closeTopmostDesktopSurface'), 'desktop modal lock and Escape behavior are centrally reconciled');
+expect(currentJs.includes('event.stopImmediatePropagation()'), 'topmost Desktop Escape prevents legacy multi-close cascades');
 
 for (const [trigger, surface] of [
   ['commandButton','commandPalette'],
@@ -70,7 +69,10 @@ expect(!exists('public/mobile/interactions.css'), 'dormant alternate mobile inte
 expect(shell.includes('const ICONS = {') && shell.includes("['overview', '首页', 'home']"), 'native mobile shell uses deterministic SVG iconography');
 expect(!/[⌂◎◇▦]/.test(shell), 'native mobile primary navigation no longer depends on font-specific symbol glyphs');
 expect(shell.includes("event.key === 'Escape'") && shell.includes("event.key !== 'Tab'"), 'More sheet has Escape and focus containment behavior');
-expect(shell.includes("typeof runtime.refresh === 'function'") && shell.includes('await runtime.refresh()'), 'mobile refresh can re-detect live runtime availability');
+expect(shell.includes("typeof runtime.refresh === 'function'") && shell.includes('await runtime.refresh()'), 'mobile refresh can re-detect runtime availability');
+expect(shell.includes('runtimeNoticeMarkup') && shell.includes("state.mode === 'offline'"), 'mobile shell exposes explicit loading/error/offline status');
+expect(shell.includes('aria-busy=') && shell.includes('aria-disabled='), 'mobile shell publishes refresh busy semantics without stealing focus');
+expect(shellCss.includes('.v5-mobile-runtime-notice') && shellCss.includes('.v5-mobile-runtime-spinner'), 'mobile runtime state has a dedicated visual treatment');
 expect(!shell.includes('分阶段重写队列'), 'mobile fallback no longer exposes development-phase copy');
 
 for (const [name, source] of [['ads',recordViews[0]],['products',recordViews[1]],['inventory',recordViews[2]],['charges',recordViews[3]]]) {
@@ -81,14 +83,23 @@ expect(compare.includes('let lastFocus = null') && compare.includes('focusClose(
 expect(compare.includes("event.key !== 'Tab'") && compare.includes("event.key === 'Escape'"), 'Mobile Compare traps focus and supports Escape');
 expect(compare.includes('let requestSerial = 0') && compare.includes('requestId !== requestSerial'), 'Mobile Compare ignores stale async responses after close');
 expect(currentJs.includes('bindMobileOverlayTrap'), 'Period/Search/Detail dialogs receive shared mobile focus containment');
+expect(!interactions.includes("overlayRoot.setAttribute('aria-live'"), 'interactive mobile overlay root is not an over-broad live region');
+expect(interactions.includes('state.inventoryDetail || detail'), 'mobile search indexes the resolved inventory snapshot');
+expect(interactions.includes("sort((a, b) => b.localeCompare(a))[0]"), 'mobile period picker resolves latest month deterministically');
 
-expect(runtime.includes('let rangeLoadSerial = 0'), 'shared runtime serializes range requests');
+expect(runtime.includes('let rangeLoadSerial = 0') && runtime.includes('let refreshSerial = 0'), 'shared runtime serializes range and refresh requests');
 expect(runtime.includes('requestId !== rangeLoadSerial'), 'stale range responses cannot overwrite the active range');
 expect(runtime.includes('clearRangeData();') && runtime.includes('state.from = from') && runtime.includes('state.to = to'), 'range changes clear old data before publishing a new period');
-expect(runtime.includes('async function refresh()') && runtime.includes("state.error = '实时数据服务暂时不可用，请稍后刷新重试。'"), 'runtime refresh re-detects API without silently falling back from live data');
+expect(runtime.includes("const previewAllowed = () => location.protocol === 'file:'") && runtime.includes("state.mode = 'offline'"), 'production API outages cannot silently substitute Demo data');
+expect(runtime.includes("state.error = '实时数据服务暂时不可用，请稍后刷新重试。'"), 'offline state carries an explicit user-visible service error');
+expect(runtime.includes('async function refresh()') && runtime.includes('state.loading = true'), 'runtime refresh publishes a busy state immediately');
 expect(runtime.includes('function demoDashboard(from, to)') && runtime.includes('daysBetween(from, to) > 100'), 'demo runtime honors the selected range instead of pinning current month data');
+expect(runtime.includes("sort((a, b) => b.localeCompare(a))"), 'runtime period selection is independent of API ordering');
 expect(runtime.includes('resolveLiveInventoryDetail') && runtime.includes('hasInventorySnapshot'), 'inventory runtime resolves the nearest valid snapshot');
 expect(selectors.includes('function inventorySource(runtimeState)') && selectors.includes('if (runtimeState?.inventoryDetail) return runtimeState.inventoryDetail;'), 'inventory selector consumes the resolved inventory snapshot first');
+expect(selectors.includes('const cvrFallback') && selectors.includes('cvr: value(raw.cvr, raw.traffic_cvr, cvrFallback)'), 'summary CVR has a units/sessions fallback');
+expect(selectors.includes('hasProductSessions') && selectors.includes('summary.cvr'), 'product totals preserve summary CVR when row detail is unavailable');
+expect(secondarySelectors.includes('normalized.length ? reasonTotal : summary.returns'), 'returns summary remains truthful without reason-level detail');
 
 expect(!/font-size\s*:\s*(?:8|9)px\b/i.test(mobileCss), 'loaded native mobile CSS contains no 8px/9px text');
 expect(coreCss.includes('.v5-record-metric span') && coreCss.includes('font-size:10px'), 'record metric labels meet the raised readability floor');
