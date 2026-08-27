@@ -71,8 +71,9 @@
   registry.overview = ({ runtimeState, esc }) => {
     const model = selectors?.overviewModel?.(runtimeState) || { summary: {}, insights: [], salesSeries: [], rangeLabel: '选择期间' };
     const s = model.summary || {};
+    const isLoading = Boolean(runtimeState?.loading);
     const modeLabel = model.mode === 'live' ? 'LIVE' : model.mode === 'demo' ? 'PREVIEW' : 'SYNC';
-    const dataLabel = model.error ? 'Issue' : model.mode === 'live' ? 'Ready' : model.mode === 'demo' ? 'Preview' : 'Sync';
+    const dataLabel = model.error ? 'Issue' : isLoading ? 'Updating' : model.mode === 'live' ? 'Ready' : model.mode === 'demo' ? 'Preview' : 'Sync';
     const dataTone = model.error ? 'critical' : '';
     const inventorySub = s.fulfillableUnits != null ? `${fmt.number(s.fulfillableUnits)} 可售` : '最近快照';
     const sessionLabel = s.sessions != null ? `${fmt.number(s.sessions)} Sessions` : '所选期间';
