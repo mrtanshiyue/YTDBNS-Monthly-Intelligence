@@ -17,6 +17,7 @@
   }[char]));
   const rangeLabel = (from, to) => runtime.helpers?.rangeLabel?.(from, to) || `${from} – ${to}`;
   let lastFocus = null;
+  let requestSerial = 0;
 
   function focusClose() {
     requestAnimationFrame(() => compareRoot.querySelector('[data-v5-compare-close]')?.focus({ preventScroll: true }));
@@ -24,6 +25,7 @@
 
   function close() {
     if (!compareRoot.innerHTML) return;
+    requestSerial += 1;
     compareRoot.innerHTML = '';
     document.body.classList.remove('v5-mobile-overlay-open');
     if (lastFocus instanceof HTMLElement && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
@@ -69,6 +71,7 @@
   }
 
   async function open() {
+    const requestId = ++requestSerial;
     if (!compareRoot.innerHTML) lastFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const state = runtime.getState();
     fullscreen('<div class="v5-compare-loading"><strong>正在读取上一期间</strong><span>比较使用上一等长日期区间，保持与当前选择期间一致的长度。</span></div>');
@@ -80,6 +83,7 @@
 
     try {
       const previous = await runtime.comparePrevious();
+      if (requestId !== requestSerial || !compareRoot.innerHTML) return;
       if (!previous || previous.unavailable || !previous.dashboard) {
         fullscreen('<div class="v5-compare-unavailable"><strong>上一期间暂无可比数据</strong><span>当前数据源无法返回上一等长期间的经营汇总。</span></div>');
         return;
@@ -116,6 +120,7 @@
         <section class="v5-compare-list" aria-label="经营指标对比">${rows}</section>
         <p class="v5-compare-note">百分比指标显示百分点变化；金额指标显示相对变化。绿色表示朝有利方向变化，红色表示朝不利方向变化；广告花费本身保持中性。Compare 全程只发起 GET 请求，不修改 D1、R2 或导入状态。</p>`);
     } catch (error) {
+      if (requestId !== requestSerial || !compareRoot.innerHTML) return;
       fullscreen(`<div class="v5-compare-unavailable"><strong>对比读取失败</strong><span>${esc(error?.message || '无法读取上一期间数据')}</span></div>`);
     }
   }
