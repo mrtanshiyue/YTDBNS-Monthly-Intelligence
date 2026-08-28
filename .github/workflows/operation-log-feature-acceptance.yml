@@ -118,7 +118,14 @@ jobs:
           await page.getByText('sample-cost.csv').first().waitFor({ state: 'visible' });
           await page.getByText('采购成本报告').first().waitFor({ state: 'visible' });
           await page.getByText('1 类数据源').first().waitFor({ state: 'visible' });
-          await page.screenshot({ path: 'artifacts/operation-log-acceptance/desktop-operation-log.png', fullPage: true });
+          await page.getByText('查看完整导入明细').click();
+          await page.locator('.operation-log-details[open]').waitFor({ state: 'visible' });
+          await page.getByText('SOURCE FILES · 1').waitFor({ state: 'visible' });
+          await page.getByText('STRUCTURED WRITE COUNTS').waitFor({ state: 'visible' });
+          await page.getByText('成本主数据 2').waitFor({ state: 'visible' });
+          await page.getByText('VALIDATION · 1').waitFor({ state: 'visible' });
+          await page.getByText(`SHA256 ${fileResult.checksum}`).waitFor({ state: 'visible' });
+          await page.screenshot({ path: 'artifacts/operation-log-acceptance/desktop-operation-log-expanded.png', fullPage: true });
           await browser.close();
           console.log('Operation log API + Chromium acceptance: PASS');
           NODE
