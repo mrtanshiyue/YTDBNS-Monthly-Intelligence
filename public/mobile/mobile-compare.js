@@ -28,6 +28,7 @@
     requestSerial += 1;
     compareRoot.innerHTML = '';
     document.body.classList.remove('v5-mobile-overlay-open');
+    mobileRoot.inert = false;
     if (lastFocus instanceof HTMLElement && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
     lastFocus = null;
   }
@@ -67,6 +68,7 @@
         <div class="v5-fullscreen-body">${body}</div>
       </section>`;
     document.body.classList.add('v5-mobile-overlay-open');
+    mobileRoot.inert = true;
     focusClose();
   }
 

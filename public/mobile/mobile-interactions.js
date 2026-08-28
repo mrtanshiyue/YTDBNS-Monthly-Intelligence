@@ -17,8 +17,10 @@
   }[char]));
   const text = value => String(value ?? '').trim();
   const pick = (...values) => values.find(value => value != null && String(value).trim() !== '');
+  const FOCUSABLE = 'button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   const MODULES = [
     ['overview', '首页', '经营摘要、核心 KPI、异常提醒与趋势'],
+    ['tasks', '待办', '跨业务异常与经营信号'],
     ['ads', '广告', 'Campaign、广告花费、ACOS、CTR、CVR'],
     ['products', '商品', 'SKU、ASIN、销售、销量、Sessions、CVR'],
     ['inventory', '库存', 'Fulfillable、Inbound、库存资金、不可售'],
@@ -43,6 +45,7 @@
 
   function lock(open) {
     document.body.classList.toggle('v5-mobile-overlay-open', open);
+    mobileRoot.inert = Boolean(open);
   }
 
   function closeOverlay({ restoreFocus = true } = {}) {
@@ -61,6 +64,10 @@
     overlayRoot.innerHTML = markup;
     lock(true);
     requestAnimationFrame(() => overlayRoot.querySelector(focusSelector)?.focus({ preventScroll: true }));
+  }
+
+  function activeSurface() {
+    return overlayRoot.querySelector('[data-v5-surface], .v5-fullscreen');
   }
 
   function monthEnd(month) {
@@ -350,8 +357,32 @@
   });
 
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && overlay) closeOverlay();
-  });
+    if (!overlay) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeOverlay();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const surface = activeSurface();
+    if (!surface) return;
+    const focusable = [...surface.querySelectorAll(FOCUSABLE)].filter(element => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    });
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !surface.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
+  }, true);
 
   window.YT_MOBILE_INTERACTIONS = Object.freeze({
     openPeriod,

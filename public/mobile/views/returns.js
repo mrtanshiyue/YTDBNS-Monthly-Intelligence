@@ -22,7 +22,6 @@
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="returns" aria-labelledby="v5MobileViewTitle">
-        <div class="v5-mobile-view-heading"><div><span class="v5-mobile-eyebrow">RETURN INTELLIGENCE</span><h1 id="v5MobileViewTitle">退货</h1><p>数量、原因占比与退款影响集中扫描</p></div><button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(m.rangeLabel)}</span><i aria-hidden="true">›</i></button></div>
         <section class="v5-secondary-hero" aria-label="退货件数"><span>TOTAL RETURNS</span><strong>${fmt.number(m.total)}</strong><div><small>${rows.length ? `${fmt.number(m.rows.length)} 个原因` : '原因明细仅完整月份可用'}</small><small>Refund ${fmt.compactMoney(refundAmount)}</small></div></section>
         <section class="v5-intel-ops" aria-label="退货状态">
           <div class="v5-intel-op"><span>Reasons</span><strong>${fmt.number(m.rows.length)}</strong><small>Categories</small></div>

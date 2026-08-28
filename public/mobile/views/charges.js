@@ -36,7 +36,6 @@
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="charges" aria-labelledby="v5MobileViewTitle">
-        <div class="v5-mobile-view-heading"><div><span class="v5-mobile-eyebrow">COST INTELLIGENCE</span><h1 id="v5MobileViewTitle">扣费</h1><p>费用净成本、借贷方向与成本占比集中扫描</p></div><button class="v5-mobile-period-trigger" type="button" data-mobile-action="period" aria-label="选择查看期间"><span>${esc(m.rangeLabel)}</span><i aria-hidden="true">›</i></button></div>
         <section class="v5-secondary-hero"><span>AMAZON CHARGE NET COST</span><strong>${fmt.money(m.total, 0)}</strong><div><small>${fmt.number(m.rows.length)} 个费用项目</small><small>Top Share ${fmt.percent(topShare)}</small></div></section>
         <section class="v5-intel-ops" aria-label="扣费状态">
           <div class="v5-intel-op"><span>Charge Names</span><strong>${fmt.number(m.rows.length)}</strong><small>Categories</small></div>
