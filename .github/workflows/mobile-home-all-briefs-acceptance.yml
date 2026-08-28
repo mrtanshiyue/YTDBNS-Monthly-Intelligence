@@ -1,0 +1,142 @@
+name: Mobile Home All Briefs Acceptance
+
+on:
+  push:
+    branches:
+      - mobile-home-all-module-briefs
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    env:
+      WORKERS_CI: '1'
+      WORKERS_CI_BRANCH: main
+      WORKERS_CI_COMMIT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-vnext-density.js
+          node --check public/mobile/mobile-vnext-home-briefs.js
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Static release gates
+        run: npm run check:release:static
+      - name: Wrangler dry run
+        run: npx wrangler deploy --dry-run
+      - name: Install browsers
+        run: npx playwright-core install --with-deps chromium webkit
+      - name: Browser acceptance
+        run: |
+          mkdir -p artifacts/home-briefs
+          (cd public && python3 -m http.server 8788 >/tmp/mobile-home-http.log 2>&1 & echo $! >/tmp/mobile-home-http.pid)
+          trap 'kill $(cat /tmp/mobile-home-http.pid) 2>/dev/null || true' EXIT
+          sleep 1
+          cat > .tmp-home-briefs.mjs <<'EOF'
+          import fs from 'node:fs';
+          import { chromium, webkit } from 'playwright-core';
+
+          const base='http://127.0.0.1:8788';
+          const failures=[];
+          const report=[];
+          const expected=['alerts','ads','products','inventory','finance','charges','returns','history','data'];
+          const expect=(ok,msg,detail='')=>{ if(ok) console.log(`PASS  ${msg}`); else { const t=`${msg}${detail?` — ${detail}`:''}`; failures.push(t); console.error(`FAIL  ${t}`); } };
+          const overflow=page=>page.evaluate(()=>({width:innerWidth,html:document.documentElement.scrollWidth,body:document.body.scrollWidth,root:document.getElementById('mobileAppRoot')?.scrollWidth||0}));
+          const smallButtons=page=>page.evaluate(()=>[...document.querySelectorAll('#mobileAppRoot button')].filter(button=>{
+            const r=button.getBoundingClientRect(); const s=getComputedStyle(button);
+            return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&r.height<43.5;
+          }).map(button=>({text:button.textContent.trim().slice(0,30),height:button.getBoundingClientRect().height})).slice(0,20));
+
+          async function run(engine,browserType,viewport){
+            const browser=await browserType.launch({headless:true});
+            const context=await browser.newContext({viewport,deviceScaleFactor:3,hasTouch:true,isMobile:true});
+            const page=await context.newPage();
+            const errors=[]; const expectedProbeNoise=[]; const pageErrors=[]; const requestFailures=[]; const apiRequests=[];
+            page.on('console',m=>{
+              if(m.type()!=='error') return;
+              const entry={text:m.text(),url:m.location()?.url||''};
+              if(entry.url===`${base}/api/health` && entry.text.includes('404')) expectedProbeNoise.push(entry);
+              else errors.push(entry);
+            });
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            page.on('requestfailed',r=>requestFailures.push({url:r.url(),error:r.failure()?.errorText||''}));
+            page.on('request',r=>{ if(r.url().includes('/api/')) apiRequests.push({method:r.method(),url:r.url()}); });
+            const label=`${engine} ${viewport.width}x${viewport.height}`;
+            try {
+              await page.goto(base,{waitUntil:'load',timeout:30000});
+              await page.waitForFunction(()=>document.documentElement.dataset.mobileVnextReady==='true',null,{timeout:15000});
+              await page.waitForSelector('#mobileAppRoot:not([hidden]) .vnext-app',{state:'visible',timeout:15000});
+              await page.waitForSelector('.vnext-home-all-modules',{state:'visible',timeout:10000});
+              const briefs=await page.locator('.vnext-home-all-modules [data-home-brief-module]').evaluateAll(nodes=>nodes.map(node=>node.dataset.homeBriefModule));
+              expect(JSON.stringify(briefs)===JSON.stringify(expected),`${label}: all 9 module briefs render`,JSON.stringify(briefs));
+              expect((await page.locator('.vnext-density-board .vnext-density-metric').count())===12,`${label}: 12 operating metrics retained`);
+              expect((await page.locator('.vnext-home-brief').count())===9,`${label}: nine visible brief sections`);
+              for(const module of ['ads','products','inventory','finance','charges','returns','history','data']){
+                expect((await page.locator(`[data-home-brief-module="${module}"]`).count())===1,`${label}/${module}: brief present`);
+              }
+              const ov=await overflow(page);
+              expect(Math.max(ov.html,ov.body,ov.root)<=ov.width+1,`${label}: long home document overflow=0`,JSON.stringify(ov));
+              const small=await smallButtons(page);
+              expect(small.length===0,`${label}: visible home buttons >=44px`,JSON.stringify(small));
+
+              const firstCampaign=page.locator('[data-home-brief-module="ads"] [data-density-detail-type="campaign"]').first();
+              if(await firstCampaign.count()){
+                await firstCampaign.click();
+                await page.waitForSelector('.vnext-detail-screen',{state:'visible',timeout:5000});
+                expect((await page.locator('#vnextDetailTitle').textContent()||'').trim().length>0,`${label}: home Campaign opens detail`);
+                await page.goBack();
+                await page.waitForSelector('.vnext-home-all-modules',{state:'visible',timeout:5000});
+                expect((await page.locator('.vnext-detail-screen').count())===0,`${label}: Browser Back restores long home`);
+              }
+
+              await page.locator('[data-home-brief-module="ads"] [data-vnext-module="ads"]').click();
+              await page.waitForSelector('[data-density-module="ads"]',{state:'visible',timeout:5000});
+              expect((await page.locator('[data-vnext-page="search"]:visible').count())===0,`${label}: home Ads opens real module`);
+              await page.goBack();
+              await page.waitForSelector('.vnext-home-all-modules',{state:'visible',timeout:5000});
+
+              expect(apiRequests.every(row=>row.method==='GET'),`${label}: API GET-only`,JSON.stringify(apiRequests));
+              expect(pageErrors.length===0,`${label}: page errors=0`,JSON.stringify(pageErrors));
+              expect(requestFailures.filter(row=>!row.url.endsWith('/api/health')).length===0,`${label}: unexpected request failures=0`,JSON.stringify(requestFailures));
+              expect(errors.length===0,`${label}: unexpected console errors=0`,JSON.stringify(errors));
+              await page.screenshot({path:`artifacts/home-briefs/${engine}-${viewport.width}x${viewport.height}-home.png`,fullPage:true});
+              report.push({engine,viewport,briefs,overflow:ov,apiRequests,expectedProbeNoise,pageErrors,requestFailures,errors});
+            } catch(error) {
+              failures.push(`${label}: ${error.stack||error}`);
+              await page.screenshot({path:`artifacts/home-briefs/${engine}-${viewport.width}x${viewport.height}-failure.png`,fullPage:true}).catch(()=>{});
+            } finally { await context.close(); await browser.close(); }
+          }
+
+          for(const viewport of [{width:393,height:852},{width:430,height:932}]){
+            await run('chromium',chromium,viewport);
+            await run('webkit',webkit,viewport);
+          }
+
+          const desktop=await chromium.launch({headless:true});
+          const desktopPage=await desktop.newPage({viewport:{width:1440,height:900}});
+          await desktopPage.goto(base,{waitUntil:'load',timeout:30000});
+          await desktopPage.waitForTimeout(800);
+          const desktopState=await desktopPage.evaluate(()=>({mobileHidden:document.getElementById('mobileAppRoot')?.hidden,desktopView:document.documentElement.dataset.v5View,homeBriefs:document.querySelectorAll('.vnext-home-all-modules').length}));
+          expect(desktopState.mobileHidden===true,'Desktop: mobile root hidden',JSON.stringify(desktopState));
+          expect(desktopState.desktopView==='desktop','Desktop: view remains desktop',JSON.stringify(desktopState));
+          expect(desktopState.homeBriefs===0,'Desktop: home briefs not injected',JSON.stringify(desktopState));
+          await desktop.close();
+
+          fs.writeFileSync('artifacts/home-briefs/report.json',JSON.stringify(report,null,2));
+          if(failures.length){ console.error(`\n${failures.length} failure(s)`); failures.forEach((f,i)=>console.error(`${i+1}. ${f}`)); process.exit(1); }
+          console.log('\nMOBILE HOME ALL BRIEFS ACCEPTANCE: PASS');
+          EOF
+          node .tmp-home-briefs.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-home-all-briefs-${{ github.sha }}
+          path: artifacts/home-briefs
