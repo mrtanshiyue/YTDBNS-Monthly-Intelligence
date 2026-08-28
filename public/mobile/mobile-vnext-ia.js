@@ -17,7 +17,7 @@
   ]);
   const DOMAIN_SET = new Set(DOMAIN_IDS);
   const FILTER_MODULE_SET = new Set(['ads', 'products', 'inventory']);
-  const PRIMARY_FOCUS_TAB_SET = new Set(['today', 'alerts', 'trends']);
+  const PRIMARY_FOCUS_TAB_SET = new Set(['today', 'alerts', 'trends', 'search']);
   const DUPLICATE_PRIMARY_IDS = new Set(['today', 'alerts']);
   let syncing = false;
   let lastRevealedModule = null;
