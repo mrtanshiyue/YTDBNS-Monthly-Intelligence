@@ -8,6 +8,7 @@ const expect = (condition, message) => condition ? pass(message) : fail(message)
 
 const shell = read('public/mobile/mobile-shell.js');
 const ia = read('public/mobile/mobile-vnext-ia.js');
+const focusReturn = read('public/mobile/mobile-vnext-focus-return.js');
 const css = read('public/mobile/mobile-vnext-ia.css');
 const density = read('public/mobile/mobile-vnext-density.js');
 const pkg = JSON.parse(read('package.json'));
@@ -28,6 +29,17 @@ expect(shell.includes("link.href = './mobile/mobile-vnext-ia.css'"), 'mobile she
 expect(shell.includes("script.src = './mobile/mobile-vnext-ia.js'"), 'mobile shell loads IA runtime');
 expect(shell.indexOf('ensureIaRuntime()') < shell.lastIndexOf("dataset.mobileVnextReady = 'true'"), 'IA runtime loads before Mobile readiness is released');
 expect(shell.includes('window.YT_MOBILE_VNEXT_IA?.refresh?.()'), 'mobile shell refreshes IA after activation');
+expect(shell.includes("script.src = './mobile/mobile-vnext-focus-return.js'"), 'mobile shell loads focus-return runtime');
+expect(shell.indexOf('ensureFocusReturnRuntime()') < shell.lastIndexOf("dataset.mobileVnextReady = 'true'"), 'focus-return runtime loads before Mobile readiness is released');
+
+expect(focusReturn.includes("[data-density-detail-type][data-density-detail-id]"), 'focus-return captures dense Campaign/SKU/Inventory record identity rather than stale DOM nodes');
+expect(focusReturn.includes('[data-density-metric]') && focusReturn.includes('[data-vnext-signal]') && focusReturn.includes('[data-vnext-result]'), 'focus-return covers metric, signal, and search-result detail triggers');
+expect(focusReturn.includes('queueMicrotask') && focusReturn.includes("root.querySelector('.vnext-detail-screen')"), 'focus-return pushes a locator only after detail navigation actually opens');
+expect(focusReturn.includes("window.addEventListener('popstate'"), 'focus-return restores on close-button, Escape, and Browser Back history paths');
+expect((focusReturn.match(/requestAnimationFrame/g) || []).length >= 2, 'focus-return waits through rerender and density enhancement frames before resolving the trigger');
+expect(focusReturn.includes("target.focus({ preventScroll: true })") && focusReturn.includes("scrollIntoView?.({ block: 'nearest', inline: 'nearest' })"), 'focus-return restores keyboard focus and keeps the originating record visible');
+expect(!/\bfetch\s*\(/.test(focusReturn), 'focus-return runtime contains no direct network fetch');
+expect(!/method\s*:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/i.test(focusReturn), 'focus-return runtime contains no write HTTP method');
 
 expect(css.startsWith('@media (max-width:860px){'), 'IA styling is scoped to Mobile breakpoint only');
 expect(css.includes('.vnext-module-rail[hidden]') && css.includes('display:none!important'), 'hidden business rail is fail-closed in CSS');
@@ -54,4 +66,4 @@ if (failures.length) {
   console.error(`\nMobile vNext IA static gate failed: ${failures.length} issue(s).`);
   process.exit(1);
 }
-console.log('\nMobile vNext IA static gate passed: task IA and module interaction states are cleanly separated and release-gated.');
+console.log('\nMobile vNext IA static gate passed: task IA, module interaction states, and detail focus-return are release-gated.');
