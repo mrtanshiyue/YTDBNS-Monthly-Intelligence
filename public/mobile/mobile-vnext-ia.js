@@ -48,7 +48,7 @@
     const railRect = rail.getBoundingClientRect();
     const buttonRect = button.getBoundingClientRect();
     const visibleLeft = railRect.left + 4;
-    const visibleRight = railRect.right - 30;
+    const visibleRight = railRect.right - 4;
     const fullyVisible = buttonRect.left >= visibleLeft && buttonRect.right <= visibleRight;
 
     if (!fullyVisible) {
