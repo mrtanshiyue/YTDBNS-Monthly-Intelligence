@@ -17,6 +17,7 @@
   ]);
   const DOMAIN_SET = new Set(DOMAIN_IDS);
   const FILTER_MODULE_SET = new Set(['ads', 'products', 'inventory']);
+  const PRIMARY_FOCUS_TAB_SET = new Set(['today', 'alerts', 'trends', 'search']);
   const DUPLICATE_PRIMARY_IDS = new Set(['today', 'alerts']);
   let syncing = false;
   let lastRevealedModule = null;
@@ -160,6 +161,10 @@
   function rerenderFocusTarget(event) {
     if (!media.matches || event.detail !== 0) return null;
 
+    const tabButton = event.target.closest('.vnext-tabbar [data-vnext-tab]');
+    const tab = tabButton?.dataset.vnextTab;
+    if (tabButton && PRIMARY_FOCUS_TAB_SET.has(tab)) return { kind: 'tab', tab };
+
     const filterButton = event.target.closest('[data-density-filter]');
     if (filterButton) {
       const module = filterButton.dataset.densityFilterModule;
@@ -176,7 +181,9 @@
   function restoreRerenderedFocus(target) {
     if (!target) return;
     let replacement = null;
-    if (target.kind === 'filter') {
+    if (target.kind === 'tab') {
+      replacement = root.querySelector(`.vnext-tabbar [data-vnext-tab="${target.tab}"]`);
+    } else if (target.kind === 'filter') {
       replacement = filterRailFor(target.module)?.querySelector(`[data-density-filter="${target.filter}"]`) || null;
     } else if (target.kind === 'module') {
       replacement = root.querySelector(`.vnext-module-rail [data-vnext-module="${target.module}"]`);

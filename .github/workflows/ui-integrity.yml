@@ -54,6 +54,7 @@ jobs:
           node --check scripts/mobile-a1-three-fact-acceptance.mjs
           node --check scripts/mobile-a1-fact-label-acceptance.mjs
           node --check scripts/mobile-a1-active-filter-acceptance.mjs
+          node --check scripts/mobile-a1-primary-tab-focus-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
@@ -79,6 +80,8 @@ jobs:
         run: node scripts/mobile-a1-fact-label-acceptance.mjs
       - name: Mobile A1 active-filter Chromium acceptance
         run: node scripts/mobile-a1-active-filter-acceptance.mjs
+      - name: Mobile A1 primary-tab focus Chromium acceptance
+        run: node scripts/mobile-a1-primary-tab-focus-acceptance.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -92,5 +95,6 @@ jobs:
             artifacts/mobile-a1-three-fact
             artifacts/mobile-a1-fact-label
             artifacts/mobile-a1-active-filter
+            artifacts/mobile-a1-primary-tab-focus
           if-no-files-found: ignore
           retention-days: 7
