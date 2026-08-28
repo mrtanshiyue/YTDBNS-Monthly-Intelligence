@@ -61,9 +61,9 @@
     monthInput.removeAttribute('max');
 
     if (steps.length >= 3) {
-      setStep(steps[0], 1, '加入月度源文件', '支持 CSV / XLSX，自动识别 9 类报表。');
-      setStep(steps[1], 2, '自动识别报告月份', '系统读取报表内日期；跨月记录会保留原日期，不需要手动选择月份。');
-      setStep(steps[2], 3, '检查并写入', '先解析、校验日期与数据源，再保存原文件和结构化历史数据。');
+      setStep(steps[0], 1, '加入源文件', '支持 CSV / XLSX，按 5 类核心数据源识别：商品成本、联合报告、广告报表、退货报告、库存报告。');
+      setStep(steps[1], 2, '自动识别日期范围', '事件型报表按行内日期自动分月；商品成本和当前库存不强制绑定业务月份。');
+      setStep(steps[2], 3, '检查并写入', '先解析、校验字段与日期，再保存原文件和结构化数据。');
 
       const fileStack = document.getElementById('fileStack');
       if (fileStack && steps[1].previousElementSibling !== fileStack) fileStack.after(steps[1]);
@@ -73,7 +73,7 @@
         statusBox = document.createElement('div');
         statusBox.id = 'importPeriodStatus';
         statusBox.className = 'yt-import-auto-period';
-        statusBox.innerHTML = '<span>报告月份</span><strong id="importPeriodValue">等待源文件</strong><small id="importPeriodDetail">上传报表后，系统会综合各报表日期自动判定月份。</small>';
+        statusBox.innerHTML = '<span>批次锚点月份</span><strong id="importPeriodValue">等待源文件</strong><small id="importPeriodDetail">上传事件型报表后，系统会按行内日期自动识别覆盖范围。</small>';
         steps[1].after(statusBox);
       }
     }
@@ -177,7 +177,7 @@
   function inferMonth(roleMap) {
     const evidence = Object.entries(roleMap).map(([role, item]) => roleEvidence(role, item)).filter(Boolean);
     if (!evidence.length) {
-      throw new Error('尚未找到可用于判定月份的日期字段；请至少加入联合报告、广告每日视图或退货报告。');
+      throw new Error('尚未找到可用于判定月份的事件日期字段；联合报告、广告报表、退货报告可自动判定月份。商品成本和库存属于非月度数据，可独立导入。');
     }
 
     const anchors = evidence.filter(item => item.anchor);
@@ -197,20 +197,15 @@
       usedFallback = true;
     }
 
-    if (!month) throw new Error('无法从报表日期中确定报告月份。');
+    if (!month) throw new Error('无法从报表日期中确定批次锚点月份。');
 
     const contradictory = evidence.filter(item => !item.months.includes(month));
     if (contradictory.length) {
-      throw new Error(`报表月份不一致：目标月份 ${month} 未出现在 ${contradictory.map(item => `${item.label}（${item.months.join('/')}）`).join('、')} 中。请检查是否混入其他报告周期文件。`);
+      throw new Error(`报表日期范围不一致：锚点月份 ${month} 未出现在 ${contradictory.map(item => `${item.label}（${item.months.join('/')}）`).join('、')} 中。请检查是否混入其他周期文件。`);
     }
 
     const crossMonth = evidence.filter(item => item.months.length > 1);
-    return {
-      month,
-      evidence,
-      crossMonth,
-      usedFallback
-    };
+    return { month, evidence, crossMonth, usedFallback };
   }
 
   function formatMonth(month) {
@@ -256,7 +251,7 @@
     monthInput.value = '';
     validateButton.disabled = true;
     if (!currentFiles.length) {
-      updateStatus('idle', '等待源文件', '上传报表后，系统会综合各报表日期自动判定月份。');
+      updateStatus('idle', '等待源文件', '上传事件型报表后，系统会按行内日期自动识别覆盖范围。');
       return;
     }
     updateStatus('loading', '正在识别…', '正在读取报表日期并核对各数据源的日期覆盖范围。');
@@ -277,10 +272,10 @@
         result.crossMonth.length || result.usedFallback ? 'warn' : 'ready',
         formatMonth(result.month),
         result.crossMonth.length
-          ? `已综合 ${labels} 判定为 ${formatMonth(result.month)}。存在跨月记录：${crossMonthDetail}；跨月本身不会阻止导入。`
+          ? `本批次以 ${formatMonth(result.month)} 作为审计锚点。存在跨月记录：${crossMonthDetail}；实际写库仍按每行日期分别进入对应月份。`
           : result.usedFallback
-            ? `当前缺少联合报告/广告每日视图主锚点，已按现有日期记录占比自动判定；建议检查后继续。`
-            : `已由 ${labels} 的报表日期一致确认；无需手动选择月份。`
+            ? `当前缺少联合报告/广告报表主锚点，已按现有事件日期自动判定；实际写库仍按每行日期。`
+            : `已由 ${labels} 的报表日期一致确认；实际写库按行内日期。`
       );
       validateButton.disabled = false;
     } catch (error) {
@@ -302,6 +297,6 @@
     event.preventDefault();
     event.stopImmediatePropagation();
     if (currentFiles.length) detectFromFiles(currentFiles);
-    else updateStatus('error', '等待源文件', '请先加入本月报表，系统会自动读取其中的日期。');
+    else updateStatus('error', '等待源文件', '请先加入源文件，系统会自动读取其中的日期。');
   }, true);
 })();
