@@ -44,6 +44,8 @@ jobs:
           node --check scripts/mobile-vnext-ia-static-check.mjs
           node --check scripts/mobile-vnext-ia-acceptance.mjs
           node --check scripts/v5-browser-acceptance.mjs
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
         run: npm run check:release:static
       - name: Install Playwright Chromium
