@@ -34,6 +34,7 @@ jobs:
         run: npx wrangler deploy --dry-run
       - name: Prepare system Chrome truth host
         run: |
+          npm install --no-save --ignore-scripts playwright-core
           test -x /usr/bin/google-chrome || test -x /usr/bin/google-chrome-stable
           echo '127.0.0.1 truth.local' | sudo tee -a /etc/hosts
       - name: Production-mode truth browser acceptance
@@ -43,7 +44,7 @@ jobs:
           trap 'kill $SERVER_PID || true' EXIT
           sleep 1
           node <<'NODE'
-          const { chromium } = require('playwright');
+          const { chromium } = require('playwright-core');
           const base = 'http://truth.local:8788';
           const fingerprints = ['$63,496', '$39,870', '3,295', 'YS005', '63,496', '39,870'];
           (async()=>{
