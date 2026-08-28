@@ -23,10 +23,12 @@ const expect = (condition, message, detail = '') => condition ? pass(message) : 
 function staticContract() {
   const source = fs.readFileSync(path.join(root, 'public', 'mobile', 'mobile-vnext-ia.js'), 'utf8');
   expect(
-    source.includes('function revealActiveDomain(rail, module)') &&
+    source.includes('function revealControl(scroller, control, edge = 4)') &&
+      source.includes('function revealActiveDomain(rail, module)') &&
       source.includes('lastRevealedRail') &&
-      source.includes('rail.scrollLeft = Math.max(0, Math.min(maxScroll'),
-    'A1 static contract: IA owns deterministic active-domain rail reveal'
+      source.includes('revealControl(rail, button)') &&
+      source.includes('scroller.scrollLeft = Math.max(0, Math.min(maxScroll'),
+    'A1 static contract: IA owns deterministic active-domain rail reveal through bounded shared scroller geometry'
   );
 }
 
