@@ -33,7 +33,6 @@
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="data" aria-labelledby="v5MobileViewTitle">
-        <div class="v5-mobile-view-heading"><div><span class="v5-mobile-eyebrow">数据状态</span><h1 id="v5MobileViewTitle">数据</h1><p>查看同步状态、数据质量、最近批次与完整性</p></div></div>
         <div class="v5-data-recommendation"><b>手机端只读模式 · ${esc(syncState)}</b><span>这里用于查看经营数据状态和质量结果，不提供数据写入或导入操作。</span></div>
         <section class="v5-intel-ops" aria-label="数据状态摘要">
           <div class="v5-intel-op"><span>质量检查</span><strong>${fmt.number(m.quality.length)}</strong><small>${fmt.number(pass)} 项正常</small></div>
