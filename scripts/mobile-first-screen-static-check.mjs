@@ -41,9 +41,16 @@ expect(css.includes('.vnext-home-cost-grid small') && css.includes('font-size:9p
 expect(!/font-size:\s*(?:[0-8](?:\.\d+)?)px/.test(css), 'first-screen overlay introduces no text below 9px');
 expect(!/\.vnext-density-metric[^\{]*\{[^\}]*display\s*:\s*none/i.test(css), 'no operating KPI is hidden by the hardening layer');
 
+const pulseSelector = '.vnext-today>.vnext-density-board~.vnext-section+.vnext-section';
+expect(css.includes(pulseSelector) && /\.vnext-today>\.vnext-density-board~\.vnext-section\+\.vnext-section\s*\{\s*display:none/.test(css.replace(/body\.mobile-vnext-active\s*/g, '')), 'legacy operating-pulse duplicate is suppressed only when the dense board is present');
+expect(!css.includes('.vnext-today>.vnext-section+.vnext-section{display:none'), 'pulse fail-safe is not hidden when the dense board is absent');
+
 const denseMetricCalls = [...density.matchAll(/\$\{denseMetric\(/g)].length;
 expect(denseMetricCalls === 12, `all 12 operating metrics remain in the runtime (${denseMetricCalls})`);
 expect(density.includes("denseMetric('销售额'") && density.includes("denseMetric('贡献利润'") && density.includes("denseMetric('退款销售'"), 'core decision KPIs remain present in runtime markup');
+for (const token of ["denseMetric('Sessions'", "denseMetric('广告花费'", "denseMetric('库存资金'", "denseMetric('退款销售'"]) {
+  expect(density.includes(token), `dense board preserves duplicated pulse fact: ${token.slice(13, -1)}`);
+}
 
 expect(pkg.scripts?.['check:v5:mobile:first-screen'] === 'node scripts/mobile-first-screen-static-check.mjs', 'package exposes first-screen static gate');
 
@@ -51,4 +58,4 @@ if (failures.length) {
   console.error(`\nMobile first-screen static gate failed: ${failures.length} issue(s).`);
   process.exit(1);
 }
-console.log('\nMobile first-screen static gate passed: hierarchy, readability, and cross-platform CJK fallback are release-gated.');
+console.log('\nMobile first-screen static gate passed: hierarchy, readability, CJK fallback, and Today deduplication are release-gated.');
