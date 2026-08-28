@@ -72,12 +72,14 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[char]));
+  const FOCUSABLE = 'button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
   function closeOps() {
     current = null;
     overlayRoot.classList.remove('open');
     overlayRoot.innerHTML = '';
     document.body.classList.remove('v52-ops-open');
+    root.inert = false;
     if (lastFocus instanceof HTMLElement && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
     lastFocus = null;
   }
@@ -89,6 +91,7 @@
     current = { route, filter: filter || config.filters[0][0], sort: sort || config.sorts[0][0] };
     overlayRoot.classList.add('open');
     document.body.classList.add('v52-ops-open');
+    root.inert = true;
     overlayRoot.innerHTML = `
       <div class="v52-ops-backdrop" data-v52-close="backdrop">
         <section class="v52-ops-sheet" role="dialog" aria-modal="true" aria-labelledby="v52OpsTitle" data-v52-surface>
@@ -99,11 +102,11 @@
           </div>
           <div class="v52-ops-group" data-v52-filter-group>
             <span>筛选</span>
-            ${config.filters.map(([id, label]) => `<button type="button" class="v52-ops-option ${current.filter === id ? 'active' : ''}" data-v52-filter="${esc(id)}"><span>${esc(label)}</span><i aria-hidden="true">${current.filter === id ? '✓' : ''}</i></button>`).join('')}
+            ${config.filters.map(([id, label]) => `<button type="button" class="v52-ops-option ${current.filter === id ? 'active' : ''}" data-v52-filter="${esc(id)}" aria-pressed="${current.filter === id ? 'true' : 'false'}"><span>${esc(label)}</span><i aria-hidden="true">${current.filter === id ? '✓' : ''}</i></button>`).join('')}
           </div>
           <div class="v52-ops-group" data-v52-sort-group>
             <span>排序</span>
-            ${config.sorts.map(([id, label]) => `<button type="button" class="v52-ops-option ${current.sort === id ? 'active' : ''}" data-v52-sort="${esc(id)}"><span>${esc(label)}</span><i aria-hidden="true">${current.sort === id ? '✓' : ''}</i></button>`).join('')}
+            ${config.sorts.map(([id, label]) => `<button type="button" class="v52-ops-option ${current.sort === id ? 'active' : ''}" data-v52-sort="${esc(id)}" aria-pressed="${current.sort === id ? 'true' : 'false'}"><span>${esc(label)}</span><i aria-hidden="true">${current.sort === id ? '✓' : ''}</i></button>`).join('')}
           </div>
           <div class="v52-ops-actions">
             <button type="button" class="v52-ops-reset" data-v52-reset>重置</button>
@@ -122,6 +125,7 @@
       const id = kind === 'filter' ? button.dataset.v52Filter : button.dataset.v52Sort;
       const active = id === key;
       button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
       const mark = button.querySelector('i');
       if (mark) mark.textContent = active ? '✓' : '';
     });
@@ -163,8 +167,36 @@
   });
 
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && current) closeOps();
-  });
+    if (!current) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeOps();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const surface = overlayRoot.querySelector('[data-v52-surface]');
+    if (!surface) return;
+    const focusable = [...surface.querySelectorAll(FOCUSABLE)].filter(element => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    });
+    if (!focusable.length) {
+      event.preventDefault();
+      surface.focus?.({ preventScroll: true });
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !surface.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
+  }, true);
 
   function money(value) {
     return fmt?.compactMoney ? fmt.compactMoney(value) : fmt?.money ? fmt.money(value, 0) : `$${Number(value || 0).toLocaleString('en-US')}`;
