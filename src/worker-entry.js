@@ -1,6 +1,7 @@
 import app from './worker.js';
 import { commitPartialImport } from './partial-import.js';
 import { operationLogsResponse, safeAppendOperationLog } from './operation-log.js';
+import { enhanceCoreCommit, adSearchTermsResponse } from './core-report-model.js';
 
 const STORES = Object.freeze([
   { id: 'ytdbns', code: 'YTDBNS', name: 'YTDBNS' },
@@ -49,7 +50,7 @@ function jsonRequest(url, request, body) {
 
 async function normalizeApiRequest(request) {
   const url = new URL(request.url);
-  if (!url.pathname.startsWith('/api/') || ['/api/health', '/api/stores', '/api/operation-logs'].includes(url.pathname)) return request;
+  if (!url.pathname.startsWith('/api/') || ['/api/health', '/api/stores', '/api/operation-logs', '/api/ad-search-terms'].includes(url.pathname)) return request;
 
   const storeId = normalizeStoreId(url.searchParams.get('store'));
   url.searchParams.set('store', storeId);
@@ -109,7 +110,7 @@ function compactChecks(checks) {
 function payloadCounts(payload) {
   const keys = [
     'daily', 'products', 'parents', 'campaigns', 'returns', 'inventory', 'storage', 'charges',
-    'productMaster', 'costMaster', 'returnEvents', 'campaignEvents', 'transactionEvents'
+    'productMaster', 'costMaster', 'returnEvents', 'campaignEvents', 'transactionEvents', 'transactionSkuEvents', 'adSearchEvents'
   ];
   return Object.fromEntries(keys
     .filter(key => Array.isArray(payload?.[key]))
@@ -199,10 +200,12 @@ async function logCommitOutcome(env, body, response) {
       failedCheckCount: failedChecks.length,
       fileCount,
       sourceCount,
-      partial: result.partial ?? (sourceCount > 0 && sourceCount < 9),
+      partial: result.partial ?? false,
+      sourceModel: result.sourceModel || null,
+      coreSources: result.coreSources || [],
       rangeStart: evidence.batch?.range_start || null,
       rangeEnd: evidence.batch?.range_end || null,
-      touchedMonths: result.touchedMonths || result.months || [],
+      touchedMonths: result.affectedMonths || result.touchedMonths || result.months || [],
       rowCounts: payloadCounts(payload),
       checks,
       files: evidence.files.map(file => ({
@@ -236,6 +239,7 @@ export default {
     await ensureStoreCatalog(env);
     if (request.method === 'GET' && url.pathname === '/api/stores') return storesResponse(env);
     if (request.method === 'GET' && url.pathname === '/api/operation-logs') return operationLogsResponse(request, env);
+    if (request.method === 'GET' && url.pathname === '/api/ad-search-terms') return adSearchTermsResponse(request, env, normalizeStoreId(url.searchParams.get('store')));
 
     const normalizedRequest = await normalizeApiRequest(request);
 
@@ -266,7 +270,8 @@ export default {
     if (request.method === 'POST' && url.pathname === '/api/imports/commit') {
       const body = await normalizedRequest.clone().json().catch(() => null);
       try {
-        const response = await commitPartialImport(normalizedRequest, env);
+        let response = await commitPartialImport(normalizedRequest, env);
+        response = await enhanceCoreCommit(body, response, env);
         await logCommitOutcome(env, body, response);
         return response;
       } catch (error) {
