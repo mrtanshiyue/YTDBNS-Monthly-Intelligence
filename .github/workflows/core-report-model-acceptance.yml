@@ -1,4 +1,4 @@
-name: Core Report Model Acceptance
+name: Core Five Report Acceptance
 on:
   push:
     branches: [refactor/report-source-consolidation]
@@ -16,101 +16,173 @@ jobs:
         run: npm install
       - name: Static and deployment gates
         run: |
-          node --check public/core-report-model.js
-          node --check src/core-report-model.js
+          node --check public/core-five-report-model.js
+          node --check src/core-five-import.js
           node --check src/worker-entry.js
           npm run check:release:static
           npx wrangler deploy --dry-run
       - name: Prepare local D1
         run: npm run db:migrate:local
-      - name: Build three core source fixtures
+      - name: Build five-source fixtures
         run: |
-          cat > /tmp/transactions.csv <<'CSV'
-          settlement id,date/time,type,description,sku,quantity,product sales,selling fees,fba fees,other transaction fees,promotional rebates,other,total
-          S1,2025-06-02,Order,Order SKU-A,SKU-A,2,100,-10,-5,0,0,0,80
-          S1,2025-06-02,Service Fee,Cost of Advertising,,0,0,0,0,0,0,0,-10
-          S2,2025-07-03,Order,Order SKU-A,SKU-A,1,60,-6,-3,0,0,0,48
-          CSV
           cat > /tmp/cost.csv <<'CSV'
           SKU,店铺,站点,原产品字段,采购成本,头程费用,FBM运费成本,货币,更新日期
-          SKU-A,YTDBNS,us,SKU-A B000000001,5,1,0.5,USD,2026年7月14日 19:39 PDT
+          YS001-100,YTDBNS,us,YS001-100 A1,5,1,0.5,USD,2026年7月14日 19:39 PDT
+          YS003-100,YTDBNS,us,YS003-100 A3,4,0.5,0.25,USD,2026年7月14日 19:39 PDT
+          CSV
+          cat > /tmp/transactions.csv <<'CSV'
+          settlement id,date/time,type,description,sku,quantity,product sales,selling fees,fba fees,other transaction fees,promotional rebates,other,total
+          S1,2025-06-02,Order,Order YS001-100,YS001-100,2,100,-10,-5,0,0,0,80
+          S1,2025-06-02,Service Fee,Cost of Advertising,,0,0,0,0,0,0,0,-10
           CSV
           cat > /tmp/ads.csv <<'CSV'
           广告组合名称,广告活动编号,广告活动名称,广告组编号,广告组名称,搜索词,日期,投放方案编号,目标竞价,投放类型,投放状态,投放方案,投放匹配类型-Targeting match type,展示量,点击量,总成本,购买量,销售额,已售商品数量
           P1,C1,Campaign 1,G1,Ad Group 1,reading glasses,2025年6月2日,T1,0.75,关键词,已启用,reading glasses,EXACT,1000,25,12,3,75,4
           CSV
+          cat > /tmp/returns.csv <<'CSV'
+          return-date,order-id,sku,asin,fnsku,product-name,quantity,fulfillment-center-id,detailed-disposition,reason,status,license-plate-number,customer-comments
+          2026-07-31T22:34:59+00:00,O1,YS001-100,A1,F1,Reader,1,CHA1,SELLABLE,UNWANTED_ITEM,Unit returned to inventory,,
+          2026-08-01T06:49:51+00:00,O2,YS001-100,A1,F1,Reader,1,IND8,CUSTOMER_DAMAGED,DEFECTIVE,IMMEDIATE_LIQUIDATION,,
+          2026-08-01T08:30:00+00:00,O3,YS003-100,A3,F3,Reader,1,IND8,SELLABLE,ORDERED_WRONG_ITEM,Unit returned to inventory,,
+          CSV
+          cat > /tmp/inventory-a.csv <<'CSV'
+          sku,fnsku,asin,product-name,condition,your-price,mfn-listing-exists,mfn-fulfillable-quantity,afn-listing-exists,afn-warehouse-quantity,afn-fulfillable-quantity,afn-unsellable-quantity,afn-reserved-quantity,afn-total-quantity,per-unit-volume,afn-inbound-working-quantity,afn-inbound-shipped-quantity,afn-inbound-receiving-quantity,afn-researching-quantity,afn-reserved-future-supply,afn-future-supply-buyable,afn-fc-transfer-quantity,afn-onhand-buyable-quantity,store
+          YS001-100,F1,A1,Reader A,New,17.99,No,0,Yes,25,20,1,2,30,0.01,0,5,0,1,0,3,2,27,
+          YS002-100,F2,A2,Reader B,New,19.99,No,0,Yes,12,10,0,1,15,0.01,0,3,0,0,0,2,1,13,
+          CSV
       - name: Install Chromium
         run: npx playwright-core install chromium
       - name: Start local Worker
         run: |
-          nohup npx wrangler dev --local --port 8787 > /tmp/core-worker.log 2>&1 &
+          nohup npx wrangler dev --local --port 8787 > /tmp/core-five-worker.log 2>&1 &
           for i in $(seq 1 40); do
             if curl -fsS http://127.0.0.1:8787/api/health >/dev/null; then exit 0; fi
             sleep 1
           done
-          cat /tmp/core-worker.log
+          cat /tmp/core-five-worker.log
           exit 1
-      - name: Browser import transactions, cost, ads
+      - name: Browser import real-shape five-source fixtures
         run: |
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import { chromium } from 'playwright-core';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1440,height:960}});
-          await page.goto('http://127.0.0.1:8787',{waitUntil:'networkidle'});
-          await page.waitForFunction(()=>Boolean(window.YT_CORE_REPORT_MODEL)&&Boolean(window.YT_MULTI_FILE_IMPORT));
-          async function openImport(){
-            if(!(await page.locator('#importDrawer').evaluate(el=>el.classList.contains('show')))) await page.locator('#topImportBtn').click();
+          const base='http://127.0.0.1:8787';
+
+          async function fresh(){
+            await page.goto(base,{waitUntil:'networkidle'});
+            await page.waitForFunction(()=>Boolean(window.YT_CORE_FIVE_REPORT_MODEL)&&Boolean(window.YT_MULTI_FILE_IMPORT));
           }
-          async function importFile(path, expectedText){
-            await openImport();
+          async function importOne(path, role){
+            await fresh();
+            await page.locator('#topImportBtn').click();
             await page.locator('#importFiles').setInputFiles(path);
-            await page.locator('#importPeriodValue').filter({hasText:expectedText}).waitFor({state:'visible',timeout:10000});
-            assert.equal(await page.locator('#validateBtn').isEnabled(),true);
+            if(role==='cost') await page.waitForFunction(()=>document.querySelector('#importPeriodValue')?.textContent.includes('主数据导入'));
+            else if(role==='inventory') await page.waitForFunction(()=>document.querySelector('#importPeriodValue')?.textContent.includes('当前库存'));
+            else await page.waitForFunction(()=>!document.querySelector('#validateBtn')?.disabled);
             await page.locator('#validateBtn').click();
-            await page.waitForFunction(()=>window.YT_MULTI_FILE_IMPORT?.getSnapshot?.().validatedFileCount===1);
+            await page.waitForFunction(()=>window.YT_MULTI_FILE_IMPORT?.getSnapshot?.().validatedFileCount===1 && Boolean(window.YT_MULTI_FILE_IMPORT?.getSnapshot?.().normalized));
+            const snapshot=await page.evaluate(()=>window.YT_MULTI_FILE_IMPORT.getSnapshot());
+            assert.equal(snapshot.roles[0],role);
+            assert.equal(snapshot.normalized.checks.some(c=>c.item==='9类数据源'),false);
+            if(role==='returns'){
+              const events=snapshot.normalized.returnEvents;
+              assert.equal(events.length,3);
+              assert.equal(events[1].date,'2026-07-31');
+              assert.equal(events[2].date,'2026-08-01');
+            }
+            if(role==='inventory'){
+              assert.equal(snapshot.normalized.inventoryMode,'REPLACE_CURRENT');
+              assert.equal(snapshot.normalized.inventory.length,2);
+              assert.equal(snapshot.normalized.inventory[0].warehouse,25);
+              assert.equal(snapshot.normalized.inventory[0].fcTransfer,2);
+            }
             assert.equal(await page.locator('#commitBtn').isEnabled(),true);
             await page.locator('#commitBtn').click();
-            await page.waitForFunction(()=>!document.querySelector('#importDrawer')?.classList.contains('show'),null,{timeout:15000});
-            await page.waitForTimeout(900);
+            await page.waitForFunction(()=>!document.querySelector('#importDrawer')?.classList.contains('show'),null,{timeout:20000});
+            await page.waitForTimeout(800);
           }
-          await importFile('/tmp/transactions.csv','跨月数据');
-          await importFile('/tmp/cost.csv','主数据导入');
-          await importFile('/tmp/ads.csv','2025年6月');
-          const searchRes=await page.request.get('http://127.0.0.1:8787/api/ad-search-terms?store=ytdbns&month=2025-06');
-          assert.equal(searchRes.ok(),true);
-          const search=await searchRes.json();
-          assert.equal(search.count,1);
-          assert.equal(search.rows[0].search_term,'reading glasses');
-          assert.equal(search.rows[0].ad_group,'Ad Group 1');
-          assert.equal(search.rows[0].targeting_id,'T1');
-          assert.equal(search.rows[0].spend,12);
-          console.log('Browser three-source acceptance: PASS');
+
+          await importOne('/tmp/cost.csv','cost');
+          await importOne('/tmp/transactions.csv','transactions');
+          await importOne('/tmp/ads.csv','ads');
+          await importOne('/tmp/returns.csv','returns');
+          await importOne('/tmp/inventory-a.csv','inventory');
+          console.log('Browser five-source mapping acceptance: PASS');
           await browser.close();
           NODE
-      - name: Verify D1 historical recalc and field persistence
+      - name: Commit a second inventory snapshot on a different snapshot date
         run: |
-          npx wrangler d1 execute ytdbns-monthly-db --local --command "SELECT COUNT(*) transaction_rows FROM transaction_daily_sku; SELECT date,sku,units,cogs FROM transaction_daily_sku ORDER BY date; SELECT month,business_sales,business_units,finance_gross_sales,cogs,contribution_profit FROM monthly_metrics WHERE store_id='ytdbns' AND month IN ('2025-06','2025-07') ORDER BY month; SELECT sku,purchase_cost,first_mile_cost,fbm_shipping_cost FROM cost_master WHERE store_id='ytdbns' AND sku='SKU-A'; SELECT month,campaign,ad_group,search_term,targeting_id,match_type,spend,sales,orders FROM ad_search_term_monthly WHERE store_id='ytdbns' ORDER BY month;" --json > /tmp/core-d1.json
-          cat /tmp/core-d1.json
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const base='http://127.0.0.1:8787';
+          const month='2026-08';
+          const start=await fetch(`${base}/api/imports/start?store=ytdbns`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({storeId:'ytdbns',month,createdBy:'acceptance'})});
+          assert.equal(start.ok,true);
+          const started=await start.json();
+          const form=new FormData();
+          form.append('batchId',started.batchId);
+          form.append('storeId','ytdbns');
+          form.append('month',month);
+          form.append('reportType','inventory');
+          form.append('rowCount','1');
+          form.append('file',new Blob(['sku,fnsku,asin\nYS003-100,F3,A3\n'],{type:'text/csv'}),'inventory-b.csv');
+          const upload=await fetch(`${base}/api/imports/file?store=ytdbns`,{method:'POST',body:form});
+          assert.equal(upload.ok,true);
+          const payload={
+            storeId:'ytdbns',month,
+            monthly:{inventoryUnits:10,fulfillableUnits:7,inboundUnits:2,inventoryValue:47.5},
+            daily:[],checks:[{item:'库存写入模式',status:'PASS',value:'全量覆盖'}],
+            inventorySnapshotDate:'2026-08-29',inventoryMode:'REPLACE_CURRENT',
+            inventory:[{snapshotDate:'2026-08-29',model:'YS003',sku:'YS003-100',fnsku:'F3',asin:'A3',productName:'Reader C',condition:'New',yourPrice:18.99,mfnListingExists:'No',mfnFulfillable:0,afnListingExists:'Yes',warehouse:9,fulfillable:7,unsellable:1,reserved:1,total:10,perUnitVolume:.01,inboundWorking:0,inboundShipped:2,inboundReceiving:0,inbound:2,researching:0,reservedFutureSupply:0,futureSupplyBuyable:1,fcTransfer:1,onhandBuyable:8,storeLabel:'',inventoryValue:47.5}],
+            productMaster:[{sku:'YS003-100',fnsku:'F3',asin:'A3',model:'YS003',internal:''}]
+          };
+          const commit=await fetch(`${base}/api/imports/commit?store=ytdbns`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({batchId:started.batchId,storeId:'ytdbns',payload})});
+          const result=await commit.json();
+          assert.equal(commit.ok,true,JSON.stringify(result));
+          assert.equal(result.canonicalSourceModel,'core-five');
+          assert.equal(result.inventoryMode,'CURRENT_REPLACE');
+          console.log('Second inventory snapshot commit: PASS');
+          NODE
+      - name: Verify D1 replacement, return timezone, and historical API current inventory
+        run: |
+          npx wrangler d1 execute ytdbns-monthly-db --local --command "SELECT COUNT(*) current_inventory_rows FROM inventory_snapshots WHERE store_id='ytdbns'; SELECT snapshot_date,sku,warehouse,fulfillable,total,fc_transfer,onhand_buyable FROM inventory_snapshots WHERE store_id='ytdbns'; SELECT date,sku,returns,sellable_returns,damaged_returns FROM return_sku_daily WHERE store_id='ytdbns' ORDER BY date,sku; SELECT month,reason,count FROM return_reason_monthly WHERE store_id='ytdbns' ORDER BY month,reason; SELECT month,disposition,count FROM return_disposition_monthly WHERE store_id='ytdbns' ORDER BY month,disposition; SELECT month,status,count FROM return_status_monthly WHERE store_id='ytdbns' ORDER BY month,status; SELECT sku,purchase_cost,first_mile_cost,fbm_shipping_cost FROM cost_master WHERE store_id='ytdbns' ORDER BY sku; SELECT date,sku,sales,units FROM transaction_sku_daily WHERE store_id='ytdbns' ORDER BY date,sku; SELECT month,finance_gross_sales,business_sales,business_units,cogs,returns,inventory_units FROM monthly_metrics WHERE store_id='ytdbns' ORDER BY month;" --json > /tmp/core-five-d1.json
+          cat /tmp/core-five-d1.json
           python3 - <<'PY'
           import json, math
-          blocks=json.load(open('/tmp/core-d1.json'))
-          results=[b.get('results',[]) for b in blocks]
-          assert results[0][0]['transaction_rows']==2, results
-          tx=results[1]
-          assert tx[0]['date']=='2025-06-02' and math.isclose(tx[0]['cogs'],13), tx
-          assert tx[1]['date']=='2025-07-03' and math.isclose(tx[1]['cogs'],6.5), tx
-          months={r['month']:r for r in results[2]}
-          assert math.isclose(months['2025-06']['business_sales'],100), months
-          assert math.isclose(months['2025-06']['business_units'],2), months
+          blocks=json.load(open('/tmp/core-five-d1.json'))
+          rs=[b.get('results',[]) for b in blocks]
+          assert rs[0][0]['current_inventory_rows']==1, rs[0]
+          inv=rs[1][0]
+          assert inv['snapshot_date']=='2026-08-29' and inv['sku']=='YS003-100', inv
+          assert inv['warehouse']==9 and inv['fulfillable']==7 and inv['total']==10 and inv['fc_transfer']==1 and inv['onhand_buyable']==8, inv
+          ret=rs[2]
+          july=[r for r in ret if r['date']=='2026-07-31' and r['sku']=='YS001-100']
+          aug=[r for r in ret if r['date']=='2026-08-01' and r['sku']=='YS003-100']
+          assert july and july[0]['returns']==2 and july[0]['sellable_returns']==1 and july[0]['damaged_returns']==1, ret
+          assert aug and aug[0]['returns']==1, ret
+          assert not any(r['date']=='2026-08-01' and r['sku']=='YS001-100' for r in ret), ret
+          cost={r['sku']:r for r in rs[6]}
+          assert math.isclose(cost['YS001-100']['purchase_cost'],5) and math.isclose(cost['YS001-100']['first_mile_cost'],1) and math.isclose(cost['YS001-100']['fbm_shipping_cost'],.5), cost
+          tx=rs[7][0]
+          assert tx['date']=='2025-06-02' and tx['sku']=='YS001-100' and tx['units']==2 and math.isclose(tx['sales'],100), tx
+          months={r['month']:r for r in rs[8]}
           assert math.isclose(months['2025-06']['cogs'],13), months
-          assert math.isclose(months['2025-07']['business_sales'],60), months
-          assert math.isclose(months['2025-07']['business_units'],1), months
-          assert math.isclose(months['2025-07']['cogs'],6.5), months
-          cost=results[3][0]
-          assert math.isclose(cost['purchase_cost'],5) and math.isclose(cost['first_mile_cost'],1) and math.isclose(cost['fbm_shipping_cost'],.5), cost
-          ad=results[4][0]
-          assert ad['month']=='2025-06' and ad['search_term']=='reading glasses' and ad['targeting_id']=='T1', ad
-          assert math.isclose(ad['spend'],12) and math.isclose(ad['sales'],75) and math.isclose(ad['orders'],3), ad
-          print('D1 core report model invariant: PASS')
+          assert months['2026-07']['returns']==2 and months['2026-08']['returns']==1, months
+          assert all(r['inventory_units'] is None for r in rs[8]), months
+          print('D1 five-source invariants: PASS')
           PY
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const res=await fetch('http://127.0.0.1:8787/api/month?store=ytdbns&month=2025-06');
+          assert.equal(res.ok,true);
+          const body=await res.json();
+          assert.equal(body.inventoryMode,'CURRENT_REPLACE');
+          assert.equal(body.inventorySnapshotDate,'2026-08-29');
+          assert.equal(body.inventory.length,1);
+          assert.equal(body.inventory[0].sku,'YS003-100');
+          assert.equal(body.metrics.inventory_units,10);
+          assert.equal(body.metrics.fulfillable_units,7);
+          console.log('Historical month exposes current inventory snapshot: PASS');
+          NODE
