@@ -374,6 +374,7 @@
       if (module === 'today' || module === 'alerts') {
         clearModule();
         window.YT_MOBILE_VNEXT?.navigate?.(module);
+        applyEnhancements(true);
       } else setModule(module);
       return;
     }
@@ -410,6 +411,7 @@
         state.module = null;
         removeDensityHistoryKey();
         window.YT_MOBILE_VNEXT?.navigate?.('today');
+        applyEnhancements(true);
       }).catch(() => null);
     }
   }, true);
