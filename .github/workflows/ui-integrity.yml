@@ -10,6 +10,7 @@ on:
       - main
       - v51-mobile-ux-hardening
       - mobile-first-screen-hardening
+      - mobile-toolbar-hardening
 
 permissions:
   contents: read
@@ -50,16 +51,24 @@ jobs:
           node --check scripts/mobile-vnext-ia-acceptance.mjs
           node --check scripts/mobile-first-screen-static-check.mjs
           node --check scripts/mobile-first-screen-acceptance.mjs
+          node --check scripts/mobile-toolbar-static-check.mjs
+          node --check scripts/mobile-toolbar-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
         run: npm run check:release:static
+      - name: Install Chinese screenshot fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Install Playwright Chromium
         run: npx playwright-core install chromium
       - name: Current vNext Mobile IA Chromium acceptance
         run: npm run check:v5:mobile:ia:browser
       - name: Mobile first-screen Chromium acceptance
         run: npm run check:v5:mobile:first-screen:browser
+      - name: Mobile compact-toolbar Chromium acceptance
+        run: npm run check:v5:mobile:toolbar:browser
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -68,5 +77,6 @@ jobs:
           path: |
             artifacts/mobile-vnext-ia
             artifacts/mobile-first-screen
+            artifacts/mobile-toolbar
           if-no-files-found: ignore
           retention-days: 7
