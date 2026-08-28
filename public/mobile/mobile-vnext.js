@@ -36,7 +36,6 @@
 
   const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.dot}</svg>`;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-  const num = value => value == null || !Number.isFinite(Number(value)) ? null : Number(value);
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
   const state = {
@@ -116,7 +115,6 @@
     const averageSpend = m.ads.campaigns.length
       ? m.ads.campaigns.reduce((sum, row) => sum + Number(row.spend || 0), 0) / m.ads.campaigns.length
       : 0;
-    const campaignSeen = new Map();
     for (const row of m.ads.campaigns) {
       const candidates = [];
       if (row.acos != null && row.acos > 0.65) candidates.push({ severity: 'critical', score: 94, reason: `ACOS ${fmt.percent(row.acos)}，明显高于目标线` });
@@ -124,7 +122,6 @@
       if (row.orders === 0 && row.spend >= Math.max(averageSpend, 20)) candidates.push({ severity: 'warning', score: 80, reason: `${fmt.money(row.spend, 0)} 花费仍无订单` });
       if (!candidates.length) continue;
       const winner = candidates.sort((a, b) => SEVERITY[b.severity].rank - SEVERITY[a.severity].rank || b.score - a.score)[0];
-      campaignSeen.set(row.id, winner);
       push({
         id: signalKey('ads', row.id), severity: winner.severity, domain: 'ads', score: winner.score,
         title: row.campaign, subtitle: winner.reason, value: row.acos != null ? fmt.percent(row.acos) : fmt.money(row.spend, 0),
@@ -134,7 +131,6 @@
 
     const productMedianSessions = median(m.products.products.map(row => row.sessions));
     const baselineCvr = m.products.totals.cvr;
-    const productSeen = new Set();
     for (const row of m.products.products) {
       let candidate = null;
       if (row.buyBox != null && row.buyBox < 0.8) candidate = { severity: 'critical', score: 92, reason: `Buy Box 仅 ${fmt.percent(row.buyBox)}` };
@@ -144,7 +140,6 @@
         if (!candidate || low.score > candidate.score) candidate = low;
       }
       if (!candidate) continue;
-      productSeen.add(row.id);
       push({
         id: signalKey('products', row.id), severity: candidate.severity, domain: 'products', score: candidate.score,
         title: row.sku === '—' ? row.asin : row.sku, subtitle: candidate.reason, value: fmt.money(row.sales, 0),
@@ -391,19 +386,18 @@
   function searchItems() {
     const m = models();
     const summary = m.overview.summary;
-    const items = [
+    return [
       { id: 'metric-sales', type: 'metric', domain: 'finance', title: '销售额', subtitle: 'Business Sales', value: fmt.money(summary.sales, 0), detail: { type: 'metric', title: '销售额', value: fmt.money(summary.sales, 2), rows: [['销量', fmt.number(summary.units)], ['Sessions', fmt.number(summary.sessions)], ['转化率', fmt.percent(summary.cvr)]] } },
       { id: 'metric-profit', type: 'metric', domain: 'finance', title: '贡献利润', subtitle: 'Contribution Profit', value: fmt.money(summary.profit, 0), detail: { type: 'metric', title: '贡献利润', value: fmt.money(summary.profit, 2), rows: [['利润率', fmt.percent(summary.profitMargin)], ['销售额', fmt.money(summary.sales, 0)]] } },
       { id: 'metric-acos', type: 'metric', domain: 'ads', title: 'ACOS', subtitle: '广告投入产出', value: fmt.percent(summary.acos), detail: { type: 'metric', title: 'ACOS', value: fmt.percent(summary.acos), rows: [['广告花费', fmt.money(summary.adSpend, 0)], ['广告销售', fmt.money(summary.adSales, 0)], ['TACOS', fmt.percent(summary.tacos)]] } },
       { id: 'metric-cvr', type: 'metric', domain: 'products', title: '转化率 CVR', subtitle: 'Sessions → Units', value: fmt.percent(summary.cvr), detail: { type: 'metric', title: '转化率 CVR', value: fmt.percent(summary.cvr), rows: [['Sessions', fmt.number(summary.sessions)], ['销量', fmt.number(summary.units)]] } },
       { id: 'metric-inventory', type: 'metric', domain: 'inventory', title: '库存资金', subtitle: 'Inventory Value', value: fmt.money(summary.inventoryValue, 0), detail: { type: 'metric', title: '库存资金', value: fmt.money(summary.inventoryValue, 2), rows: [['可售库存', fmt.number(summary.fulfillableUnits)], ['库存快照', m.inventory.snapshotDate || '—']] } },
-      ...m.ads.campaigns.map(row => ({ id: `campaign-${row.id}`, type: 'campaign', domain: 'ads', title: row.campaign, subtitle: `广告活动 · ${fmt.money(row.spend, 0)} 花费`, value: fmt.percent(row.acos), keywords: `${row.campaign} ${row.portfolio} campaign 广告`, detail: { type: 'campaign', title: row.campaign, item: row } })),
-      ...m.products.products.map(row => ({ id: `product-${row.id}`, type: 'product', domain: 'products', title: row.sku === '—' ? row.asin : row.sku, subtitle: `${row.asin} · ${row.model || '商品'}`, value: fmt.money(row.sales, 0), keywords: `${row.sku} ${row.asin} ${row.model} sku asin 商品`, detail: { type: 'product', title: row.sku === '—' ? row.asin : row.sku, item: row } })),
+      ...m.ads.campaigns.map(row => ({ id: `campaign-${row.id}`, type: 'campaign', domain: 'ads', title: row.campaign, subtitle: `广告活动 · ${fmt.money(row.spend, 0)} 花费`, value: fmt.percent(row.acos), keywords: `${row.campaign} ${row.portfolio} Campaign 广告`, detail: { type: 'campaign', title: row.campaign, item: row } })),
+      ...m.products.products.map(row => ({ id: `product-${row.id}`, type: 'product', domain: 'products', title: row.sku === '—' ? row.asin : row.sku, subtitle: `${row.asin} · ${row.model || '商品'}`, value: fmt.money(row.sales, 0), keywords: `${row.sku} ${row.asin} ${row.model} SKU ASIN 商品`, detail: { type: 'product', title: row.sku === '—' ? row.asin : row.sku, item: row } })),
       ...m.inventory.inventory.map(row => ({ id: `inventory-${row.id}`, type: 'inventory', domain: 'inventory', title: row.sku === '—' ? row.asin : row.sku, subtitle: `${row.asin} · 库存`, value: `${fmt.number(row.fulfillable)} 可售`, keywords: `${row.sku} ${row.asin} ${row.model} 库存`, detail: { type: 'inventory', title: row.sku === '—' ? row.asin : row.sku, item: row } })),
       ...m.charges.rows.map(row => ({ id: `charge-${row.id}`, type: 'charge', domain: 'charges', title: row.name, subtitle: `${row.category} · Amazon 扣费`, value: fmt.money(row.amount, 0), keywords: `${row.name} ${row.category} ${row.source} 扣费 fee`, detail: { type: 'charge', title: row.name, item: row } })),
       ...m.returns.rows.map(row => ({ id: `return-${row.id}`, type: 'return', domain: 'returns', title: row.reason, subtitle: '退货原因', value: `${fmt.number(row.count)} 次`, keywords: `${row.reason} 退货 refund return`, detail: { type: 'return', title: row.reason, item: row } }))
     ];
-    return items;
   }
 
   function filteredSearchItems() {
@@ -530,12 +524,12 @@
   }
 
   function render() {
-    if (!media.matches) return;
+    if (!media.matches || !state.active) return;
     const previousFocus = document.activeElement;
     const searchFocused = previousFocus?.matches?.('[data-vnext-search-input]');
     const scrollY = window.scrollY;
 
-    let page = state.tab === 'alerts' ? alertsMarkup() : state.tab === 'trends' ? trendsMarkup() : state.tab === 'search' ? searchMarkup() : todayMarkup();
+    const page = state.tab === 'alerts' ? alertsMarkup() : state.tab === 'trends' ? trendsMarkup() : state.tab === 'search' ? searchMarkup() : todayMarkup();
     root.innerHTML = `
       <div class="vnext-app" data-tab="${esc(state.tab)}" aria-busy="${state.runtimeState?.loading ? 'true' : 'false'}">
         ${runtimeNoticeMarkup()}
@@ -643,14 +637,25 @@
     await runtime.setQuickRange(key).catch(() => null);
   }
 
-  async function applyMonth(month) {
+  async function setMonthRange(month) {
+    if (!month) return;
+    const from = runtime.helpers.monthStart(month);
+    const to = runtime.helpers.monthEnd(month);
+    await runtime.setRange(from, to).catch(() => null);
+  }
+
+  async function applyPeriodMonth(month) {
     if (!month) return;
     state.sheet = null;
     render();
     history.back();
-    const from = runtime.helpers.monthStart(month);
-    const to = runtime.helpers.monthEnd(month);
-    await runtime.setRange(from, to).catch(() => null);
+    await setMonthRange(month);
+  }
+
+  async function selectTrendMonth(month) {
+    if (!month) return;
+    await setMonthRange(month);
+    window.scrollTo(0, 0);
   }
 
   async function loadComparison() {
@@ -724,7 +729,7 @@
     const periodMonth = event.target.closest('[data-vnext-period-month]')?.dataset.vnextPeriodMonth;
     if (periodMonth) {
       event.preventDefault();
-      applyMonth(periodMonth);
+      applyPeriodMonth(periodMonth);
       return;
     }
 
@@ -771,7 +776,10 @@
     }
 
     const month = event.target.closest('[data-vnext-month]')?.dataset.vnextMonth;
-    if (month) applyMonth(month);
+    if (month) {
+      event.preventDefault();
+      selectTrendMonth(month);
+    }
   });
 
   root.addEventListener('input', event => {
@@ -834,12 +842,11 @@
   });
 
   function activate() {
-    if (!media.matches) return;
+    if (!media.matches || document.documentElement.dataset.mobileVnextReady !== 'true') return;
     state.active = true;
     root.hidden = false;
     root.setAttribute('aria-hidden', 'false');
     document.body.classList.add('mobile-vnext-active');
-    document.documentElement.dataset.mobileVnextReady = 'true';
     const payload = history.state?.[HISTORY_KEY];
     if (payload?.tab && TABS.some(([id]) => id === payload.tab)) state.tab = payload.tab;
     else replaceHistory({ tab: state.tab, detailKey: null, sheet: null });
@@ -861,6 +868,4 @@
     navigate: changeTab,
     getState: () => Object.freeze({ tab: state.tab, severity: state.severity, query: state.query, detailOpen: Boolean(state.detail), sheet: state.sheet })
   });
-
-  if (media.matches) activate();
 })();
