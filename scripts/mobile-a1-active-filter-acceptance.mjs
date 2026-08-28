@@ -33,6 +33,12 @@ function staticContract() {
       ia.includes('revealControl(filterRail, button'),
     'A1 static contract: IA layer reveals the active filter in its own horizontal scroller'
   );
+  expect(
+    ia.includes('function syncFilterSemantics(module)') &&
+      ia.includes("button.setAttribute('aria-pressed'") &&
+      ia.includes('syncFilterSemantics(module);'),
+    'A1 static contract: IA layer exposes filter selection through aria-pressed semantics'
+  );
 }
 
 async function ready(page) {
@@ -49,7 +55,11 @@ async function openModule(page, module) {
     button.click();
   }, module);
   await page.waitForSelector(`.vnext-density-module-page[data-density-module="${module}"]`, { state: 'visible', timeout: 4_000 });
-  await page.waitForFunction(id => window.YT_MOBILE_VNEXT_DENSITY?.getState?.().module === id, module, { timeout: 4_000 });
+  await page.waitForFunction(id => {
+    const state = window.YT_MOBILE_VNEXT_DENSITY?.getState?.();
+    const buttons = [...document.querySelectorAll(`.vnext-density-module-page[data-density-module="${id}"] .vnext-filter-tags [data-density-filter]`)];
+    return state?.module === id && buttons.length > 0 && buttons.filter(button => button.getAttribute('aria-pressed') === 'true').length === 1;
+  }, module, { timeout: 4_000 });
 }
 
 async function selectFilter(page, module, filter) {
@@ -63,8 +73,14 @@ async function selectFilter(page, module, filter) {
   await page.waitForFunction(({ moduleId, filterId }) => {
     const state = window.YT_MOBILE_VNEXT_DENSITY?.getState?.();
     const pageRoot = document.querySelector(`.vnext-density-module-page[data-density-module="${moduleId}"]`);
+    const buttons = [...(pageRoot?.querySelectorAll('.vnext-filter-tags [data-density-filter]') || [])];
     const active = pageRoot?.querySelector('.vnext-filter-tags [data-density-filter].active');
-    return state?.module === moduleId && state?.filters?.[moduleId] === filterId && active?.dataset.densityFilter === filterId;
+    const pressed = buttons.filter(button => button.getAttribute('aria-pressed') === 'true');
+    return state?.module === moduleId &&
+      state?.filters?.[moduleId] === filterId &&
+      active?.dataset.densityFilter === filterId &&
+      pressed.length === 1 &&
+      pressed[0]?.dataset.densityFilter === filterId;
   }, { moduleId: module, filterId: filter }, { timeout: 4_000 });
   await page.waitForTimeout(80);
 }
@@ -73,10 +89,12 @@ async function filterState(page, module) {
   return page.evaluate(moduleId => {
     const pageRoot = document.querySelector(`.vnext-density-module-page[data-density-module="${moduleId}"]`);
     const rail = pageRoot?.querySelector('.vnext-filter-tags');
+    const buttons = [...(rail?.querySelectorAll('[data-density-filter]') || [])];
     const active = rail?.querySelector('[data-density-filter].active');
     if (!rail || !active) return null;
     const railRect = rail.getBoundingClientRect();
     const activeRect = active.getBoundingClientRect();
+    const pressed = buttons.filter(button => button.getAttribute('aria-pressed') === 'true');
     return {
       module: moduleId,
       filter: active.dataset.densityFilter,
@@ -89,7 +107,12 @@ async function filterState(page, module) {
       fullyVisible: activeRect.left >= railRect.left - 1 && activeRect.right <= railRect.right + 1,
       viewport: innerWidth,
       documentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
-      iaFilter: window.YT_MOBILE_VNEXT_IA?.getState?.().filter || null
+      iaFilter: window.YT_MOBILE_VNEXT_IA?.getState?.().filter || null,
+      visualActiveCount: buttons.filter(button => button.classList.contains('active')).length,
+      pressedCount: pressed.length,
+      pressedFilter: pressed[0]?.dataset.densityFilter || null,
+      activePressed: active.getAttribute('aria-pressed'),
+      allButtonsHavePressedState: buttons.every(button => ['true', 'false'].includes(button.getAttribute('aria-pressed')))
     };
   }, module);
 }
@@ -102,10 +125,29 @@ async function selectAll(page, module) {
   }, module);
   await page.waitForFunction(moduleId => {
     const state = window.YT_MOBILE_VNEXT_DENSITY?.getState?.();
-    const active = document.querySelector(`.vnext-density-module-page[data-density-module="${moduleId}"] .vnext-filter-tags [data-density-filter].active`);
-    return state?.filters?.[moduleId] === 'all' && active?.dataset.densityFilter === 'all';
+    const pageRoot = document.querySelector(`.vnext-density-module-page[data-density-module="${moduleId}"]`);
+    const buttons = [...(pageRoot?.querySelectorAll('.vnext-filter-tags [data-density-filter]') || [])];
+    const active = pageRoot?.querySelector('.vnext-filter-tags [data-density-filter].active');
+    const pressed = buttons.filter(button => button.getAttribute('aria-pressed') === 'true');
+    return state?.filters?.[moduleId] === 'all' &&
+      active?.dataset.densityFilter === 'all' &&
+      pressed.length === 1 &&
+      pressed[0]?.dataset.densityFilter === 'all';
   }, module, { timeout: 4_000 });
   await page.waitForTimeout(80);
+}
+
+function expectSelectionSemantics(state, expectedFilter, label) {
+  expect(
+    state?.visualActiveCount === 1 &&
+      state?.pressedCount === 1 &&
+      state?.filter === expectedFilter &&
+      state?.pressedFilter === expectedFilter &&
+      state?.activePressed === 'true' &&
+      state?.allButtonsHavePressedState,
+    `${label}: visual active and aria-pressed expose one identical selected filter`,
+    JSON.stringify(state)
+  );
 }
 
 async function runViewport(viewport) {
@@ -126,11 +168,16 @@ async function runViewport(viewport) {
 
     for (const [module, farFilter] of CASES) {
       await openModule(page, module);
+      const initial = await filterState(page, module);
+      evidence.cases[`${module}:initial`] = initial;
+      expectSelectionSemantics(initial, initial?.filter, `${label}/${module}/initial`);
+
       await selectFilter(page, module, farFilter);
       const far = await filterState(page, module);
       evidence.cases[`${module}:${farFilter}`] = far;
       expect(Boolean(far), `${label}/${module}: active filter state is measurable`, JSON.stringify(far));
       expect(far?.filter === farFilter && far?.iaFilter === farFilter, `${label}/${module}: density and IA state agree on the selected far filter`, JSON.stringify(far));
+      expectSelectionSemantics(far, farFilter, `${label}/${module}/${farFilter}`);
       expect(far?.fullyVisible, `${label}/${module}: selected far-right filter remains fully visible after force rerender`, JSON.stringify(far));
       expect(far?.maxScroll > 0 && far?.scrollLeft > 0, `${label}/${module}: far-right selection restores horizontal filter context instead of resetting to zero`, JSON.stringify(far));
       expect(far?.documentWidth <= far?.viewport + 1, `${label}/${module}: filter reveal does not create document horizontal overflow`, JSON.stringify(far));
@@ -143,6 +190,7 @@ async function runViewport(viewport) {
       const all = await filterState(page, module);
       evidence.cases[`${module}:all`] = all;
       expect(all?.filter === 'all' && all?.iaFilter === 'all', `${label}/${module}: returning to All restores left filter state`, JSON.stringify(all));
+      expectSelectionSemantics(all, 'all', `${label}/${module}/all`);
       expect(all?.fullyVisible && all?.scrollLeft <= 1, `${label}/${module}: All is visible at the left edge after rerender`, JSON.stringify(all));
     }
 
@@ -154,6 +202,7 @@ async function runViewport(viewport) {
     const restored = await filterState(page, 'products');
     evidence.restoredProducts = restored;
     expect(restored?.filter === 'top' && restored?.fullyVisible && restored?.scrollLeft > 0, `${label}/products: module return restores the persisted active filter into view`, JSON.stringify(restored));
+    expectSelectionSemantics(restored, 'top', `${label}/products/restored`);
 
     const methods = [...new Set(requests.map(request => request.method))];
     expect(methods.every(method => method === 'GET'), `${label}: active-filter acceptance remains GET-only`, JSON.stringify(methods));
