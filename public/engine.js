@@ -95,7 +95,8 @@
       note.className = 'yt-store-import-note';
       drawerBody.insertBefore(note, drawerBody.firstChild);
     }
-    note.innerHTML = `当前店铺：<b>${activeStore().name}</b><br>本次上传、校验、原始文件归档和数据库写入只属于该店铺。`;
+    const html = `当前店铺：<b>${activeStore().name}</b><br>本次上传、校验、原始文件归档和数据库写入只属于该店铺。`;
+    if (note.innerHTML !== html) note.innerHTML = html;
   }
 
   function reconcileStoreUI() {
