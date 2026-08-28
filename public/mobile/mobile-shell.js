@@ -7,34 +7,43 @@
   const mobile = window.matchMedia('(max-width: 860px)');
   const theme = document.querySelector('meta[name="theme-color"][media*="max-width"]');
 
-  function ensureStylesheet() {
-    if (document.getElementById('mobileVNextStyles')) return Promise.resolve();
+  function loadStylesheet(id, href) {
+    if (document.getElementById(id)) return Promise.resolve();
     return new Promise(resolve => {
       const link = document.createElement('link');
-      link.id = 'mobileVNextStyles';
+      link.id = id;
       link.rel = 'stylesheet';
-      link.href = './mobile/mobile-vnext.css';
+      link.href = href;
       link.addEventListener('load', resolve, { once: true });
       link.addEventListener('error', resolve, { once: true });
       document.head.appendChild(link);
     });
   }
 
-  function ensureRuntime() {
-    if (window.YT_MOBILE_VNEXT) return Promise.resolve();
-    if (document.getElementById('mobileVNextRuntime')) {
-      return new Promise(resolve => document.getElementById('mobileVNextRuntime').addEventListener('load', resolve, { once: true }));
+  function loadRuntime(id, src, readyCheck) {
+    if (readyCheck?.()) return Promise.resolve();
+    const existing = document.getElementById(id);
+    if (existing) {
+      return new Promise(resolve => {
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', resolve, { once: true });
+      });
     }
     return new Promise(resolve => {
       const script = document.createElement('script');
-      script.id = 'mobileVNextRuntime';
-      script.src = './mobile/mobile-vnext.js';
+      script.id = id;
+      script.src = src;
       script.async = false;
       script.addEventListener('load', resolve, { once: true });
       script.addEventListener('error', resolve, { once: true });
       document.head.appendChild(script);
     });
   }
+
+  const ensureStylesheet = () => loadStylesheet('mobileVNextStyles', './mobile/mobile-vnext.css');
+  const ensureDensityStylesheet = () => loadStylesheet('mobileVNextDensityStyles', './mobile/mobile-vnext-density.css');
+  const ensureRuntime = () => loadRuntime('mobileVNextRuntime', './mobile/mobile-vnext.js', () => Boolean(window.YT_MOBILE_VNEXT));
+  const ensureDensityRuntime = () => loadRuntime('mobileVNextDensityRuntime', './mobile/mobile-vnext-density.js', () => Boolean(window.YT_MOBILE_VNEXT_DENSITY));
 
   function syncSurface() {
     const enabled = mobile.matches;
@@ -49,11 +58,13 @@
   document.documentElement.dataset.mobileVnextReady = 'false';
   syncSurface();
 
-  Promise.all([ensureStylesheet(), ensureRuntime()]).then(() => {
-    document.documentElement.dataset.mobileVnextReady = 'true';
-    syncSurface();
-    window.YT_MOBILE_VNEXT?.activate?.();
-  });
+  Promise.all([ensureStylesheet(), ensureRuntime()])
+    .then(() => Promise.all([ensureDensityStylesheet(), ensureDensityRuntime()]))
+    .then(() => {
+      document.documentElement.dataset.mobileVnextReady = 'true';
+      syncSurface();
+      window.YT_MOBILE_VNEXT?.activate?.();
+    });
 
   mobile.addEventListener?.('change', () => {
     syncSurface();
