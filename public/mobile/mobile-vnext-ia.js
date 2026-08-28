@@ -16,14 +16,27 @@
     'data'
   ]);
   const DOMAIN_SET = new Set(DOMAIN_IDS);
+  const FILTER_MODULE_SET = new Set(['ads', 'products', 'inventory']);
   const DUPLICATE_PRIMARY_IDS = new Set(['today', 'alerts']);
   let syncing = false;
   let lastRevealedModule = null;
   let lastRevealedRail = null;
+  let lastRevealedFilter = null;
+  let lastRevealedFilterRail = null;
+
+  function densityState() {
+    return window.YT_MOBILE_VNEXT_DENSITY?.getState?.() || null;
+  }
 
   function activeModule() {
-    const module = window.YT_MOBILE_VNEXT_DENSITY?.getState?.().module;
+    const module = densityState()?.module;
     return DOMAIN_SET.has(module) ? module : null;
+  }
+
+  function activeFilter(module) {
+    if (!FILTER_MODULE_SET.has(module)) return null;
+    const value = densityState()?.filters?.[module];
+    return value || 'all';
   }
 
   function activePrimaryTab() {
@@ -32,6 +45,20 @@
 
   function shouldShowRail() {
     return activePrimaryTab() === 'today' || Boolean(activeModule());
+  }
+
+  function revealControl(scroller, control, edge = 4) {
+    if (!scroller || !control) return;
+    const scrollerRect = scroller.getBoundingClientRect();
+    const controlRect = control.getBoundingClientRect();
+    const visibleLeft = scrollerRect.left + edge;
+    const visibleRight = scrollerRect.right - edge;
+    if (controlRect.left >= visibleLeft && controlRect.right <= visibleRight) return;
+
+    const scrollerCenter = (scrollerRect.left + scrollerRect.right) / 2;
+    const controlCenter = (controlRect.left + controlRect.right) / 2;
+    const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+    scroller.scrollLeft = Math.max(0, Math.min(maxScroll, scroller.scrollLeft + controlCenter - scrollerCenter));
   }
 
   function revealActiveDomain(rail, module) {
@@ -44,22 +71,30 @@
 
     const button = rail.querySelector(`[data-vnext-module="${module}"]`);
     if (!button || button.hidden) return;
-
-    const railRect = rail.getBoundingClientRect();
-    const buttonRect = button.getBoundingClientRect();
-    const visibleLeft = railRect.left + 4;
-    const visibleRight = railRect.right - 4;
-    const fullyVisible = buttonRect.left >= visibleLeft && buttonRect.right <= visibleRight;
-
-    if (!fullyVisible) {
-      const railCenter = (railRect.left + railRect.right) / 2;
-      const buttonCenter = (buttonRect.left + buttonRect.right) / 2;
-      const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth);
-      rail.scrollLeft = Math.max(0, Math.min(maxScroll, rail.scrollLeft + buttonCenter - railCenter));
-    }
+    revealControl(rail, button);
 
     lastRevealedModule = module;
     lastRevealedRail = rail;
+  }
+
+  function revealActiveFilter(module) {
+    if (!FILTER_MODULE_SET.has(module)) {
+      lastRevealedFilter = null;
+      lastRevealedFilterRail = null;
+      return;
+    }
+
+    const filterRail = root.querySelector(`.vnext-density-module-page[data-density-module="${module}"] .vnext-filter-tags`);
+    const filter = activeFilter(module);
+    if (!filterRail || !filter) return;
+    if (filterRail === lastRevealedFilterRail && filter === lastRevealedFilter) return;
+
+    const button = filterRail.querySelector(`[data-density-filter="${filter}"]`);
+    if (!button) return;
+    revealControl(filterRail, button, 1);
+
+    lastRevealedFilter = filter;
+    lastRevealedFilterRail = filterRail;
   }
 
   function syncRail() {
@@ -100,6 +135,7 @@
       rail.classList.toggle('vnext-domain-rail-hidden', !visible);
       if (visible) revealActiveDomain(rail, module);
       else revealActiveDomain(rail, null);
+      revealActiveFilter(module);
     } finally {
       syncing = false;
     }
@@ -118,7 +154,7 @@
   observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-tab'] });
 
   root.addEventListener('click', event => {
-    if (event.target.closest('[data-vnext-tab], [data-vnext-module]')) requestAnimationFrame(syncRail);
+    if (event.target.closest('[data-vnext-tab], [data-vnext-module], [data-density-filter]')) requestAnimationFrame(syncRail);
   }, true);
   root.addEventListener('click', settlePrimaryRouteAtTop);
   window.addEventListener('popstate', () => requestAnimationFrame(syncRail));
@@ -132,6 +168,7 @@
     getState: () => Object.freeze({
       primaryTab: activePrimaryTab(),
       module: activeModule(),
+      filter: activeFilter(activeModule()),
       railVisible: shouldShowRail()
     })
   });
