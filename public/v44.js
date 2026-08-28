@@ -1,4 +1,12 @@
 (() => {
+  function loadImportReportCompat(){
+    if(document.getElementById('importReportCompatRuntime')) return;
+    const script=document.createElement('script');
+    script.id='importReportCompatRuntime';
+    script.src='./import-report-compat.js';
+    script.async=false;
+    document.head.appendChild(script);
+  }
   function loadOperationLog(){
     if(!document.getElementById('operationLogStyles')){
       const link=document.createElement('link');
@@ -15,6 +23,7 @@
       document.head.appendChild(script);
     }
   }
+  loadImportReportCompat();
   loadOperationLog();
 
   document.body.classList.add('studio-v44');
