@@ -46,16 +46,16 @@
     const valueNode = statusBox.querySelector('#importPeriodValue');
     const detailNode = statusBox.querySelector('#importPeriodDetail');
     const labels = labelsFor(activeRoles) || '主数据';
-    monthInput.value = auditMonth;
-    monthInput.dataset.periodMode = 'master';
-    statusBox.dataset.state = 'ready';
-    statusBox.dataset.periodMode = 'master';
+    if (monthInput.value !== auditMonth) monthInput.value = auditMonth;
+    if (monthInput.dataset.periodMode !== 'master') monthInput.dataset.periodMode = 'master';
+    if (statusBox.dataset.state !== 'ready') statusBox.dataset.state = 'ready';
+    if (statusBox.dataset.periodMode !== 'master') statusBox.dataset.periodMode = 'master';
     setText(valueNode, '主数据导入');
     setText(
       detailNode,
       `${labels}属于长期主数据，不要求报告月份。本次仅以 ${formatMonth(auditMonth)} 作为导入批次的内部审计归档月份；不会因此生成该月份的业务月报数据。`
     );
-    validateButton.disabled = false;
+    if (validateButton.disabled) validateButton.disabled = false;
   }
 
   function clearMasterState() {
@@ -96,7 +96,7 @@
   document.getElementById('dropzone')?.addEventListener('drop', event => detectMasterOnly(event.dataTransfer?.files || []));
 
   const observer = new MutationObserver(() => applyMasterState());
-  observer.observe(statusBox, { childList: true, subtree: true, characterData: true, attributes: true });
+  observer.observe(statusBox, { childList: true, subtree: true, characterData: true });
 
   window.YT_MASTER_DATA_IMPORT_PERIOD = Object.freeze({
     version: 1,
