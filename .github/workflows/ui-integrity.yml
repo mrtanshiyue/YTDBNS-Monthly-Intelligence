@@ -2,9 +2,14 @@ name: UI Integrity
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
+      - main
       - v51-mobile-ux-hardening
+      - mobile-first-screen-hardening
 
 permissions:
   contents: read
@@ -43,6 +48,8 @@ jobs:
           node --check scripts/v5-native-mobile-static-check.mjs
           node --check scripts/mobile-vnext-ia-static-check.mjs
           node --check scripts/mobile-vnext-ia-acceptance.mjs
+          node --check scripts/mobile-first-screen-static-check.mjs
+          node --check scripts/mobile-first-screen-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
@@ -51,11 +58,15 @@ jobs:
         run: npx playwright-core install chromium
       - name: Current vNext Mobile IA Chromium acceptance
         run: npm run check:v5:mobile:ia:browser
+      - name: Mobile first-screen Chromium acceptance
+        run: npm run check:v5:mobile:first-screen:browser
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v5-mobile-ia-acceptance-${{ github.sha }}
-          path: artifacts/mobile-vnext-ia
+          name: v5-mobile-acceptance-${{ github.sha }}
+          path: |
+            artifacts/mobile-vnext-ia
+            artifacts/mobile-first-screen
           if-no-files-found: ignore
           retention-days: 7
