@@ -39,6 +39,13 @@ function staticContract() {
       ia.includes('syncFilterSemantics(module);'),
     'A1 static contract: IA layer exposes filter selection through aria-pressed semantics'
   );
+  expect(
+    ia.includes('function rerenderFocusTarget(event)') &&
+      ia.includes('function restoreRerenderedFocus(target)') &&
+      ia.includes("kind: 'filter'") &&
+      ia.includes('replacement.focus({ preventScroll: true })'),
+    'A1 static contract: synthesized filter activation restores focus to the replacement filter without document scrolling'
+  );
 }
 
 async function ready(page) {
@@ -150,6 +157,43 @@ function expectSelectionSemantics(state, expectedFilter, label) {
   );
 }
 
+async function keyboardFilterFocusScenario(page, label) {
+  await openModule(page, 'products');
+  await selectAll(page, 'products');
+  await page.focus('.vnext-density-module-page[data-density-module="products"] [data-density-filter="top"]');
+  const before = await page.evaluate(() => ({
+    filter: document.activeElement?.dataset?.densityFilter || null,
+    module: document.activeElement?.dataset?.densityFilterModule || null,
+    connected: Boolean(document.activeElement?.isConnected),
+    scrollY
+  }));
+  expect(before.filter === 'top' && before.module === 'products' && before.connected, `${label}/keyboard-filter: Top 20% owns focus before activation`, JSON.stringify(before));
+
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const state = window.YT_MOBILE_VNEXT_DENSITY?.getState?.();
+    const active = document.activeElement;
+    return state?.module === 'products' &&
+      state?.filters?.products === 'top' &&
+      active?.dataset?.densityFilterModule === 'products' &&
+      active?.dataset?.densityFilter === 'top' &&
+      active?.isConnected &&
+      active?.classList.contains('active') &&
+      active?.getAttribute('aria-pressed') === 'true';
+  }, null, { timeout: 4_000 });
+
+  const after = await page.evaluate(() => ({
+    filter: document.activeElement?.dataset?.densityFilter || null,
+    module: document.activeElement?.dataset?.densityFilterModule || null,
+    connected: Boolean(document.activeElement?.isConnected),
+    selected: Boolean(document.activeElement?.classList?.contains('active') && document.activeElement?.getAttribute?.('aria-pressed') === 'true'),
+    scrollY
+  }));
+  expect(after.filter === 'top' && after.module === 'products' && after.connected && after.selected, `${label}/keyboard-filter: focus moves to the replacement Top 20% filter after force rerender`, JSON.stringify(after));
+  expect(after.scrollY <= 2, `${label}/keyboard-filter: filter focus restoration does not move the document`, JSON.stringify(after));
+  return { before, after };
+}
+
 async function runViewport(viewport) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
@@ -194,9 +238,9 @@ async function runViewport(viewport) {
       expect(all?.fullyVisible && all?.scrollLeft <= 1, `${label}/${module}: All is visible at the left edge after rerender`, JSON.stringify(all));
     }
 
+    evidence.keyboardFilterFocus = await keyboardFilterFocusScenario(page, label);
+
     /* Persisted filter context must also survive leaving the module and coming back to a newly rendered filter rail. */
-    await openModule(page, 'products');
-    await selectFilter(page, 'products', 'top');
     await openModule(page, 'inventory');
     await openModule(page, 'products');
     const restored = await filterState(page, 'products');
