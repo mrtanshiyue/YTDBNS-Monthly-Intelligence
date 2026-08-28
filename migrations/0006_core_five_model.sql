@@ -51,3 +51,25 @@ CREATE TABLE IF NOT EXISTS return_sku_daily (
   FOREIGN KEY (store_id) REFERENCES stores(id)
 );
 CREATE INDEX IF NOT EXISTS idx_return_sku_month ON return_sku_daily(store_id, date, sku);
+
+CREATE TABLE IF NOT EXISTS return_disposition_monthly (
+  store_id TEXT NOT NULL,
+  month TEXT NOT NULL,
+  disposition TEXT NOT NULL,
+  count REAL NOT NULL DEFAULT 0,
+  batch_id TEXT,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (store_id, month, disposition),
+  FOREIGN KEY (store_id) REFERENCES stores(id)
+);
+
+CREATE TABLE IF NOT EXISTS return_status_monthly (
+  store_id TEXT NOT NULL,
+  month TEXT NOT NULL,
+  status TEXT NOT NULL,
+  count REAL NOT NULL DEFAULT 0,
+  batch_id TEXT,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (store_id, month, status),
+  FOREIGN KEY (store_id) REFERENCES stores(id)
+);
