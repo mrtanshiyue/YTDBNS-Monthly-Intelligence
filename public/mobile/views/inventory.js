@@ -28,11 +28,11 @@
   function filteredRows(inventory) {
     const avgValue = inventory.length ? inventory.reduce((sum, row) => sum + Number(row.inventoryValue || 0), 0) / inventory.length : 0;
     const filtered = inventory.filter(row => {
-      if (state.filter === 'unsellable') return Number(row.unsellable || 0) > 0;
-      if (state.filter === 'lowStock') return Number(row.fulfillable || 0) <= 20;
-      if (state.filter === 'highCapital') return Number(row.inventoryValue || 0) >= avgValue && Number(row.inventoryValue || 0) > 0;
-      if (state.filter === 'inbound') return Number(row.inbound || 0) > 0;
-      if (state.filter === 'normal') return Number(row.unsellable || 0) === 0 && Number(row.fulfillable || 0) > 20;
+      if (state.filter === 'unsellable') return row.unsellable != null && Number(row.unsellable) > 0;
+      if (state.filter === 'lowStock') return row.fulfillable != null && Number(row.fulfillable) <= 20;
+      if (state.filter === 'highCapital') return row.inventoryValue != null && Number(row.inventoryValue) >= avgValue && Number(row.inventoryValue) > 0;
+      if (state.filter === 'inbound') return row.inbound != null && Number(row.inbound) > 0;
+      if (state.filter === 'normal') return row.unsellable != null && row.fulfillable != null && Number(row.unsellable) === 0 && Number(row.fulfillable) > 20;
       return true;
     });
     return [...filtered].sort((a, b) => Number(b[state.sort] || 0) - Number(a[state.sort] || 0));
@@ -51,22 +51,26 @@
     const model = selectors.inventoryModel(runtimeState);
     const filtered = filteredRows(model.inventory);
     const rows = filtered.slice(0, 30);
-    const totalUnits = Number(model.totals.total || 0);
-    const unsellableRatio = totalUnits ? Number(model.totals.unsellable || 0) / totalUnits : null;
-    const riskSkus = model.inventory.filter(row => Number(row.unsellable || 0) > 0).length;
-    const lowStockSkus = model.inventory.filter(row => Number(row.fulfillable || 0) <= 20).length;
-    const avgValue = model.inventory.length ? model.inventory.reduce((sum, row) => sum + Number(row.inventoryValue || 0), 0) / model.inventory.length : 0;
-    const highCapitalSkus = model.inventory.filter(row => Number(row.inventoryValue || 0) >= avgValue && Number(row.inventoryValue || 0) > 0).length;
-    const issueCount = new Set(model.inventory.filter(row => Number(row.unsellable || 0) > 0 || Number(row.fulfillable || 0) <= 20 || (Number(row.inventoryValue || 0) >= avgValue && Number(row.inventoryValue || 0) > 0)).map(row => row.id)).size;
+    const riskSkus = model.inventory.filter(row => row.unsellable != null && Number(row.unsellable) > 0).length;
+    const lowStockSkus = model.inventory.filter(row => row.fulfillable != null && Number(row.fulfillable) <= 20).length;
+    const valuedRows = model.inventory.filter(row => row.inventoryValue != null);
+    const avgValue = valuedRows.length ? valuedRows.reduce((sum, row) => sum + Number(row.inventoryValue || 0), 0) / valuedRows.length : 0;
+    const highCapitalSkus = valuedRows.filter(row => Number(row.inventoryValue) >= avgValue && Number(row.inventoryValue) > 0).length;
+    const issueCount = new Set(model.inventory.filter(row =>
+      (row.unsellable != null && Number(row.unsellable) > 0) ||
+      (row.fulfillable != null && Number(row.fulfillable) <= 20) ||
+      (row.inventoryValue != null && Number(row.inventoryValue) >= avgValue && Number(row.inventoryValue) > 0)
+    ).map(row => row.id)).size;
 
     const empty = !rows.length ? `
       <div class="v5-core-empty"><strong>${model.inventory.length ? '当前筛选没有匹配库存' : '没有可用库存快照'}</strong><span>${model.inventory.length ? '调整筛选条件查看其他库存记录。' : '所选期间结束月份及之前没有找到真实库存快照；未知库存不会显示为 0。'}</span></div>` : '';
 
     const cards = rows.map(row => {
-      const total = Number(row.total || 0);
-      const unsellableShare = total ? Number(row.unsellable || 0) / total : 0;
-      const isLow = Number(row.fulfillable || 0) <= 20;
-      const risk = Number(row.unsellable || 0) > 0 ? (unsellableShare > .10 ? 'critical' : 'warning') : isLow ? 'warning' : 'positive';
+      const total = row.total == null ? null : Number(row.total);
+      const unsellable = row.unsellable == null ? null : Number(row.unsellable);
+      const unsellableShare = total && unsellable != null ? unsellable / total : null;
+      const isLow = row.fulfillable != null && Number(row.fulfillable) <= 20;
+      const risk = unsellable != null && unsellable > 0 ? (unsellableShare != null && unsellableShare > .10 ? 'critical' : 'warning') : isLow ? 'warning' : 'positive';
       return `
         <button type="button" class="v5-record-card v5-risk-${risk}" data-record-type="inventory" data-record-id="${esc(row.id)}" aria-label="查看库存 ${esc(row.sku)} 详情">
           <div class="v5-record-card-head">
@@ -79,7 +83,7 @@
             <div class="v5-record-metric"><span>总库存</span><strong>${fmt.number(row.total)}</strong></div>
             <div class="v5-record-metric"><span>不可售</span><strong>${fmt.number(row.unsellable)}</strong></div>
           </div>
-          <div class="v5-record-card-foot"><span class="v5-record-chip">${row.unsellable > 0 ? `不可售 ${fmt.percent(unsellableShare)}` : isLow ? '低库存 · 可售≤20' : row.inbound > 0 ? '有在途库存' : '库存正常'}</span><span>详情 ›</span></div>
+          <div class="v5-record-card-foot"><span class="v5-record-chip">${unsellable != null && unsellable > 0 ? `不可售 ${fmt.percent(unsellableShare)}` : isLow ? '低库存 · 可售≤20' : row.inbound != null && Number(row.inbound) > 0 ? '有在途库存' : '库存正常'}</span><span>详情 ›</span></div>
         </button>`;
     }).join('');
 
