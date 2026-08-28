@@ -18,12 +18,12 @@
     padding-inline:11px;
   }
 
-  /* #mobileAppRoot button{color:inherit} has ID specificity. Keep selected domain text readable. */
+  /* Multiple inherited button layers compete here; selected domain contrast is a release invariant. */
   #mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active{
-    color:#fff;
+    color:#fff!important;
   }
   #mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active b{
-    color:#fff;
+    color:#fff!important;
   }
 
   /* Ads / Products / Inventory filters are horizontally scrollable; expose overflow and make stops predictable. */
