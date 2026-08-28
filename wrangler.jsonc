@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ytdbns-monthly-intelligence",
-  "main": "./src/worker.js",
+  "main": "./src/worker-entry.js",
   "compatibility_date": "2026-08-12",
   "assets": {
     "directory": "./public/",
