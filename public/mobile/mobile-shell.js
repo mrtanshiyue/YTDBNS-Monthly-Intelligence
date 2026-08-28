@@ -110,6 +110,35 @@
     });
   }
 
+  function ensureIaStylesheet() {
+    if (document.getElementById('mobileVNextIaStyles')) return Promise.resolve();
+    return new Promise(resolve => {
+      const link = document.createElement('link');
+      link.id = 'mobileVNextIaStyles';
+      link.rel = 'stylesheet';
+      link.href = './mobile/mobile-vnext-ia.css';
+      link.addEventListener('load', resolve, { once: true });
+      link.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(link);
+    });
+  }
+
+  function ensureIaRuntime() {
+    if (window.YT_MOBILE_VNEXT_IA) return Promise.resolve();
+    if (document.getElementById('mobileVNextIaRuntime')) {
+      return new Promise(resolve => document.getElementById('mobileVNextIaRuntime').addEventListener('load', resolve, { once: true }));
+    }
+    return new Promise(resolve => {
+      const script = document.createElement('script');
+      script.id = 'mobileVNextIaRuntime';
+      script.src = './mobile/mobile-vnext-ia.js';
+      script.async = false;
+      script.addEventListener('load', resolve, { once: true });
+      script.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
   function syncSurface() {
     const enabled = mobile.matches;
     const ready = document.documentElement.dataset.mobileVnextReady === 'true';
@@ -127,11 +156,13 @@
     .then(() => Promise.all([ensureDensityStylesheet(), ensureDensityRuntime()]))
     .then(() => Promise.all([ensureHomeBriefStylesheet(), ensureHomeBriefRuntime()]))
     .then(() => ensureHomeDetailRuntime())
+    .then(() => Promise.all([ensureIaStylesheet(), ensureIaRuntime()]))
     .then(() => {
       document.documentElement.dataset.mobileVnextReady = 'true';
       syncSurface();
       window.YT_MOBILE_VNEXT?.activate?.();
       window.YT_MOBILE_VNEXT_HOME_BRIEFS?.refresh?.();
+      window.YT_MOBILE_VNEXT_IA?.refresh?.();
     });
 
   mobile.addEventListener?.('change', () => {
@@ -139,6 +170,7 @@
     if (mobile.matches) {
       window.YT_MOBILE_VNEXT?.activate?.();
       window.YT_MOBILE_VNEXT_HOME_BRIEFS?.refresh?.();
+      window.YT_MOBILE_VNEXT_IA?.refresh?.();
     } else window.YT_MOBILE_VNEXT?.deactivate?.();
   });
 })();

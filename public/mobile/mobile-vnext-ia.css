@@ -1,0 +1,27 @@
+@media (max-width:860px){
+  .vnext-module-rail[hidden],
+  .vnext-module-rail.vnext-domain-rail-hidden{
+    display:none!important;
+  }
+
+  .vnext-module-rail[data-vnext-ia="domain"]{
+    gap:5px;
+    padding:6px 18px 7px;
+  }
+
+  .vnext-module-rail[data-vnext-ia="domain"] [data-vnext-module="today"],
+  .vnext-module-rail[data-vnext-ia="domain"] [data-vnext-module="alerts"]{
+    display:none!important;
+  }
+
+  .vnext-module-rail[data-vnext-ia="domain"] button{
+    padding-inline:11px;
+  }
+
+  @media (max-width:390px){
+    .vnext-module-rail[data-vnext-ia="domain"]{
+      padding-left:15px;
+      padding-right:15px;
+    }
+  }
+}

@@ -26,6 +26,7 @@ jobs:
           node --check public/shared/selectors.js
           node --check public/shared/secondary-selectors.js
           node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-vnext-ia.js
           node --check public/mobile/mobile-compare.js
           node --check public/mobile/mobile-interactions.js
           node --check public/mobile/views/overview.js
@@ -40,18 +41,21 @@ jobs:
           node --check scripts/postinstall-gate.mjs
           node --check scripts/ui-integrity-static-check.mjs
           node --check scripts/v5-native-mobile-static-check.mjs
-          node --check scripts/v5-browser-acceptance.mjs
+          node --check scripts/mobile-vnext-ia-static-check.mjs
+          node --check scripts/mobile-vnext-ia-acceptance.mjs
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
         run: npm run check:release:static
       - name: Install Playwright Chromium
         run: npx playwright-core install chromium
-      - name: Exact-head Chromium acceptance
-        run: npm run check:v5:browser
+      - name: Current vNext Mobile IA Chromium acceptance
+        run: npm run check:v5:mobile:ia:browser
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v5-browser-acceptance-${{ github.sha }}
-          path: artifacts/v5-browser-acceptance
+          name: v5-mobile-ia-acceptance-${{ github.sha }}
+          path: artifacts/mobile-vnext-ia
           if-no-files-found: ignore
           retention-days: 7
