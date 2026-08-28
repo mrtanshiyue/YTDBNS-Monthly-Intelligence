@@ -22,7 +22,7 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies without legacy postinstall gates
-        run: npm ci --ignore-scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: JavaScript syntax
         run: |
@@ -135,12 +135,7 @@ jobs:
 
           async function runEngine(engineName, browserType, viewport) {
             const browser = await browserType.launch({ headless: true });
-            const context = await browser.newContext({
-              viewport,
-              deviceScaleFactor: 3,
-              hasTouch: true,
-              isMobile: true
-            });
+            const context = await browser.newContext({ viewport, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
             const page = await context.newPage();
             const signals = captureSignals(page);
             const label = `${engineName} ${viewport.width}x${viewport.height}`;
@@ -195,11 +190,7 @@ jobs:
               expect(hasTasks > 0, `${label}: Global Search exposes 待办 as first-class module`);
               await page.goBack();
               await sleep(120);
-              const afterBackSearch = await page.evaluate(() => ({
-                overlay: Boolean(document.querySelector('#v5MobileOverlayRoot .v5-fullscreen')),
-                route: document.querySelector('[data-mobile-view]')?.dataset.mobileView,
-                inert: document.getElementById('mobileAppRoot')?.inert
-              }));
+              const afterBackSearch = await page.evaluate(() => ({ overlay: Boolean(document.querySelector('#v5MobileOverlayRoot .v5-fullscreen')), route: document.querySelector('[data-mobile-view]')?.dataset.mobileView, inert: document.getElementById('mobileAppRoot')?.inert }));
               expect(!afterBackSearch.overlay && afterBackSearch.route === 'ads' && afterBackSearch.inert === false, `${label}: Safari-style Back closes Search before leaving route`, JSON.stringify(afterBackSearch));
 
               const periodButton = page.locator('[data-mobile-action="period"]');
