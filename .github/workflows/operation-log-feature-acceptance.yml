@@ -1,0 +1,132 @@
+name: Operation Log Feature Acceptance
+
+on:
+  push:
+    branches:
+      - feature/operation-log-v1
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Static and syntax gates
+        run: |
+          node --check public/operation-log.js
+          node --check public/v44.js
+          node --check src/operation-log.js
+          node --check src/worker-entry.js
+          npm run check:release:static
+          npx wrangler deploy --dry-run
+      - name: Prepare local D1
+        run: npm run db:migrate:local
+      - name: Install Chromium
+        run: npx playwright-core install chromium
+      - name: Start local Worker
+        run: |
+          nohup npx wrangler dev --local --port 8787 > /tmp/operation-log-wrangler.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8787/api/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/operation-log-wrangler.log
+          exit 1
+      - name: API + Chromium operation log acceptance
+        run: |
+          mkdir -p artifacts/operation-log-acceptance
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { chromium } from 'playwright-core';
+
+          const base = 'http://127.0.0.1:8787';
+          const startRes = await fetch(`${base}/api/imports/start?store=ytdbns`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ storeId: 'ytdbns', month: '2026-07', createdBy: 'acceptance' })
+          });
+          const start = await startRes.json();
+          assert.equal(startRes.ok, true, JSON.stringify(start));
+          assert.ok(start.batchId);
+
+          const form = new FormData();
+          form.append('batchId', start.batchId);
+          form.append('storeId', 'ytdbns');
+          form.append('month', '2026-07');
+          form.append('reportType', 'cost');
+          form.append('rowCount', '2');
+          form.append('file', new File(['sku,cost\nSKU-A,1.25\nSKU-B,1.50\n'], 'sample-cost.csv', { type: 'text/csv' }));
+          const fileRes = await fetch(`${base}/api/imports/file?store=ytdbns`, { method: 'POST', body: form });
+          const fileResult = await fileRes.json();
+          assert.equal(fileRes.ok, true, JSON.stringify(fileResult));
+          assert.ok(fileResult.checksum);
+
+          const commitRes = await fetch(`${base}/api/imports/commit?store=ytdbns`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              batchId: start.batchId,
+              storeId: 'ytdbns',
+              payload: {
+                storeId: 'ytdbns',
+                month: '2026-07',
+                monthly: {},
+                checks: [{ item: '本次数据源', status: 'PASS', value: '1 类', detail: 'acceptance' }],
+                costMaster: [{ sku: 'SKU-A', cost: 1.25, updated: '2026-07-31' }, { sku: 'SKU-B', cost: 1.5, updated: '2026-07-31' }]
+              }
+            })
+          });
+          const commit = await commitRes.json();
+          assert.equal(commitRes.ok, true, JSON.stringify(commit));
+
+          const logsRes = await fetch(`${base}/api/operation-logs?store=ytdbns&limit=20`);
+          const logsPayload = await logsRes.json();
+          assert.equal(logsRes.ok, true, JSON.stringify(logsPayload));
+          const types = new Set(logsPayload.logs.map(log => log.event_type));
+          assert.ok(types.has('IMPORT_STARTED'));
+          assert.ok(types.has('FILE_STORED'));
+          assert.ok(types.has('IMPORT_COMMITTED'));
+          const committed = logsPayload.logs.find(log => log.event_type === 'IMPORT_COMMITTED');
+          assert.equal(committed.detail.fileCount, 1);
+          assert.equal(committed.detail.sourceCount, 1);
+          assert.equal(committed.detail.files[0].filename, 'sample-cost.csv');
+          assert.equal(committed.detail.rowCounts.costMaster, 2);
+
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+          await page.goto(base, { waitUntil: 'networkidle' });
+          const logButton = page.locator('#operationLogBtn');
+          await logButton.waitFor({ state: 'visible' });
+          const refreshBox = await page.locator('#refreshBtn').boundingBox();
+          const logBox = await logButton.boundingBox();
+          const importBox = await page.locator('#topImportBtn').boundingBox();
+          assert.ok(refreshBox && logBox && importBox);
+          assert.ok(logBox.x > refreshBox.x, 'operation log button should be right of refresh');
+          assert.ok(logBox.x < importBox.x, 'operation log button should be left of import');
+          await logButton.click();
+          await page.locator('#operationLogDrawer.show').waitFor({ state: 'visible' });
+          await page.getByText('导入完成 · 1 个文件 / 1 类数据源').waitFor({ state: 'visible' });
+          await page.getByText('sample-cost.csv').first().waitFor({ state: 'visible' });
+          await page.getByText('采购成本报告').first().waitFor({ state: 'visible' });
+          await page.getByText('1 类数据源').first().waitFor({ state: 'visible' });
+          await page.screenshot({ path: 'artifacts/operation-log-acceptance/desktop-operation-log.png', fullPage: true });
+          await browser.close();
+          console.log('Operation log API + Chromium acceptance: PASS');
+          NODE
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operation-log-feature-acceptance-${{ github.sha }}
+          path: artifacts/operation-log-acceptance
+          if-no-files-found: ignore
+          retention-days: 7
