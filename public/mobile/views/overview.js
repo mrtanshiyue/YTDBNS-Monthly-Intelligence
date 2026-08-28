@@ -10,8 +10,8 @@
       return '<div class="v5-overview-chart-empty"><strong>暂无趋势数据</strong><span>当前期间没有可展示的日级销售趋势</span></div>';
     }
     const width = 340;
-    const height = 100;
-    const pad = { x: 7, top: 8, bottom: 18 };
+    const height = 92;
+    const pad = { x: 6, top: 8, bottom: 16 };
     const values = rows.map(row => Number(row.value || 0));
     const max = Math.max(1, ...values);
     const min = Math.min(0, ...values);
@@ -24,7 +24,6 @@
     return `
       <div class="v5-overview-chart" aria-label="销售额趋势">
         <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="所选期间销售额趋势折线图">
-          <line x1="${pad.x}" y1="${height - pad.bottom}" x2="${width - pad.x}" y2="${height - pad.bottom}" class="v5-chart-axis"/>
           <path d="${path}" class="v5-chart-sales-line"/>
         </svg>
         <div class="v5-chart-edge-labels"><span>${first}</span><span>${last}</span></div>
@@ -33,65 +32,61 @@
 
   function actionMarkup(items, esc) {
     if (!items.length) {
-      return '<div class="v5-overview-empty-note"><strong>当前没有高优先级异常</strong><span>核心指标暂无需要立即处理的信号</span></div>';
+      return '<div class="v52-task-empty"><strong>当前没有高优先级异常</strong><span>核心经营指标暂无需要立即处理的信号。</span></div>';
     }
     return items.map(item => `
-      <button type="button" class="v5-overview-insight ${esc(item.tone)}" data-mobile-route="${esc(item.route)}">
-        <span class="v5-overview-insight-dot" aria-hidden="true"></span>
-        <span class="v5-overview-insight-copy"><b>${esc(item.title)}</b><small>${esc(item.detail)}</small></span>
+      <button type="button" class="v52-home-action ${esc(item.tone)}" data-mobile-route="${esc(item.route)}">
+        <span class="v52-home-action-dot" aria-hidden="true"></span>
+        <span><b>${esc(item.title)}</b><small>${esc(item.detail)}</small></span>
         <i aria-hidden="true">›</i>
       </button>`).join('');
   }
 
   registry.overview = ({ runtimeState, esc }) => {
-    const model = selectors?.overviewModel?.(runtimeState) || { summary: {}, insights: [], salesSeries: [], rangeLabel: '选择期间' };
+    const model = selectors?.overviewModel?.(runtimeState) || { summary: {}, insights: [], salesSeries: [] };
     const s = model.summary || {};
-    const priority = model.insights.filter(item => item.tone === 'critical' || item.tone === 'warning' || item.tone === 'neutral');
-    const actionItems = (priority.length ? priority : model.insights.filter(item => item.tone === 'positive')).slice(0, 3);
-    const priorityCount = priority.filter(item => item.tone === 'critical' || item.tone === 'warning').length;
+    const priority = model.insights.filter(item => item.tone === 'critical' || item.tone === 'warning');
+    const actionItems = priority.slice(0, 3);
+    const pulse = [
+      ['ACOS', fmt.percent(s.acos), 'ads'],
+      ['TACOS', fmt.percent(s.tacos), 'ads'],
+      ['利润率', fmt.percent(s.profitMargin), 'finance'],
+      ['Sessions', fmt.number(s.sessions), 'products']
+    ];
 
     return `
-      <section class="v5-mobile-view v5-overview v51-overview" data-mobile-view="overview" aria-labelledby="v5MobileViewTitle">
-        <div class="v5-mobile-view-heading v5-overview-heading">
-          <div>
-            <span class="v5-mobile-eyebrow">经营概览</span>
-            <h1 id="v5MobileViewTitle">经营首页</h1>
-            <p>先看经营结果，再处理异常</p>
-          </div>
-        </div>
-
+      <section class="v5-mobile-view v52-home" data-mobile-view="overview" aria-labelledby="v5MobileViewTitle">
         ${model.error ? `<div class="v5-overview-runtime-warning"><b>数据读取异常</b><span>${esc(model.error)}</span></div>` : ''}
 
-        <div class="v51-overview-actions" aria-label="期间与对比">
-          <button type="button" class="v51-overview-action" data-mobile-action="period" aria-label="选择查看期间"><span>查看期间</span><strong>${esc(model.rangeLabel)}</strong><i aria-hidden="true">›</i></button>
-          <button type="button" class="v51-overview-action compact" data-v5-open-compare aria-label="与上一期间对比"><span>期间对比</span><strong>对比上期</strong><i aria-hidden="true">›</i></button>
-        </div>
-
-        <section class="v51-overview-results" aria-labelledby="v51OverviewResults">
-          <div class="v5-overview-section-head"><div><span>核心结果</span><h2 id="v51OverviewResults">本期经营</h2></div><small>${s.sessions != null ? `${fmt.number(s.sessions)} Sessions` : '所选期间'}</small></div>
-          <div class="v5-overview-summary">
-            <span>销售额</span>
-            <strong>${fmt.money(s.sales, 0)}</strong>
-            <div>
-              <span><small>贡献利润</small><b>${fmt.money(s.profit, 0)}</b></span>
-              <span><small>利润率</small><b>${fmt.percent(s.profitMargin)}</b></span>
-            </div>
+        <section class="v52-home-hero" aria-label="本期经营结果">
+          <span>销售额</span>
+          <strong>${fmt.money(s.sales, 0)}</strong>
+          <div class="v52-home-profit">
+            <button type="button" data-mobile-route="finance"><small>贡献利润</small><b>${fmt.money(s.profit, 0)}</b></button>
+            <button type="button" data-mobile-route="finance"><small>利润率</small><b>${fmt.percent(s.profitMargin)}</b></button>
           </div>
-          <div class="v5-overview-kpis">
-            <button type="button" data-mobile-route="ads" aria-label="查看广告 ACOS"><span>ACOS</span><strong>${fmt.percent(s.acos)}</strong><small>目标线 ≤45% · 查看广告活动</small></button>
-            <button type="button" data-mobile-route="ads" aria-label="查看 TACOS"><span>TACOS</span><strong>${fmt.percent(s.tacos)}</strong><small>广告花费 / 总销售额</small></button>
+          <button type="button" class="v52-compare-link" data-v5-open-compare>对比上期 <span aria-hidden="true">›</span></button>
+        </section>
+
+        <section class="v52-home-section" aria-labelledby="v52HomeActions">
+          <div class="v52-home-section-head">
+            <div><span>异常优先</span><h2 id="v52HomeActions">现在需要处理</h2></div>
+            <button type="button" data-mobile-route="tasks">查看全部 ${priority.length ? `· ${priority.length}` : ''}</button>
+          </div>
+          <div class="v52-home-actions">${actionMarkup(actionItems, esc)}</div>
+        </section>
+
+        <section class="v52-home-section" aria-labelledby="v52HomePulse">
+          <div class="v52-home-section-head"><div><span>经营脉搏</span><h2 id="v52HomePulse">关键指标</h2></div></div>
+          <div class="v52-pulse-grid">
+            ${pulse.map(([label, value, route]) => `<button type="button" data-mobile-route="${route}"><span>${label}</span><strong>${value}</strong></button>`).join('')}
           </div>
         </section>
 
-        <section class="v5-overview-section v51-overview-priority" aria-labelledby="v5OverviewAlerts">
-          <div class="v5-overview-section-head"><div><span>待处理事项</span><h2 id="v5OverviewAlerts">现在需要处理</h2></div><small>${priorityCount ? `${priorityCount} 项异常` : '暂无高优先异常'}</small></div>
-          <div class="v5-overview-insights">${actionMarkup(actionItems, esc)}</div>
-        </section>
-
-        <section class="v5-overview-section" aria-labelledby="v5OverviewTrend">
-          <div class="v5-overview-section-head"><div><span>经营趋势</span><h2 id="v5OverviewTrend">销售趋势</h2></div><small>单指标视图</small></div>
-          <div class="v5-overview-chart-card">
-            <div class="v5-overview-chart-value"><span>销售额</span><strong>${fmt.money(s.sales, 0)}</strong></div>
+        <section class="v52-home-section" aria-labelledby="v52HomeTrend">
+          <div class="v52-home-section-head"><div><span>趋势</span><h2 id="v52HomeTrend">销售趋势</h2></div><small>所选期间</small></div>
+          <div class="v52-home-chart">
+            <div><span>销售额</span><strong>${fmt.money(s.sales, 0)}</strong></div>
             ${salesChart(model.salesSeries)}
           </div>
         </section>
