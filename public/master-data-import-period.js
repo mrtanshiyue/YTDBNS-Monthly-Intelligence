@@ -10,7 +10,7 @@
   if (!engine || !normalizer || !fileInput || !monthInput || !validateButton || !statusBox) return;
   if (window.YT_MASTER_DATA_IMPORT_PERIOD?.version === 1) return;
 
-  const MASTER_ROLES = new Set(['cost', 'product']);
+  const MASTER_ROLES = new Set(['cost', 'product', 'inventory']);
   const ROLE_LABELS = normalizer.ROLE_LABELS || {};
   let generation = 0;
   let masterOnly = false;
@@ -45,15 +45,18 @@
     if (!masterOnly || !auditMonth) return;
     const valueNode = statusBox.querySelector('#importPeriodValue');
     const detailNode = statusBox.querySelector('#importPeriodDetail');
-    const labels = labelsFor(activeRoles) || '主数据';
+    const labels = labelsFor(activeRoles) || '非月度数据';
+    const hasInventory = activeRoles.includes('inventory');
     if (monthInput.value !== auditMonth) monthInput.value = auditMonth;
     if (monthInput.dataset.periodMode !== 'master') monthInput.dataset.periodMode = 'master';
     if (statusBox.dataset.state !== 'ready') statusBox.dataset.state = 'ready';
     if (statusBox.dataset.periodMode !== 'master') statusBox.dataset.periodMode = 'master';
-    setText(valueNode, '主数据导入');
+    setText(valueNode, hasInventory ? '当前库存 / 主数据导入' : '主数据导入');
     setText(
       detailNode,
-      `${labels}属于长期主数据，不要求报告月份。本次仅以 ${formatMonth(auditMonth)} 作为导入批次的内部审计归档月份；不会因此生成该月份的业务月报数据。`
+      hasInventory
+        ? `${labels}不属于历史月度累计报表。库存按本次上传时间作为当前快照，并全量替换上一份库存；${formatMonth(auditMonth)} 仅作为导入批次审计归档月份。`
+        : `${labels}属于长期主数据，不要求报告月份。本次仅以 ${formatMonth(auditMonth)} 作为导入批次的内部审计归档月份；不会因此生成该月份的业务月报数据。`
     );
     if (validateButton.disabled) validateButton.disabled = false;
   }
