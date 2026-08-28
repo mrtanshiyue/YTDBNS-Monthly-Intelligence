@@ -46,9 +46,10 @@
     border-radius:16px;
   }
   body.mobile-vnext-active .vnext-density-metric{
+    height:60px;
     min-height:60px;
-    padding:8px 9px;
-    gap:2px;
+    padding:7px 9px;
+    gap:1px;
     order:20;
   }
   body.mobile-vnext-active .vnext-density-metric[data-density-metric="sales"]{order:1}
@@ -60,15 +61,15 @@
   body.mobile-vnext-active .vnext-density-metric[data-density-metric="cvr"]{order:7}
   body.mobile-vnext-active .vnext-density-metric>span{
     font-size:10px;
-    line-height:1.1;
+    line-height:1.05;
   }
   body.mobile-vnext-active .vnext-density-metric strong{
     font-size:16px;
-    line-height:1.08;
+    line-height:1.04;
   }
   body.mobile-vnext-active .vnext-density-metric small{
     font-size:9.5px;
-    line-height:1.15;
+    line-height:1.05;
   }
 
   body.mobile-vnext-active .vnext-home-all-modules{
@@ -139,6 +140,7 @@
       padding-right:15px;
     }
     body.mobile-vnext-active .vnext-density-metric{
+      height:58px;
       min-height:58px;
       padding-inline:8px;
     }
