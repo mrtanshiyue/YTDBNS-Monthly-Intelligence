@@ -7,6 +7,14 @@
     script.async=false;
     document.head.appendChild(script);
   }
+  function loadCoreReportModel(){
+    if(document.getElementById('coreReportModelRuntime')) return;
+    const script=document.createElement('script');
+    script.id='coreReportModelRuntime';
+    script.src='./core-report-model.js';
+    script.async=false;
+    document.head.appendChild(script);
+  }
   function loadMultiFileImport(){
     if(document.getElementById('multiFileImportRuntime')) return;
     const script=document.createElement('script');
@@ -40,6 +48,7 @@
     }
   }
   loadImportReportCompat();
+  loadCoreReportModel();
   loadMultiFileImport();
   loadMasterDataImportPeriod();
   loadOperationLog();
