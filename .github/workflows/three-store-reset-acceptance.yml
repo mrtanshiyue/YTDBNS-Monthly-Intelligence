@@ -1,0 +1,51 @@
+name: Three Store Reset Acceptance
+
+on:
+  push:
+    branches:
+      - three-store-real-data-reset
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check public/engine.js
+          node --check src/worker-entry.js
+          node --check src/worker.js
+      - name: Install + release gates
+        run: npm install --no-audit --no-fund
+      - name: Explicit release gates
+        run: npm run check:release:static
+      - name: Three-store static assertions
+        run: |
+          grep -F "id: 'ytdbns'" public/engine.js
+          grep -F "id: 'yy'" public/engine.js
+          grep -F "id: 'jj'" public/engine.js
+          grep -F "body.payload.storeId = activeStoreId" public/engine.js
+          grep -F "RAW_REPORTS" src/worker-entry.js
+          grep -F "DELETE FROM import_batches" src/worker-entry.js
+          grep -F '"main": "./src/worker-entry.js"' wrangler.jsonc
+      - name: Wrangler production dry-run
+        env:
+          WORKERS_CI: '1'
+          WORKERS_CI_BRANCH: main
+          WORKERS_CI_COMMIT_SHA: ${{ github.sha }}
+        run: npx wrangler deploy --dry-run --outdir artifacts/three-store-dry-run
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: three-store-reset-${{ github.sha }}
+          path: artifacts/three-store-dry-run
+          if-no-files-found: ignore
+          retention-days: 7
