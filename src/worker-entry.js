@@ -7,6 +7,24 @@ const STORES = Object.freeze([
   { id: 'jj', code: 'JJ', name: 'JJ' }
 ]);
 const STORE_IDS = new Set(STORES.map(store => store.id));
+const OPS_RESET_TOKEN_SHA256 = 'bd8ecf9c3579e031943f49964afe08baf8eb75bd016ea7277b00d5f69cb4bc7f';
+const RESET_TABLES = Object.freeze([
+  'data_quality_checks',
+  'report_files',
+  'charge_daily_metrics',
+  'charge_name_monthly',
+  'daily_metrics',
+  'monthly_metrics',
+  'product_monthly_metrics',
+  'parent_monthly_metrics',
+  'campaign_monthly_metrics',
+  'inventory_snapshots',
+  'storage_monthly_metrics',
+  'return_reason_monthly',
+  'product_master',
+  'cost_master',
+  'import_batches'
+]);
 let catalogPromise = null;
 
 const normalizeStoreId = value => STORE_IDS.has(String(value || '').toLowerCase())
@@ -34,6 +52,44 @@ async function storesResponse(env) {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store'
     }
+  });
+}
+
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(String(value || ''));
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function countResetTables(env) {
+  const results = await env.DB.batch(RESET_TABLES.map(table => env.DB.prepare(`SELECT COUNT(*) AS count FROM ${table}`)));
+  return Object.fromEntries(RESET_TABLES.map((table, index) => [table, Number(results[index]?.results?.[0]?.count || 0)]));
+}
+
+async function oneTimeResetResponse(url, env) {
+  const providedHash = await sha256Hex(url.searchParams.get('token'));
+  if (providedHash !== OPS_RESET_TOKEN_SHA256) {
+    return new Response(JSON.stringify({ ok: false, error: 'NOT_FOUND' }), {
+      status: 404,
+      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
+    });
+  }
+
+  const before = await countResetTables(env);
+  await env.DB.batch(RESET_TABLES.map(table => env.DB.prepare(`DELETE FROM ${table}`)));
+  await ensureStoreCatalog(env);
+  const after = await countResetTables(env);
+  const stores = (await env.DB.prepare(`SELECT id,code,name FROM stores WHERE id IN ('ytdbns','yy','jj') ORDER BY id`).all()).results || [];
+
+  return new Response(JSON.stringify({
+    ok: true,
+    reset: 'business-data-only',
+    before,
+    after,
+    preserved: { stores, schema: true, migrations: true, r2: true }
+  }), {
+    status: 200,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
   });
 }
 
@@ -101,6 +157,7 @@ export default {
 
     await ensureStoreCatalog(env);
     if (request.method === 'GET' && url.pathname === '/api/stores') return storesResponse(env);
+    if (request.method === 'GET' && url.pathname === '/api/__ops/one-time-reset') return oneTimeResetResponse(url, env);
 
     const normalizedRequest = await normalizeApiRequest(request);
     if (request.method === 'POST' && url.pathname === '/api/imports/commit') {
