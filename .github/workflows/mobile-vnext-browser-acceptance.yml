@@ -1,0 +1,256 @@
+name: Mobile vNext Browser Acceptance
+
+on:
+  push:
+    branches:
+      - mobile-vnext-zero-based
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WORKERS_CI: '1'
+      WORKERS_CI_BRANCH: main
+      WORKERS_CI_COMMIT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax
+        run: |
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-app-bridge.js
+          node --check public/mobile/mobile-vnext.js
+          node --check scripts/v5-native-mobile-static-check.mjs
+          node --check scripts/ui-integrity-static-check.mjs
+
+      - name: Cloudflare-equivalent install with postinstall
+        run: npm install --no-audit --no-fund
+
+      - name: Explicit release gates
+        run: npm run check:release:static
+
+      - name: Install browsers
+        run: npx playwright-core install --with-deps chromium webkit
+
+      - name: Serve static site
+        run: |
+          python3 -m http.server 8788 --directory public > /tmp/vnext-http.log 2>&1 &
+          echo $! > /tmp/vnext-http.pid
+
+      - name: Run vNext matrix
+        run: |
+          mkdir -p artifacts/mobile-vnext
+          cat > .tmp-vnext-acceptance.mjs <<'EOF'
+          import fs from 'node:fs';
+          import { chromium, webkit } from 'playwright-core';
+
+          const base = 'http://127.0.0.1:8788';
+          const failures = [];
+          const report = [];
+          const pass = m => console.log(`PASS  ${m}`);
+          const expect = (c,m,d='') => c ? pass(m) : (failures.push(`${m}${d?` — ${d}`:''}`), console.error(`FAIL  ${m}${d?` — ${d}`:''}`));
+          const tabs = ['today','alerts','trends','search'];
+          const labels = ['今日','异常','趋势','搜索'];
+          const isExpectedHealth404 = row => row?.status === 404 && row?.url?.endsWith('/api/health');
+          const isGeneric404Console = message => message.includes('Failed to load resource') && message.includes('404');
+
+          async function runMobile(name,type,viewport){
+            const browser = await type.launch({headless:true});
+            const context = await browser.newContext({viewport,deviceScaleFactor:3,hasTouch:true,isMobile:true});
+            const page = await context.newPage();
+            const errors=[]; const pageErrors=[]; const requests=[]; const requestFailures=[]; const badResponses=[];
+            page.on('console',m=>{if(m.type()==='error') errors.push(m.text())});
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            page.on('request',r=>{if(r.url().includes('/api/')) requests.push({method:r.method(),url:r.url()})});
+            page.on('requestfailed',r=>requestFailures.push({url:r.url(),error:r.failure()?.errorText||''}));
+            page.on('response',r=>{if(r.status()>=400) badResponses.push({status:r.status(),url:r.url()})});
+            const label=`${name} ${viewport.width}x${viewport.height}`;
+            const evidence={engine:name,viewport};
+            try{
+              await page.goto(base,{waitUntil:'load',timeout:30000});
+              await page.waitForFunction(()=>document.documentElement.dataset.mobileVnextReady==='true',null,{timeout:10000});
+              await page.waitForSelector('#mobileAppRoot:not([hidden]) .vnext-app',{state:'visible',timeout:10000});
+              await page.waitForFunction(()=>window.YT_SHARED_RUNTIME?.getState?.()?.loading===false,null,{timeout:15000});
+
+              const isolation=await page.evaluate(()=>{
+                const visible=selector=>{const el=document.querySelector(selector);if(!el)return false;const r=el.getBoundingClientRect();const s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
+                const link=document.getElementById('mobileVNextStyles');
+                return {
+                  stylesheet:Boolean(link&&link.sheet),
+                  active:document.body.classList.contains('mobile-vnext-active'),
+                  mobileVisible:visible('#mobileAppRoot'),
+                  desktopVisible:['.global-nav','.section-nav','.main-shell'].filter(visible)
+                };
+              });
+              expect(isolation.stylesheet,`${label}: vNext CSS is render-critical and loaded`,JSON.stringify(isolation));
+              expect(isolation.active&&isolation.mobileVisible,`${label}: Mobile vNext is the active surface`,JSON.stringify(isolation));
+              expect(isolation.desktopVisible.length===0,`${label}: Desktop surface is fully isolated on mobile`,JSON.stringify(isolation));
+
+              const runtime=await page.evaluate(()=>window.YT_SHARED_RUNTIME.getState());
+              expect(runtime.mode==='demo',`${label}: localhost uses demo runtime`,runtime.mode);
+
+              const nav=await page.evaluate(()=>[...document.querySelectorAll('.vnext-tabbar [data-vnext-tab]')].map(x=>({id:x.dataset.vnextTab,text:x.textContent.trim()})));
+              expect(JSON.stringify(nav.map(x=>x.id))===JSON.stringify(tabs),`${label}: exact 4-tab IA`,JSON.stringify(nav));
+              expect(JSON.stringify(nav.map(x=>x.text))===JSON.stringify(labels),`${label}: exact tab labels`,JSON.stringify(nav));
+              expect((await page.locator('.v5-mobile-bottom-nav').count())===0,`${label}: legacy 5-tab nav absent`);
+              expect((await page.locator('.v5-fullscreen,.v52-ops-sheet,.v5-mobile-view').count())===0,`${label}: legacy Mobile runtime surfaces absent`);
+
+              for(const tab of tabs){
+                await page.click(`[data-vnext-tab="${tab}"]`);
+                await page.waitForSelector(`[data-vnext-page="${tab}"]`,{state:'visible'});
+                await page.evaluate(()=>window.scrollTo(0,0));
+                await page.waitForTimeout(80);
+                const ov=await page.evaluate(()=>({w:innerWidth,html:document.documentElement.scrollWidth,body:document.body.scrollWidth,root:document.getElementById('mobileAppRoot').scrollWidth}));
+                expect(Math.max(ov.html,ov.body,ov.root)<=ov.w+1,`${label}/${tab}: horizontal overflow=0`,JSON.stringify(ov));
+                const small=await page.evaluate(()=>[...document.querySelectorAll('#mobileAppRoot button')].filter(b=>{const r=b.getBoundingClientRect();const s=getComputedStyle(b);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&r.height<43.5}).map(b=>({text:b.textContent.trim().slice(0,30),h:b.getBoundingClientRect().height})).slice(0,10));
+                expect(small.length===0,`${label}/${tab}: visible buttons >=44px high`,JSON.stringify(small));
+                await page.screenshot({path:`artifacts/mobile-vnext/${name}-${viewport.width}x${viewport.height}-${tab}.png`,fullPage:false});
+              }
+
+              await page.click('[data-vnext-tab="search"]');
+              await page.fill('[data-vnext-search-input]','ACOS');
+              await page.waitForSelector('[data-vnext-result="metric-acos"]',{state:'visible'});
+              expect(true,`${label}: universal search finds ACOS`);
+              const clearSize=await page.locator('[data-vnext-clear-search]').evaluate(el=>{const r=el.getBoundingClientRect();return {w:r.width,h:r.height}});
+              expect(clearSize.w>=43.5&&clearSize.h>=43.5,`${label}: Search clear target remains >=44x44 after input`,JSON.stringify(clearSize));
+              await page.click('[data-vnext-result="metric-acos"]');
+              await page.waitForSelector('.vnext-detail-screen',{state:'visible'});
+              expect((await page.textContent('#vnextDetailTitle')).trim()==='ACOS',`${label}: detail opens from search`);
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="search"]',{state:'visible'});
+              expect((await page.locator('.vnext-detail-screen').count())===0,`${label}: Back closes detail`);
+
+              await page.click('[data-vnext-period]');
+              await page.waitForSelector('.vnext-sheet',{state:'visible'});
+              expect((await page.locator('[data-vnext-quick]').count())===5,`${label}: period sheet exposes 5 quick ranges`);
+              await page.goBack();
+              await page.waitForTimeout(80);
+              expect((await page.locator('.vnext-sheet').count())===0,`${label}: Back closes period sheet`);
+
+              await page.click('[data-vnext-tab="alerts"]');
+              await page.waitForSelector('[data-vnext-page="alerts"]',{state:'visible'});
+              expect((await page.locator('[data-vnext-severity]').count())===3,`${label}: anomaly severity control present`);
+              const issueRows=page.locator('[data-vnext-page="alerts"] [data-vnext-signal]');
+              const issueCount=await issueRows.count();
+              expect(issueCount>0&&issueCount<=12,`${label}: Alerts exposes decision-level issue groups rather than record flood`,`count=${issueCount}`);
+              const firstIssueTitle=((await issueRows.first().locator('strong').textContent())||'').trim();
+              await issueRows.first().click();
+              await page.waitForSelector('.vnext-detail-screen',{state:'visible'});
+              expect(((await page.locator('.vnext-detail-toolbar>span').first().textContent())||'').trim()==='问题类型',`${label}: first drilldown opens issue-group detail`);
+              const impactedRows=page.locator('.vnext-detail-screen [data-vnext-signal]');
+              const impactedCount=await impactedRows.count();
+              expect(impactedCount>0&&impactedCount<=8,`${label}: issue group limits impacted-object drilldown`,`count=${impactedCount}`);
+              await impactedRows.first().click();
+              await page.waitForSelector('.vnext-detail-screen',{state:'visible'});
+              expect(((await page.locator('.vnext-detail-toolbar>span').first().textContent())||'').trim()!=='问题类型',`${label}: second drilldown opens concrete operating object`);
+              await page.goBack();
+              await page.waitForFunction(title=>document.querySelector('#vnextDetailTitle')?.textContent?.trim()===title,firstIssueTitle);
+              expect(true,`${label}: first Back restores issue-group detail`);
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="alerts"]',{state:'visible'});
+              expect((await page.locator('.vnext-detail-screen').count())===0,`${label}: second Back restores Alerts list`);
+
+              await page.click('[data-vnext-tab="today"]');
+              await page.click('[data-vnext-tab="alerts"]');
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="today"]',{state:'visible'});
+              expect(true,`${label}: Back restores previous top-level tab`);
+
+              await page.click('[data-vnext-tab="trends"]');
+              if(runtime.mode==='demo'){
+                const demoState=await page.evaluate(()=>{
+                  const skeleton=document.querySelector('.vnext-skeleton');
+                  return {
+                    classApplied:document.body.classList.contains('mobile-vnext-demo'),
+                    pseudo:skeleton?getComputedStyle(skeleton,'::before').content:'',
+                    visibleShimmers:skeleton?[...skeleton.querySelectorAll('i')].filter(el=>getComputedStyle(el).display!=='none').length:-1
+                  };
+                });
+                expect(demoState.classApplied&&demoState.pseudo.includes('预览模式')&&demoState.visibleShimmers===0,`${label}: demo Trends explains unavailable live comparison instead of endless skeleton`,JSON.stringify(demoState));
+              }
+              const trendMonth=page.locator('[data-vnext-month]').first();
+              if(await trendMonth.count()){
+                const beforeLength=await page.evaluate(()=>history.length);
+                await trendMonth.click();
+                await page.waitForTimeout(150);
+                expect((await page.locator('[data-vnext-page="trends"]').count())===1,`${label}: selecting a trend month stays on Trends`);
+                const afterLength=await page.evaluate(()=>history.length);
+                expect(afterLength===beforeLength,`${label}: trend-month selection does not synthesize Browser Back/history entries`,`${beforeLength}->${afterLength}`);
+              }
+
+              const unexpectedResponses=badResponses.filter(row=>!isExpectedHealth404(row));
+              const expectedHealth404s=badResponses.filter(isExpectedHealth404);
+              const generic404Errors=errors.filter(isGeneric404Console);
+              const unexpectedConsole=errors.filter(message=>!isGeneric404Console(message));
+              expect(unexpectedResponses.length===0,`${label}: no unexpected HTTP >=400 responses`,JSON.stringify(unexpectedResponses));
+              expect(unexpectedConsole.length===0&&generic404Errors.length===expectedHealth404s.length,`${label}: console errors are limited to expected localhost /api/health 404s`,JSON.stringify({errors,badResponses}));
+              expect(pageErrors.length===0,`${label}: page errors=0`,JSON.stringify(pageErrors));
+              expect(requestFailures.length===0,`${label}: network request failures=0`,JSON.stringify(requestFailures));
+              expect(requests.every(r=>r.method==='GET'),`${label}: browser API remains GET-only`,JSON.stringify(requests));
+              evidence.errors=errors; evidence.pageErrors=pageErrors; evidence.requestFailures=requestFailures; evidence.badResponses=badResponses; evidence.apiRequests=requests;
+              await page.screenshot({path:`artifacts/mobile-vnext/${name}-${viewport.width}x${viewport.height}-final.png`,fullPage:true});
+            }catch(error){
+              failures.push(`${label}: ${error.stack||error}`);console.error(`FAIL  ${label}`,error);
+              await page.screenshot({path:`artifacts/mobile-vnext/${name}-${viewport.width}x${viewport.height}-failure.png`,fullPage:true}).catch(()=>{});
+            }finally{report.push(evidence);await context.close();await browser.close()}
+          }
+
+          async function runDesktop(){
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:1440,height:1000}});
+            const page=await context.newPage();
+            const errors=[];const pageErrors=[];const badResponses=[];
+            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            page.on('response',r=>{if(r.status()>=400)badResponses.push({status:r.status(),url:r.url()})});
+            try{
+              await page.goto(base,{waitUntil:'load',timeout:30000});
+              await page.waitForTimeout(500);
+              const desktop=await page.evaluate(()=>({
+                mobileHidden:document.getElementById('mobileAppRoot')?.hidden,
+                mobileActive:document.body.classList.contains('mobile-vnext-active'),
+                nav:[...document.querySelectorAll('#mainNav [data-page]')].map(x=>x.dataset.page),
+                mainDisplay:getComputedStyle(document.querySelector('.main-shell')).display
+              }));
+              expect(desktop.mobileHidden===true&&!desktop.mobileActive,'desktop 1440: Mobile vNext remains inactive',JSON.stringify(desktop));
+              expect(desktop.nav.join('|')==='overview|finance|charges|ads|products|inventory|returns|history|data','desktop 1440: frozen 9-destination nav remains intact',JSON.stringify(desktop.nav));
+              expect(desktop.mainDisplay!=='none','desktop 1440: Desktop main surface remains visible',desktop.mainDisplay);
+              const unexpectedResponses=badResponses.filter(row=>!isExpectedHealth404(row));
+              const expectedHealth404s=badResponses.filter(isExpectedHealth404);
+              const generic404Errors=errors.filter(isGeneric404Console);
+              const unexpectedConsole=errors.filter(message=>!isGeneric404Console(message));
+              expect(unexpectedResponses.length===0,'desktop 1440: no unexpected HTTP >=400 responses',JSON.stringify(unexpectedResponses));
+              expect(unexpectedConsole.length===0&&generic404Errors.length===expectedHealth404s.length,'desktop 1440: console errors limited to expected localhost /api/health 404s',JSON.stringify({errors,badResponses}));
+              expect(pageErrors.length===0,'desktop 1440: page errors=0',JSON.stringify(pageErrors));
+            }finally{await context.close();await browser.close()}
+          }
+
+          for(const viewport of [{width:393,height:852},{width:430,height:932}]){
+            await runMobile('chromium',chromium,viewport);
+            await runMobile('webkit',webkit,viewport);
+          }
+          await runDesktop();
+          fs.writeFileSync('artifacts/mobile-vnext/report.json',JSON.stringify(report,null,2));
+          if(failures.length){console.error(`\n${failures.length} failure(s)`);failures.forEach((f,i)=>console.error(`${i+1}. ${f}`));process.exit(1)}
+          console.log('\nMOBILE VNEXT BROWSER ACCEPTANCE: PASS');
+          EOF
+          node .tmp-vnext-acceptance.mjs
+
+      - name: Wrangler production dry-run
+        run: npx wrangler deploy --dry-run --outdir .tmp/wrangler-vnext
+
+      - name: Upload vNext evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-vnext-${{ github.sha }}
+          path: artifacts/mobile-vnext
+          if-no-files-found: ignore
+          retention-days: 14
