@@ -1,0 +1,5 @@
+@media (max-width:860px){
+  #mobileAppRoot.v5-mobile-root{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",system-ui,"Helvetica Neue",Arial,sans-serif;
+  }
+}
