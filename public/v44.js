@@ -7,6 +7,14 @@
     script.async=false;
     document.head.appendChild(script);
   }
+  function loadMultiFileImport(){
+    if(document.getElementById('multiFileImportRuntime')) return;
+    const script=document.createElement('script');
+    script.id='multiFileImportRuntime';
+    script.src='./multi-file-import.js';
+    script.async=false;
+    document.head.appendChild(script);
+  }
   function loadOperationLog(){
     if(!document.getElementById('operationLogStyles')){
       const link=document.createElement('link');
@@ -24,6 +32,7 @@
     }
   }
   loadImportReportCompat();
+  loadMultiFileImport();
   loadOperationLog();
 
   document.body.classList.add('studio-v44');
