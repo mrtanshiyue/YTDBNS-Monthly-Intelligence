@@ -2,6 +2,7 @@ import { commitPartialImport } from './partial-import.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const CORE_ROLES = Object.freeze(['cost', 'transactions', 'ads', 'returns', 'inventory']);
+const EVENT_ROLES = Object.freeze(['transactions', 'ads', 'returns', 'parent', 'child', 'storage']);
 const num = value => Number(value || 0) || 0;
 const monthOf = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value).slice(0, 7) : '';
 const isMonth = value => /^\d{4}-\d{2}$/.test(String(value || ''));
@@ -95,9 +96,32 @@ async function finalizeCurrentInventory(db, storeId, batchId, payload) {
   ));
   await chunks(db, statements);
 
-  // Current inventory must never masquerade as a historical month fact.
+  // Current inventory is not a historical monthly fact.
   await db.prepare(`UPDATE monthly_metrics SET inventory_units=NULL,fulfillable_units=NULL,inbound_units=NULL,inventory_value=NULL,updated_at=CURRENT_TIMESTAMP WHERE store_id=?`)
     .bind(storeId).run();
+}
+
+async function preserveOrRemoveInventoryAuditMonth(db, storeId, batchId, payload, roles, preExistingMonth) {
+  if (!roles.has('inventory') || EVENT_ROLES.some(role => roles.has(role))) return;
+  const month = payload?.month;
+  if (!isMonth(month)) return;
+
+  if (preExistingMonth) {
+    await db.prepare(`UPDATE monthly_metrics SET model_status=?,batch_id=?,updated_at=? WHERE store_id=? AND month=?`)
+      .bind(
+        preExistingMonth.model_status || 'WARN',
+        preExistingMonth.batch_id || null,
+        preExistingMonth.updated_at || new Date().toISOString(),
+        storeId,
+        month
+      ).run();
+    return;
+  }
+
+  // The base partial importer needs a month key to stage inventory. Remove that
+  // synthetic row when this was an inventory/master-only batch.
+  await db.prepare('DELETE FROM monthly_metrics WHERE store_id=? AND month=? AND batch_id=?')
+    .bind(storeId, month, batchId).run();
 }
 
 async function replaceTransactionSkuMonth(db, storeId, month, events, batchId) {
@@ -170,6 +194,35 @@ async function recalcCogsForMonth(db, storeId, month) {
   `).bind(storeId, month).run();
 }
 
+async function refreshCurrentInventoryOnExistingProducts(db, storeId) {
+  await db.prepare(`
+    UPDATE product_monthly_metrics
+    SET fulfillable_units=COALESCE((
+          SELECT SUM(i.fulfillable) FROM inventory_snapshots i
+          WHERE i.store_id=product_monthly_metrics.store_id AND i.sku=product_monthly_metrics.sku
+        ),0),
+        inventory_value=COALESCE((
+          SELECT SUM(i.inventory_value) FROM inventory_snapshots i
+          WHERE i.store_id=product_monthly_metrics.store_id AND i.sku=product_monthly_metrics.sku
+        ),0),
+        updated_at=CURRENT_TIMESTAMP
+    WHERE store_id=?
+  `).bind(storeId).run();
+}
+
+async function refreshCostOnExistingProducts(db, storeId) {
+  await db.prepare(`
+    UPDATE product_monthly_metrics
+    SET cogs=units*COALESCE((
+          SELECT c.purchase_cost+c.first_mile_cost+c.fbm_shipping_cost
+          FROM cost_master c
+          WHERE c.store_id=product_monthly_metrics.store_id AND c.sku=product_monthly_metrics.sku
+        ),0),
+        updated_at=CURRENT_TIMESTAMP
+    WHERE store_id=?
+  `).bind(storeId).run();
+}
+
 async function rebuildProductMonth(db, storeId, month, batchId) {
   await db.prepare('DELETE FROM product_monthly_metrics WHERE store_id=? AND month=?').bind(storeId, month).run();
   await db.prepare(`
@@ -221,13 +274,18 @@ async function recalcMonthlyProfit(db, storeId, month) {
     updated_at=CURRENT_TIMESTAMP WHERE store_id=? AND month=?`).bind(storeId, month).run();
 }
 
-async function postProcessCoreFive(env, storeId, batchId, roles, payload) {
+async function postProcessCoreFive(env, storeId, batchId, roles, payload, preExistingMonth) {
   const touched = new Set();
 
-  if (roles.has('cost')) await persistDetailedCosts(env.DB, storeId, payload.costMaster || []);
+  if (roles.has('cost')) {
+    await persistDetailedCosts(env.DB, storeId, payload.costMaster || []);
+    await refreshCostOnExistingProducts(env.DB, storeId);
+  }
   if (roles.has('inventory')) {
     await persistInventoryIdentity(env.DB, storeId, payload.productMaster || []);
     await finalizeCurrentInventory(env.DB, storeId, batchId, payload);
+    await refreshCurrentInventoryOnExistingProducts(env.DB, storeId);
+    await preserveOrRemoveInventoryAuditMonth(env.DB, storeId, batchId, payload, roles, preExistingMonth);
   }
 
   if (roles.has('transactions') && Array.isArray(payload.transactionEvents)) {
@@ -256,11 +314,6 @@ async function postProcessCoreFive(env, storeId, batchId, roles, payload) {
       .bind(storeId).run();
   }
 
-  if (roles.has('inventory')) {
-    const months = await all(env.DB, `SELECT DISTINCT month FROM product_monthly_metrics WHERE store_id=?`, storeId);
-    for (const row of months) if (isMonth(row.month)) touched.add(row.month);
-  }
-
   for (const month of touched) {
     await recalcCogsForMonth(env.DB, storeId, month);
     await rebuildProductMonth(env.DB, storeId, month, batchId);
@@ -284,12 +337,16 @@ export async function commitCoreFiveImport(request, env) {
     }
   }
 
+  const preExistingMonth = (preRoles.has('inventory') && isMonth(payload?.month))
+    ? await one(env.DB, 'SELECT * FROM monthly_metrics WHERE store_id=? AND month=?', storeId, payload.month)
+    : null;
+
   const baseResponse = await commitPartialImport(request, env);
   const baseResult = await baseResponse.clone().json().catch(() => ({}));
   if (!baseResponse.ok || baseResult?.ok === false || !batchId || !payload) return baseResponse;
 
   const roles = await rolesForBatch(env.DB, batchId, storeId);
-  const coreTouchedMonths = await postProcessCoreFive(env, storeId, batchId, roles, payload);
+  const coreTouchedMonths = await postProcessCoreFive(env, storeId, batchId, roles, payload, preExistingMonth);
   const allTouched = [...new Set([...(baseResult.affectedMonths || []), ...coreTouchedMonths])].sort();
   const result = {
     ...baseResult,
