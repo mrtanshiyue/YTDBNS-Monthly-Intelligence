@@ -135,7 +135,28 @@ jobs:
               expect((await page.locator('.vnext-sheet').count())===0,`${label}: Back closes period sheet`);
 
               await page.click('[data-vnext-tab="alerts"]');
+              await page.waitForSelector('[data-vnext-page="alerts"]',{state:'visible'});
               expect((await page.locator('[data-vnext-severity]').count())===3,`${label}: anomaly severity control present`);
+              const issueRows=page.locator('[data-vnext-page="alerts"] [data-vnext-signal]');
+              const issueCount=await issueRows.count();
+              expect(issueCount>0&&issueCount<=12,`${label}: Alerts exposes decision-level issue groups rather than record flood`,`count=${issueCount}`);
+              const firstIssueTitle=((await issueRows.first().locator('strong').textContent())||'').trim();
+              await issueRows.first().click();
+              await page.waitForSelector('.vnext-detail-screen',{state:'visible'});
+              expect(((await page.locator('.vnext-detail-toolbar>span').first().textContent())||'').trim()==='问题类型',`${label}: first drilldown opens issue-group detail`);
+              const impactedRows=page.locator('.vnext-detail-screen [data-vnext-signal]');
+              const impactedCount=await impactedRows.count();
+              expect(impactedCount>0&&impactedCount<=8,`${label}: issue group limits impacted-object drilldown`,`count=${impactedCount}`);
+              await impactedRows.first().click();
+              await page.waitForSelector('.vnext-detail-screen',{state:'visible'});
+              expect(((await page.locator('.vnext-detail-toolbar>span').first().textContent())||'').trim()!=='问题类型',`${label}: second drilldown opens concrete operating object`);
+              await page.goBack();
+              await page.waitForFunction(title=>document.querySelector('#vnextDetailTitle')?.textContent?.trim()===title,firstIssueTitle);
+              expect(true,`${label}: first Back restores issue-group detail`);
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="alerts"]',{state:'visible'});
+              expect((await page.locator('.vnext-detail-screen').count())===0,`${label}: second Back restores Alerts list`);
+
               await page.click('[data-vnext-tab="today"]');
               await page.click('[data-vnext-tab="alerts"]');
               await page.goBack();
