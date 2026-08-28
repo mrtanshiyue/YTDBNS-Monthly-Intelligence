@@ -34,7 +34,7 @@ jobs:
         run: npx wrangler deploy --dry-run
       - name: Install browser engines
         run: |
-          npx playwright install --with-deps chromium webkit
+          npx playwright install chromium webkit
           echo '127.0.0.1 truth.local' | sudo tee -a /etc/hosts
       - name: Production-mode truth browser acceptance
         run: |
