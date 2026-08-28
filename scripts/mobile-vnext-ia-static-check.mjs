@@ -33,7 +33,7 @@ expect(css.startsWith('@media (max-width:860px){'), 'IA styling is scoped to Mob
 expect(css.includes('.vnext-module-rail[hidden]') && css.includes('display:none!important'), 'hidden business rail is fail-closed in CSS');
 expect(css.includes('[data-vnext-module="today"]') && css.includes('[data-vnext-module="alerts"]'), 'duplicate Today/Alerts rail entries are fail-closed in CSS');
 expect(!css.includes('@media (min-width:861px)'), 'IA stylesheet introduces no Desktop override block');
-expect(css.includes('#mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active') && css.includes('color:#fff'), 'active business-domain rail text overrides root button inheritance with readable white text');
+expect(css.includes('#mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active') && css.includes('color:#fff!important'), 'active business-domain rail text is release-locked to readable white despite competing button inheritance');
 expect(css.includes('#mobileAppRoot .vnext-density-module-page .vnext-filter-tags') && css.includes('mask-image:linear-gradient'), 'module filter strips expose horizontal overflow with a visual fade affordance');
 expect(css.includes('scroll-snap-type:x proximity') && css.includes('scroll-snap-align:start'), 'module filters use predictable horizontal snap behavior');
 expect(css.includes('#mobileAppRoot .vnext-density-module-page .vnext-filter-tags button.active') && css.includes('color:var(--vx-accent)'), 'active module filters override root button inheritance with explicit selected-state color');
