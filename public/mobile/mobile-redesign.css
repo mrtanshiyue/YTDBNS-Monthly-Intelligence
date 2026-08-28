@@ -1,0 +1,268 @@
+/* YTDBNS Monthly Intelligence — Mobile UX Redesign
+   Mobile-only command-center layer. Desktop remains untouched. */
+
+@media (max-width:860px){
+  html[data-v5-view="mobile"]{
+    background:#f5f5f7!important;
+  }
+
+  body.v5-native-mobile{
+    --m52-bg:#f5f5f7;
+    --m52-surface:#ffffff;
+    --m52-ink:#172b35;
+    --m52-muted:#667982;
+    --m52-line:#dfe6ea;
+    --m52-accent:#147f8d;
+    --m52-danger:#b43d45;
+    --m52-warning:#a86513;
+    background:var(--m52-bg)!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-root,
+  body.v5-native-mobile .v5-mobile-app{
+    min-height:100svh!important;
+    min-height:100dvh!important;
+    background:var(--m52-bg)!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-app{
+    padding-bottom:calc(78px + env(safe-area-inset-bottom))!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-topbar{
+    position:sticky!important;
+    z-index:32!important;
+    top:0!important;
+    display:grid!important;
+    min-height:calc(58px + env(safe-area-inset-top))!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:end!important;
+    gap:10px!important;
+    padding:calc(8px + env(safe-area-inset-top)) 14px 8px!important;
+    border-bottom:1px solid rgba(23,43,53,.07)!important;
+    background:rgba(250,250,252,.94)!important;
+    box-shadow:none!important;
+    color:var(--m52-ink)!important;
+    -webkit-backdrop-filter:saturate(180%) blur(22px)!important;
+    backdrop-filter:saturate(180%) blur(22px)!important;
+  }
+
+  body.v5-native-mobile .v52-mobile-context{
+    display:flex;
+    min-width:0;
+    align-items:center;
+    gap:10px;
+  }
+
+  body.v5-native-mobile .v52-mobile-context h1{
+    overflow:hidden;
+    margin:0;
+    color:var(--m52-ink);
+    font-size:20px;
+    font-weight:760;
+    letter-spacing:-.025em;
+    line-height:1.15;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  body.v5-native-mobile .v52-period-pill{
+    display:inline-flex;
+    min-width:0;
+    min-height:36px;
+    align-items:center;
+    gap:5px;
+    max-width:156px;
+    padding:0 10px;
+    border:1px solid #d8e1e5;
+    border-radius:10px;
+    background:#fff;
+    color:#49616c;
+    font-size:12px;
+    font-weight:680;
+    line-height:1;
+  }
+  body.v5-native-mobile .v52-period-pill span{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  body.v5-native-mobile .v52-period-pill i{font-style:normal;font-size:15px}
+
+  body.v5-native-mobile .v5-mobile-top-actions{
+    display:flex!important;
+    align-items:center!important;
+    gap:4px!important;
+  }
+  body.v5-native-mobile .v5-mobile-top-actions button{
+    display:grid!important;
+    width:38px!important;
+    height:38px!important;
+    min-width:38px!important;
+    min-height:38px!important;
+    place-items:center!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:10px!important;
+    background:transparent!important;
+    color:#294650!important;
+  }
+  body.v5-native-mobile .v5-mobile-top-actions svg{width:21px!important;height:21px!important}
+
+  body.v5-native-mobile .v5-mobile-content{
+    padding:14px 14px calc(24px + env(safe-area-inset-bottom))!important;
+    background:var(--m52-bg)!important;
+  }
+
+  /* The shell owns route titles and period context now. */
+  body.v5-native-mobile .v5-mobile-view-heading{
+    display:none!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-bottom-nav{
+    position:fixed!important;
+    z-index:35!important;
+    right:0!important;
+    bottom:0!important;
+    left:0!important;
+    top:auto!important;
+    display:grid!important;
+    min-height:calc(66px + env(safe-area-inset-bottom))!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:0!important;
+    padding:4px 7px max(5px,env(safe-area-inset-bottom))!important;
+    border:0!important;
+    border-top:1px solid rgba(23,43,53,.08)!important;
+    border-radius:0!important;
+    background:rgba(251,251,252,.965)!important;
+    box-shadow:0 -8px 26px rgba(31,57,67,.055)!important;
+    -webkit-backdrop-filter:saturate(180%) blur(22px)!important;
+    backdrop-filter:saturate(180%) blur(22px)!important;
+  }
+
+  body.v5-native-mobile .v5-mobile-nav-item{
+    position:relative!important;
+    display:flex!important;
+    min-width:0!important;
+    min-height:56px!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:2px!important;
+    padding:0 2px!important;
+    border-radius:12px!important;
+    background:transparent!important;
+    color:#71828a!important;
+    font-size:10.5px!important;
+    font-weight:650!important;
+    line-height:1.1!important;
+  }
+  body.v5-native-mobile .v5-mobile-nav-item.active{
+    background:transparent!important;
+    color:var(--m52-accent)!important;
+  }
+  body.v5-native-mobile .v5-mobile-nav-item.active::before{
+    display:none!important;
+    content:none!important;
+  }
+  body.v5-native-mobile .v5-mobile-nav-icon{
+    display:block!important;
+    height:25px!important;
+  }
+  body.v5-native-mobile .v5-mobile-nav-icon svg{
+    display:block!important;
+    width:22px!important;
+    height:22px!important;
+    stroke:currentColor!important;
+    fill:none!important;
+    stroke-width:1.8!important;
+  }
+
+  body.v5-native-mobile .v52-ops-trigger{
+    display:flex;
+    width:100%;
+    min-height:48px;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:0 12px;
+    border:1px solid var(--m52-line);
+    border-radius:13px;
+    background:#fff;
+    color:var(--m52-ink);
+    text-align:left;
+  }
+  body.v5-native-mobile .v52-ops-trigger>span{display:grid;gap:2px;min-width:0}
+  body.v5-native-mobile .v52-ops-trigger b{font-size:13px}
+  body.v5-native-mobile .v52-ops-trigger small{overflow:hidden;color:var(--m52-muted);font-size:11.5px;text-overflow:ellipsis;white-space:nowrap}
+  body.v5-native-mobile .v52-ops-trigger i{color:#647780;font-size:18px;font-style:normal}
+
+  body.v5-native-mobile .v52-tasks{
+    display:grid;
+    gap:13px;
+  }
+  body.v5-native-mobile .v52-task-brief{
+    display:grid;
+    gap:5px;
+    padding:17px 16px;
+    border:1px solid rgba(55,84,96,.10);
+    border-radius:18px;
+    background:#fff;
+  }
+  body.v5-native-mobile .v52-task-brief span{color:var(--m52-muted);font-size:12px;font-weight:680}
+  body.v5-native-mobile .v52-task-brief strong{color:var(--m52-ink);font-size:31px;letter-spacing:-.04em;line-height:1}
+  body.v5-native-mobile .v52-task-brief small{color:var(--m52-muted);font-size:12px;line-height:1.4}
+  body.v5-native-mobile .v52-task-section{display:grid;gap:8px}
+  body.v5-native-mobile .v52-task-section-head{display:flex;align-items:end;justify-content:space-between;gap:10px;padding:0 2px}
+  body.v5-native-mobile .v52-task-section-head h2{margin:0;color:var(--m52-ink);font-size:18px;letter-spacing:-.02em}
+  body.v5-native-mobile .v52-task-section-head span{color:var(--m52-muted);font-size:11.5px}
+  body.v5-native-mobile .v52-task-list{display:grid;gap:7px}
+  body.v5-native-mobile .v52-task-card{
+    display:grid;
+    width:100%;
+    min-height:72px;
+    grid-template-columns:8px minmax(0,1fr) auto;
+    align-items:center;
+    gap:10px;
+    padding:11px 12px;
+    border:1px solid var(--m52-line);
+    border-radius:14px;
+    background:#fff;
+    color:var(--m52-ink);
+    text-align:left;
+  }
+  body.v5-native-mobile .v52-task-card::before{content:"";width:7px;height:36px;border-radius:999px;background:#a4b0b5}
+  body.v5-native-mobile .v52-task-card.critical::before{background:var(--m52-danger)}
+  body.v5-native-mobile .v52-task-card.warning::before{background:var(--m52-warning)}
+  body.v5-native-mobile .v52-task-copy{display:grid;min-width:0;gap:3px}
+  body.v5-native-mobile .v52-task-copy span{color:var(--m52-muted);font-size:10.5px;font-weight:750;text-transform:uppercase}
+  body.v5-native-mobile .v52-task-copy b{overflow:hidden;font-size:13.5px;text-overflow:ellipsis;white-space:nowrap}
+  body.v5-native-mobile .v52-task-copy small{overflow:hidden;color:var(--m52-muted);font-size:11.5px;text-overflow:ellipsis;white-space:nowrap}
+  body.v5-native-mobile .v52-task-card>i{color:#6d7e86;font-size:20px;font-style:normal}
+  body.v5-native-mobile .v52-task-empty{padding:22px 16px;border:1px dashed #d4dfe4;border-radius:16px;background:#fff;text-align:center}
+  body.v5-native-mobile .v52-task-empty strong{display:block;color:var(--m52-ink);font-size:14px}
+  body.v5-native-mobile .v52-task-empty span{display:block;margin-top:4px;color:var(--m52-muted);font-size:12px;line-height:1.4}
+
+  .v52-ops-overlay-root{position:fixed;z-index:80;inset:0;pointer-events:none}
+  .v52-ops-overlay-root.open{pointer-events:auto}
+  .v52-ops-backdrop{position:absolute;inset:0;display:flex;align-items:flex-end;background:rgba(9,22,28,.34)}
+  .v52-ops-sheet{width:100%;max-height:min(78dvh,680px);overflow:auto;padding:8px 16px calc(16px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0;background:#fff;box-shadow:0 -18px 44px rgba(16,38,48,.18)}
+  .v52-ops-handle{width:38px;height:4px;margin:0 auto 9px;border-radius:999px;background:#d2dadd}
+  .v52-ops-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 10px}
+  .v52-ops-head h2{margin:0;color:var(--m52-ink);font-size:20px}
+  .v52-ops-close{width:40px;height:40px;border:0;border-radius:12px;background:#f1f4f5;color:#52666f;font-size:22px}
+  .v52-ops-group{display:grid;gap:7px;padding:13px 0;border-top:1px solid #edf1f2}
+  .v52-ops-group>span{color:#63767f;font-size:11px;font-weight:760;letter-spacing:.06em;text-transform:uppercase}
+  .v52-ops-option{display:flex;min-height:48px;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:0 12px;border:1px solid #e0e7ea;border-radius:12px;background:#fff;color:#243d48;font-size:13px;font-weight:650;text-align:left}
+  .v52-ops-option.active{border-color:#8bbbc2;background:#f2fafb;color:#106c78}
+  .v52-ops-actions{position:sticky;bottom:0;display:grid;grid-template-columns:1fr 1.6fr;gap:8px;padding-top:10px;background:#fff}
+  .v52-ops-actions button{min-height:48px;border-radius:12px;font-size:13px;font-weight:720}
+  .v52-ops-reset{border:1px solid #dce4e7;background:#fff;color:#465e68}
+  .v52-ops-apply{border:1px solid #173d49;background:#173d49;color:#fff}
+
+  @media(max-width:390px){
+    body.v5-native-mobile .v5-mobile-topbar{padding-right:10px!important;padding-left:10px!important}
+    body.v5-native-mobile .v52-period-pill{max-width:128px;padding:0 8px}
+    body.v5-native-mobile .v52-mobile-context h1{font-size:19px}
+  }
+}
