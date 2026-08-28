@@ -5,7 +5,7 @@
   const fmt = window.YT_SHARED_FORMATTERS;
   const clamp = value => Math.max(0, Math.min(100, Number.isFinite(Number(value)) ? Number(value) : 0));
 
-  registry.finance = ({ runtimeState, esc }) => {
+  registry.finance = ({ runtimeState }) => {
     const m = selectors.financeModel(runtimeState);
     const sales = Math.abs(Number(m.sales || 0));
     const ratio = value => sales ? clamp(Math.abs(Number(value || 0)) / sales * 100) : 0;
@@ -15,15 +15,11 @@
       ['退款销售', m.refundSales, 'Refund'],
       ['仓储估算', m.storageEstimate, 'Storage']
     ];
-    const bars = costRows.map(([label, value, hint]) => `
+    const bars = costRows.map(([label, value]) => `
       <div class="v5-cost-bar" style="--v5-meter:${ratio(value).toFixed(1)}%"><span>${label}</span><div class="v5-cost-track" aria-hidden="true"><i></i></div><b>${fmt.compactMoney(value)}</b></div>`).join('');
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="finance" aria-labelledby="v5MobileViewTitle">
-        <div class="v5-mobile-view-heading">
-          <div><span class="v5-mobile-eyebrow">FINANCIAL TERMINAL</span><h1 id="v5MobileViewTitle">利润</h1><p>贡献利润、利润率与成本强度集中扫描</p></div>
-          <button class="v5-mobile-period-trigger" type="button" data-mobile-action="period"><span>${esc(m.rangeLabel)}</span><i>›</i></button>
-        </div>
         <section class="v5-secondary-hero" aria-label="贡献利润">
           <span>CONTRIBUTION PROFIT</span><strong>${fmt.money(m.profit, 0)}</strong>
           <div><small>Margin ${fmt.percent(m.profitMargin)}</small><small>Sales ${fmt.compactMoney(m.sales)}</small><small>Returns ${fmt.number(m.returns)}</small></div>
