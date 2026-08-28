@@ -57,6 +57,7 @@ async function mobile(viewport) {
         wordmark:rect(document.querySelector('.vnext-wordmark')),
         live:rect(document.querySelector('.vnext-live')),
         period:rect(document.querySelector('.vnext-period')),
+        store:rect(document.querySelector('.yt-store-switcher')),
         cjk:document.fonts.check('12px "Noto Sans CJK SC"'),
         scroll:{html:document.documentElement.scrollWidth,body:document.body.scrollWidth,root:document.getElementById('mobileAppRoot')?.scrollWidth||0}
       };
@@ -71,6 +72,8 @@ async function mobile(viewport) {
     expect(state.wordmark?.width > 40 && state.wordmark?.height > 10, `${label}: wordmark remains visible`, JSON.stringify(state.wordmark));
     expect(state.live?.width > 8 && state.live?.height > 8, `${label}: runtime status remains visible`, JSON.stringify(state.live));
     expect(state.period?.height >= 43.5, `${label}: period control remains comfortable`, JSON.stringify(state.period));
+    expect(state.store?.height >= 43.5 && state.store?.width >= 88, `${label}: store switcher remains a comfortable persistent control`, JSON.stringify(state.store));
+    expect(state.period && state.store && state.period.right + 8 <= state.store.left, `${label}: period and store controls retain a clear horizontal gap`, `periodRight=${state.period?.right}, storeLeft=${state.store?.left}`);
     expect(state.cjk === true, `${label}: CI browser has Noto CJK font support for trustworthy Chinese screenshots`);
     expect(Math.max(state.scroll.html,state.scroll.body,state.scroll.root) <= viewport.width + 1, `${label}: compact toolbar introduces no horizontal overflow`, JSON.stringify(state.scroll));
     expect(errors.length === 0, `${label}: page errors=0`, JSON.stringify(errors));
