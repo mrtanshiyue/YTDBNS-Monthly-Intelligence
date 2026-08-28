@@ -30,6 +30,13 @@ function staticContract() {
       source.includes('scroller.scrollLeft = Math.max(0, Math.min(maxScroll'),
     'A1 static contract: IA owns deterministic active-domain rail reveal through bounded shared scroller geometry'
   );
+  expect(
+    source.includes('function rerenderFocusTarget(event)') &&
+      source.includes('function restoreRerenderedFocus(target)') &&
+      source.includes("event.detail !== 0") &&
+      source.includes('replacement.focus({ preventScroll: true })'),
+    'A1 static contract: keyboard/synthesized activation restores focus to replacement controls without scrolling the document'
+  );
 }
 
 async function ready(page) {
@@ -80,6 +87,38 @@ async function railState(page, module) {
   }, module);
 }
 
+async function keyboardDomainFocusScenario(page, label) {
+  await openModule(page, 'ads');
+  await page.focus('.vnext-module-rail [data-vnext-module="products"]');
+  const before = await page.evaluate(() => ({
+    module: document.activeElement?.dataset?.vnextModule || null,
+    connected: Boolean(document.activeElement?.isConnected),
+    scrollY
+  }));
+  expect(before.module === 'products' && before.connected, `${label}/keyboard-domain: Products control owns focus before activation`, JSON.stringify(before));
+
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.vnext-density-module-page[data-density-module="products"]', { state: 'visible', timeout: 4_000 });
+  await page.waitForFunction(() => {
+    const active = document.activeElement;
+    return window.YT_MOBILE_VNEXT_DENSITY?.getState?.().module === 'products' &&
+      active?.dataset?.vnextModule === 'products' &&
+      active?.isConnected &&
+      active?.classList.contains('active') &&
+      active?.getAttribute('aria-current') === 'page';
+  }, null, { timeout: 4_000 });
+
+  const after = await page.evaluate(() => ({
+    module: document.activeElement?.dataset?.vnextModule || null,
+    connected: Boolean(document.activeElement?.isConnected),
+    selected: Boolean(document.activeElement?.classList?.contains('active') && document.activeElement?.getAttribute?.('aria-current') === 'page'),
+    scrollY
+  }));
+  expect(after.module === 'products' && after.connected && after.selected, `${label}/keyboard-domain: focus moves to the replacement Products control after force rerender`, JSON.stringify(after));
+  expect(after.scrollY <= 2, `${label}/keyboard-domain: focus restoration does not move the document`, JSON.stringify(after));
+  return { before, after };
+}
+
 async function runViewport(viewport) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
@@ -99,6 +138,7 @@ async function runViewport(viewport) {
   const evidence = { viewport, modules: {} };
   try {
     await ready(page);
+    evidence.keyboardDomainFocus = await keyboardDomainFocusScenario(page, label);
 
     for (const module of MODULES) {
       await openModule(page, module);
