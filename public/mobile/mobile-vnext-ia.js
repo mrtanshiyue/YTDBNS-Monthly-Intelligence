@@ -18,6 +18,7 @@
   const DOMAIN_SET = new Set(DOMAIN_IDS);
   const FILTER_MODULE_SET = new Set(['ads', 'products', 'inventory']);
   const PRIMARY_FOCUS_TAB_SET = new Set(['today', 'alerts', 'trends', 'search']);
+  const ALERT_SEVERITY_SET = new Set(['all', 'critical', 'warning']);
   const DUPLICATE_PRIMARY_IDS = new Set(['today', 'alerts']);
   let syncing = false;
   let lastRevealedModule = null;
@@ -29,6 +30,10 @@
     return window.YT_MOBILE_VNEXT_DENSITY?.getState?.() || null;
   }
 
+  function vnextState() {
+    return window.YT_MOBILE_VNEXT?.getState?.() || null;
+  }
+
   function activeModule() {
     const module = densityState()?.module;
     return DOMAIN_SET.has(module) ? module : null;
@@ -38,6 +43,11 @@
     if (!FILTER_MODULE_SET.has(module)) return null;
     const value = densityState()?.filters?.[module];
     return value || 'all';
+  }
+
+  function activeSeverity() {
+    const value = vnextState()?.severity;
+    return ALERT_SEVERITY_SET.has(value) ? value : 'all';
   }
 
   function activePrimaryTab() {
@@ -93,6 +103,15 @@
     }
   }
 
+  function syncSeveritySemantics() {
+    const group = root.querySelector('.vnext-segmented[aria-label="异常级别"]');
+    if (!group) return;
+    const severity = activeSeverity();
+    for (const button of group.querySelectorAll('[data-vnext-severity]')) {
+      button.setAttribute('aria-pressed', button.dataset.vnextSeverity === severity ? 'true' : 'false');
+    }
+  }
+
   function revealActiveFilter(module) {
     if (!FILTER_MODULE_SET.has(module)) {
       lastRevealedFilter = null;
@@ -115,11 +134,13 @@
 
   function syncRail() {
     if (syncing || !media.matches || !document.body.classList.contains('mobile-vnext-active')) return;
-    const rail = root.querySelector('.vnext-module-rail');
-    if (!rail) return;
 
     syncing = true;
     try {
+      syncSeveritySemantics();
+
+      const rail = root.querySelector('.vnext-module-rail');
+      if (!rail) return;
       rail.dataset.vnextIa = 'domain';
       rail.setAttribute('aria-label', '业务模块');
 
@@ -165,6 +186,10 @@
     const tab = tabButton?.dataset.vnextTab;
     if (tabButton && PRIMARY_FOCUS_TAB_SET.has(tab)) return { kind: 'tab', tab };
 
+    const severityButton = event.target.closest('[data-vnext-severity]');
+    const severity = severityButton?.dataset.vnextSeverity;
+    if (severityButton && ALERT_SEVERITY_SET.has(severity)) return { kind: 'severity', severity };
+
     const filterButton = event.target.closest('[data-density-filter]');
     if (filterButton) {
       const module = filterButton.dataset.densityFilterModule;
@@ -183,6 +208,8 @@
     let replacement = null;
     if (target.kind === 'tab') {
       replacement = root.querySelector(`.vnext-tabbar [data-vnext-tab="${target.tab}"]`);
+    } else if (target.kind === 'severity') {
+      replacement = root.querySelector(`[data-vnext-severity="${target.severity}"]`);
     } else if (target.kind === 'filter') {
       replacement = filterRailFor(target.module)?.querySelector(`[data-density-filter="${target.filter}"]`) || null;
     } else if (target.kind === 'module') {
@@ -207,7 +234,7 @@
 
   root.addEventListener('click', event => {
     const focusTarget = rerenderFocusTarget(event);
-    if (event.target.closest('[data-vnext-tab], [data-vnext-module], [data-density-filter]')) requestAnimationFrame(syncRail);
+    if (event.target.closest('[data-vnext-tab], [data-vnext-module], [data-density-filter], [data-vnext-severity]')) requestAnimationFrame(syncRail);
     if (focusTarget) requestAnimationFrame(() => restoreRerenderedFocus(focusTarget));
   }, true);
   root.addEventListener('click', settlePrimaryRouteAtTop);
@@ -223,6 +250,7 @@
       primaryTab: activePrimaryTab(),
       module: activeModule(),
       filter: activeFilter(activeModule()),
+      severity: activeSeverity(),
       railVisible: shouldShowRail()
     })
   });
