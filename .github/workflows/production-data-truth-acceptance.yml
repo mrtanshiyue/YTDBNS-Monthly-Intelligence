@@ -32,9 +32,9 @@ jobs:
           npm run check:release:static
       - name: Wrangler production dry-run
         run: npx wrangler deploy --dry-run
-      - name: Install browser engines
+      - name: Prepare system Chrome truth host
         run: |
-          npx playwright install chromium webkit
+          test -x /usr/bin/google-chrome || test -x /usr/bin/google-chrome-stable
           echo '127.0.0.1 truth.local' | sudo tee -a /etc/hosts
       - name: Production-mode truth browser acceptance
         run: |
@@ -43,13 +43,14 @@ jobs:
           trap 'kill $SERVER_PID || true' EXIT
           sleep 1
           node <<'NODE'
-          const { chromium, webkit } = require('playwright');
+          const { chromium } = require('playwright');
           const base = 'http://truth.local:8788';
           const fingerprints = ['$63,496', '$39,870', '3,295', 'YS005', '63,496', '39,870'];
           (async()=>{
-            for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
-              const browser = await engine.launch({ headless: true });
-              const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+            const executablePath = require('fs').existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : '/usr/bin/google-chrome-stable';
+            const browser = await chromium.launch({ headless: true, executablePath });
+            for (const viewport of [{width:1440,height:1000},{width:393,height:852}]) {
+              const page = await browser.newPage({ viewport });
               const pageErrors=[];
               page.on('pageerror', e => pageErrors.push(String(e)));
               await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -66,15 +67,16 @@ jobs:
                   storeOptions: [...document.querySelectorAll('#ytStoreSwitcher option')].map(o => o.textContent.trim())
                 };
               }, fingerprints);
-              console.log(name, JSON.stringify(result));
-              if (result.dataTruth !== 'live-only') throw new Error(`${name}: production truth guard inactive`);
-              if (result.fingerprints.length) throw new Error(`${name}: demo fingerprints visible: ${result.fingerprints.join(',')}`);
-              if (result.studioVisible) throw new Error(`${name}: demo-only studio still visible`);
-              if (JSON.stringify(result.storeOptions) !== JSON.stringify(['YTDBNS','YY','JJ'])) throw new Error(`${name}: store catalog mismatch`);
-              if (pageErrors.length) throw new Error(`${name}: page errors: ${pageErrors.join(' | ')}`);
-              await page.screenshot({ path: `/tmp/${name}-truth.png`, fullPage: true });
-              await browser.close();
+              console.log(`${viewport.width}x${viewport.height}`, JSON.stringify(result));
+              if (result.dataTruth !== 'live-only') throw new Error('production truth guard inactive');
+              if (result.fingerprints.length) throw new Error(`demo fingerprints visible: ${result.fingerprints.join(',')}`);
+              if (result.studioVisible) throw new Error('demo-only studio still visible');
+              if (JSON.stringify(result.storeOptions) !== JSON.stringify(['YTDBNS','YY','JJ'])) throw new Error('store catalog mismatch');
+              if (pageErrors.length) throw new Error(`page errors: ${pageErrors.join(' | ')}`);
+              await page.screenshot({ path: `/tmp/chrome-${viewport.width}-truth.png`, fullPage: true });
+              await page.close();
             }
+            await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
       - name: Upload evidence
@@ -82,6 +84,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: production-data-truth-${{ github.sha }}
-          path: |
-            /tmp/chromium-truth.png
-            /tmp/webkit-truth.png
+          path: /tmp/chrome-*-truth.png
