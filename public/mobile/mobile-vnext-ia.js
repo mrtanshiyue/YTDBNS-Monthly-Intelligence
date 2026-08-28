@@ -27,7 +27,7 @@
   let lastRevealedFilterRail = null;
   let periodFocusOrigin = null;
   let periodSheetObservedOpen = false;
-  let periodRestoreToken = 0;
+  let periodRestoreScheduled = false;
 
   function densityState() {
     return window.YT_MOBILE_VNEXT_DENSITY?.getState?.() || null;
@@ -151,7 +151,7 @@
       search: Boolean(trigger.closest('.vnext-search-toolbar'))
     };
     periodSheetObservedOpen = false;
-    periodRestoreToken += 1;
+    periodRestoreScheduled = false;
   }
 
   function replacementPeriodTrigger(origin) {
@@ -167,17 +167,30 @@
       if (periodFocusOrigin) periodSheetObservedOpen = true;
       return;
     }
-    if (!periodFocusOrigin || !periodSheetObservedOpen) return;
+    if (!periodFocusOrigin || !periodSheetObservedOpen || periodRestoreScheduled) return;
 
-    const token = ++periodRestoreToken;
+    periodRestoreScheduled = true;
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (token !== periodRestoreToken || !periodFocusOrigin || root.querySelector('.vnext-sheet[role="dialog"]')) return;
+      periodRestoreScheduled = false;
+      if (!periodFocusOrigin || root.querySelector('.vnext-sheet[role="dialog"]')) return;
       const origin = periodFocusOrigin;
       const replacement = replacementPeriodTrigger(origin);
-      if (!replacement) return;
-      focusWithoutScroll(replacement);
-      periodFocusOrigin = null;
-      periodSheetObservedOpen = false;
+      if (!replacement || !focusWithoutScroll(replacement)) {
+        requestAnimationFrame(syncPeriodSheetFocus);
+        return;
+      }
+
+      /* Keep the logical origin alive for one more frame so a queued history render cannot silently detach the focused replacement. */
+      requestAnimationFrame(() => {
+        if (!periodFocusOrigin || root.querySelector('.vnext-sheet[role="dialog"]')) return;
+        const settledReplacement = replacementPeriodTrigger(periodFocusOrigin);
+        if (settledReplacement && document.activeElement === settledReplacement) {
+          periodFocusOrigin = null;
+          periodSheetObservedOpen = false;
+          return;
+        }
+        requestAnimationFrame(syncPeriodSheetFocus);
+      });
     }));
   }
 
