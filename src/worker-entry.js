@@ -51,9 +51,8 @@ async function normalizeApiRequest(request) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/') || ['/api/health', '/api/stores'].includes(url.pathname)) return request;
 
-  const queryStore = url.searchParams.get('store');
-  const queryStoreId = normalizeStoreId(queryStore);
-  url.searchParams.set('store', queryStoreId);
+  const storeId = normalizeStoreId(url.searchParams.get('store'));
+  url.searchParams.set('store', storeId);
 
   if (request.method === 'GET' || request.method === 'HEAD') {
     return new Request(url.toString(), {
@@ -65,14 +64,13 @@ async function normalizeApiRequest(request) {
   if (request.method === 'POST' && url.pathname === '/api/imports/start') {
     const body = await request.clone().json().catch(() => null);
     if (!body || typeof body !== 'object') return request;
-    body.storeId = normalizeStoreId(body.storeId || queryStoreId);
+    body.storeId = storeId;
     return jsonRequest(url, request, body);
   }
 
   if (request.method === 'POST' && url.pathname === '/api/imports/commit') {
     const body = await request.clone().json().catch(() => null);
     if (!body || typeof body !== 'object') return request;
-    const storeId = normalizeStoreId(body.storeId || body.payload?.storeId || queryStoreId);
     body.storeId = storeId;
     if (body.payload && typeof body.payload === 'object') body.payload.storeId = storeId;
     return jsonRequest(url, request, body);
@@ -81,7 +79,7 @@ async function normalizeApiRequest(request) {
   if (request.method === 'POST' && url.pathname === '/api/imports/file') {
     const form = await request.clone().formData().catch(() => null);
     if (!form) return request;
-    form.set('storeId', normalizeStoreId(form.get('storeId') || queryStoreId));
+    form.set('storeId', storeId);
     const headers = new Headers(request.headers);
     headers.delete('content-type');
     headers.delete('content-length');
