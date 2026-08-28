@@ -65,6 +65,51 @@
     });
   }
 
+  function ensureHomeBriefStylesheet() {
+    if (document.getElementById('mobileVNextHomeBriefStyles')) return Promise.resolve();
+    return new Promise(resolve => {
+      const link = document.createElement('link');
+      link.id = 'mobileVNextHomeBriefStyles';
+      link.rel = 'stylesheet';
+      link.href = './mobile/mobile-vnext-home-briefs.css';
+      link.addEventListener('load', resolve, { once: true });
+      link.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(link);
+    });
+  }
+
+  function ensureHomeBriefRuntime() {
+    if (window.YT_MOBILE_VNEXT_HOME_BRIEFS) return Promise.resolve();
+    if (document.getElementById('mobileVNextHomeBriefRuntime')) {
+      return new Promise(resolve => document.getElementById('mobileVNextHomeBriefRuntime').addEventListener('load', resolve, { once: true }));
+    }
+    return new Promise(resolve => {
+      const script = document.createElement('script');
+      script.id = 'mobileVNextHomeBriefRuntime';
+      script.src = './mobile/mobile-vnext-home-briefs.js';
+      script.async = false;
+      script.addEventListener('load', resolve, { once: true });
+      script.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
+  function ensureHomeDetailRuntime() {
+    if (window.YT_MOBILE_VNEXT_HOME_DETAIL) return Promise.resolve();
+    if (document.getElementById('mobileVNextHomeDetailRuntime')) {
+      return new Promise(resolve => document.getElementById('mobileVNextHomeDetailRuntime').addEventListener('load', resolve, { once: true }));
+    }
+    return new Promise(resolve => {
+      const script = document.createElement('script');
+      script.id = 'mobileVNextHomeDetailRuntime';
+      script.src = './mobile/mobile-vnext-home-detail.js';
+      script.async = false;
+      script.addEventListener('load', resolve, { once: true });
+      script.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
   function syncSurface() {
     const enabled = mobile.matches;
     const ready = document.documentElement.dataset.mobileVnextReady === 'true';
@@ -80,15 +125,20 @@
 
   Promise.all([ensureStylesheet(), ensureRuntime()])
     .then(() => Promise.all([ensureDensityStylesheet(), ensureDensityRuntime()]))
+    .then(() => Promise.all([ensureHomeBriefStylesheet(), ensureHomeBriefRuntime()]))
+    .then(() => ensureHomeDetailRuntime())
     .then(() => {
       document.documentElement.dataset.mobileVnextReady = 'true';
       syncSurface();
       window.YT_MOBILE_VNEXT?.activate?.();
+      window.YT_MOBILE_VNEXT_HOME_BRIEFS?.refresh?.();
     });
 
   mobile.addEventListener?.('change', () => {
     syncSurface();
-    if (mobile.matches) window.YT_MOBILE_VNEXT?.activate?.();
-    else window.YT_MOBILE_VNEXT?.deactivate?.();
+    if (mobile.matches) {
+      window.YT_MOBILE_VNEXT?.activate?.();
+      window.YT_MOBILE_VNEXT_HOME_BRIEFS?.refresh?.();
+    } else window.YT_MOBILE_VNEXT?.deactivate?.();
   });
 })();
