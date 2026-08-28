@@ -3,6 +3,7 @@
   const $$ = s => [...document.querySelectorAll(s)];
   const D = window.YT_DEMO || {};
   const C = D.current || {};
+  if (window.YT_DATA_TRUTH?.demoSuppressed) return;
   if (!C || !Object.keys(C).length) return;
   document.body.classList.add('studio-v42','studio-v43');
 
