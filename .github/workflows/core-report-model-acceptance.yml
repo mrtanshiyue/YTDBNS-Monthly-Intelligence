@@ -1,0 +1,116 @@
+name: Core Report Model Acceptance
+on:
+  push:
+    branches: [refactor/report-source-consolidation]
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Static and deployment gates
+        run: |
+          node --check public/core-report-model.js
+          node --check src/core-report-model.js
+          node --check src/worker-entry.js
+          npm run check:release:static
+          npx wrangler deploy --dry-run
+      - name: Prepare local D1
+        run: npm run db:migrate:local
+      - name: Build three core source fixtures
+        run: |
+          cat > /tmp/transactions.csv <<'CSV'
+          settlement id,date/time,type,description,sku,quantity,product sales,selling fees,fba fees,other transaction fees,promotional rebates,other,total
+          S1,2025-06-02,Order,Order SKU-A,SKU-A,2,100,-10,-5,0,0,0,80
+          S1,2025-06-02,Service Fee,Cost of Advertising,,0,0,0,0,0,0,0,-10
+          S2,2025-07-03,Order,Order SKU-A,SKU-A,1,60,-6,-3,0,0,0,48
+          CSV
+          cat > /tmp/cost.csv <<'CSV'
+          SKU,店铺,站点,原产品字段,采购成本,头程费用,FBM运费成本,货币,更新日期
+          SKU-A,YTDBNS,us,SKU-A B000000001,5,1,0.5,USD,2026年7月14日 19:39 PDT
+          CSV
+          cat > /tmp/ads.csv <<'CSV'
+          广告组合名称,广告活动编号,广告活动名称,广告组编号,广告组名称,搜索词,日期,投放方案编号,目标竞价,投放类型,投放状态,投放方案,投放匹配类型-Targeting match type,展示量,点击量,总成本,购买量,销售额,已售商品数量
+          P1,C1,Campaign 1,G1,Ad Group 1,reading glasses,2025年6月2日,T1,0.75,关键词,已启用,reading glasses,EXACT,1000,25,12,3,75,4
+          CSV
+      - name: Install Chromium
+        run: npx playwright-core install chromium
+      - name: Start local Worker
+        run: |
+          nohup npx wrangler dev --local --port 8787 > /tmp/core-worker.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8787/api/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/core-worker.log
+          exit 1
+      - name: Browser import transactions, cost, ads
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { chromium } from 'playwright-core';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:960}});
+          await page.goto('http://127.0.0.1:8787',{waitUntil:'networkidle'});
+          await page.waitForFunction(()=>Boolean(window.YT_CORE_REPORT_MODEL)&&Boolean(window.YT_MULTI_FILE_IMPORT));
+          async function openImport(){
+            if(!(await page.locator('#importDrawer').evaluate(el=>el.classList.contains('show')))) await page.locator('#topImportBtn').click();
+          }
+          async function importFile(path, expectedText){
+            await openImport();
+            await page.locator('#importFiles').setInputFiles(path);
+            await page.locator('#importPeriodValue').filter({hasText:expectedText}).waitFor({state:'visible',timeout:10000});
+            assert.equal(await page.locator('#validateBtn').isEnabled(),true);
+            await page.locator('#validateBtn').click();
+            await page.waitForFunction(()=>window.YT_MULTI_FILE_IMPORT?.getSnapshot?.().validatedFileCount===1);
+            assert.equal(await page.locator('#commitBtn').isEnabled(),true);
+            await page.locator('#commitBtn').click();
+            await page.waitForFunction(()=>!document.querySelector('#importDrawer')?.classList.contains('show'),null,{timeout:15000});
+            await page.waitForTimeout(900);
+          }
+          await importFile('/tmp/transactions.csv','跨月数据');
+          await importFile('/tmp/cost.csv','主数据导入');
+          await importFile('/tmp/ads.csv','2025年6月');
+          const searchRes=await page.request.get('http://127.0.0.1:8787/api/ad-search-terms?store=ytdbns&month=2025-06');
+          assert.equal(searchRes.ok(),true);
+          const search=await searchRes.json();
+          assert.equal(search.count,1);
+          assert.equal(search.rows[0].search_term,'reading glasses');
+          assert.equal(search.rows[0].ad_group,'Ad Group 1');
+          assert.equal(search.rows[0].targeting_id,'T1');
+          assert.equal(search.rows[0].spend,12);
+          console.log('Browser three-source acceptance: PASS');
+          await browser.close();
+          NODE
+      - name: Verify D1 historical recalc and field persistence
+        run: |
+          npx wrangler d1 execute ytdbns-monthly-db --local --command "SELECT COUNT(*) transaction_rows FROM transaction_daily_sku; SELECT date,sku,units,cogs FROM transaction_daily_sku ORDER BY date; SELECT month,business_sales,business_units,finance_gross_sales,cogs,contribution_profit FROM monthly_metrics WHERE store_id='ytdbns' AND month IN ('2025-06','2025-07') ORDER BY month; SELECT sku,purchase_cost,first_mile_cost,fbm_shipping_cost FROM cost_master WHERE store_id='ytdbns' AND sku='SKU-A'; SELECT month,campaign,ad_group,search_term,targeting_id,match_type,spend,sales,orders FROM ad_search_term_monthly WHERE store_id='ytdbns' ORDER BY month;" --json > /tmp/core-d1.json
+          cat /tmp/core-d1.json
+          python3 - <<'PY'
+          import json, math
+          blocks=json.load(open('/tmp/core-d1.json'))
+          results=[b.get('results',[]) for b in blocks]
+          assert results[0][0]['transaction_rows']==2, results
+          tx=results[1]
+          assert tx[0]['date']=='2025-06-02' and math.isclose(tx[0]['cogs'],13), tx
+          assert tx[1]['date']=='2025-07-03' and math.isclose(tx[1]['cogs'],6.5), tx
+          months={r['month']:r for r in results[2]}
+          assert math.isclose(months['2025-06']['business_sales'],100), months
+          assert math.isclose(months['2025-06']['business_units'],2), months
+          assert math.isclose(months['2025-06']['cogs'],13), months
+          assert math.isclose(months['2025-07']['business_sales'],60), months
+          assert math.isclose(months['2025-07']['business_units'],1), months
+          assert math.isclose(months['2025-07']['cogs'],6.5), months
+          cost=results[3][0]
+          assert math.isclose(cost['purchase_cost'],5) and math.isclose(cost['first_mile_cost'],1) and math.isclose(cost['fbm_shipping_cost'],.5), cost
+          ad=results[4][0]
+          assert ad['month']=='2025-06' and ad['search_term']=='reading glasses' and ad['targeting_id']=='T1', ad
+          assert math.isclose(ad['spend'],12) and math.isclose(ad['sales'],75) and math.isclose(ad['orders'],3), ad
+          print('D1 core report model invariant: PASS')
+          PY
