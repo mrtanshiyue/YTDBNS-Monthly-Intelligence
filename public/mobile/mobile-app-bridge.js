@@ -7,8 +7,9 @@
   const mobileMedia = window.matchMedia('(max-width: 860px)');
   const restoreVisibility = () => {
     const mobile = mobileMedia.matches;
-    root.hidden = !mobile;
-    root.setAttribute('aria-hidden', mobile ? 'false' : 'true');
+    const ready = document.documentElement.dataset.v52Ready === 'true';
+    root.hidden = !mobile || !ready;
+    root.setAttribute('aria-hidden', mobile && ready ? 'false' : 'true');
   };
 
   function ensureStylesheet() {
@@ -41,12 +42,11 @@
     });
   }
 
-  if (mobileMedia.matches) {
-    root.hidden = true;
-    root.setAttribute('aria-hidden', 'true');
-  }
+  document.documentElement.dataset.v52Ready = 'false';
+  restoreVisibility();
 
   Promise.all([ensureStylesheet(), ensureScript()]).then(() => {
+    document.documentElement.dataset.v52Ready = 'true';
     restoreVisibility();
     root.dispatchEvent(new CustomEvent('v5:refresh-view', { bubbles: true }));
   });
