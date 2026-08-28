@@ -36,6 +36,35 @@
     });
   }
 
+  function ensureDensityStylesheet() {
+    if (document.getElementById('mobileVNextDensityStyles')) return Promise.resolve();
+    return new Promise(resolve => {
+      const link = document.createElement('link');
+      link.id = 'mobileVNextDensityStyles';
+      link.rel = 'stylesheet';
+      link.href = './mobile/mobile-vnext-density.css';
+      link.addEventListener('load', resolve, { once: true });
+      link.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(link);
+    });
+  }
+
+  function ensureDensityRuntime() {
+    if (window.YT_MOBILE_VNEXT_DENSITY) return Promise.resolve();
+    if (document.getElementById('mobileVNextDensityRuntime')) {
+      return new Promise(resolve => document.getElementById('mobileVNextDensityRuntime').addEventListener('load', resolve, { once: true }));
+    }
+    return new Promise(resolve => {
+      const script = document.createElement('script');
+      script.id = 'mobileVNextDensityRuntime';
+      script.src = './mobile/mobile-vnext-density.js';
+      script.async = false;
+      script.addEventListener('load', resolve, { once: true });
+      script.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
   function syncSurface() {
     const enabled = mobile.matches;
     const ready = document.documentElement.dataset.mobileVnextReady === 'true';
@@ -49,11 +78,13 @@
   document.documentElement.dataset.mobileVnextReady = 'false';
   syncSurface();
 
-  Promise.all([ensureStylesheet(), ensureRuntime()]).then(() => {
-    document.documentElement.dataset.mobileVnextReady = 'true';
-    syncSurface();
-    window.YT_MOBILE_VNEXT?.activate?.();
-  });
+  Promise.all([ensureStylesheet(), ensureRuntime()])
+    .then(() => Promise.all([ensureDensityStylesheet(), ensureDensityRuntime()]))
+    .then(() => {
+      document.documentElement.dataset.mobileVnextReady = 'true';
+      syncSurface();
+      window.YT_MOBILE_VNEXT?.activate?.();
+    });
 
   mobile.addEventListener?.('change', () => {
     syncSurface();
