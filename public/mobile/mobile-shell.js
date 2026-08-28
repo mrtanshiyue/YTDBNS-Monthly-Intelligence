@@ -139,6 +139,22 @@
     });
   }
 
+  function ensureFocusReturnRuntime() {
+    if (window.YT_MOBILE_VNEXT_FOCUS_RETURN) return Promise.resolve();
+    if (document.getElementById('mobileVNextFocusReturnRuntime')) {
+      return new Promise(resolve => document.getElementById('mobileVNextFocusReturnRuntime').addEventListener('load', resolve, { once: true }));
+    }
+    return new Promise(resolve => {
+      const script = document.createElement('script');
+      script.id = 'mobileVNextFocusReturnRuntime';
+      script.src = './mobile/mobile-vnext-focus-return.js';
+      script.async = false;
+      script.addEventListener('load', resolve, { once: true });
+      script.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
   function ensureFirstScreenStylesheet() {
     if (document.getElementById('mobileVNextFirstScreenStyles')) return Promise.resolve();
     return new Promise(resolve => {
@@ -182,7 +198,7 @@
     .then(() => Promise.all([ensureDensityStylesheet(), ensureDensityRuntime()]))
     .then(() => Promise.all([ensureHomeBriefStylesheet(), ensureHomeBriefRuntime()]))
     .then(() => ensureHomeDetailRuntime())
-    .then(() => Promise.all([ensureIaStylesheet(), ensureIaRuntime(), ensureFirstScreenStylesheet(), ensureFontStylesheet()]))
+    .then(() => Promise.all([ensureIaStylesheet(), ensureIaRuntime(), ensureFocusReturnRuntime(), ensureFirstScreenStylesheet(), ensureFontStylesheet()]))
     .then(() => {
       document.documentElement.dataset.mobileVnextReady = 'true';
       syncSurface();

@@ -14,6 +14,7 @@ const report = [];
 const expectedDomains = ['ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data'];
 const expectedPrimary = ['today', 'alerts', 'trends', 'search'];
 const moduleTargets = ['ads', 'products', 'inventory'];
+const detailExitMode = { ads: 'button', products: 'browser-back', inventory: 'escape' };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const pass = message => console.log(`PASS  ${message}`);
 const fail = (message, detail = '') => {
@@ -50,6 +51,7 @@ async function ready(page) {
   await page.waitForFunction(() => document.documentElement.dataset.mobileVnextReady === 'true', null, { timeout: 12_000 });
   await page.waitForSelector('#mobileAppRoot:not([hidden]) .vnext-app', { state: 'visible', timeout: 12_000 });
   await page.waitForSelector('.vnext-module-rail[data-vnext-ia="domain"]', { state: 'attached', timeout: 12_000 });
+  await page.waitForFunction(() => Boolean(window.YT_MOBILE_VNEXT_FOCUS_RETURN), null, { timeout: 12_000 });
   await sleep(80);
 }
 
@@ -143,6 +145,58 @@ async function smallButtons(page) {
   }).slice(0, 12).map(button => ({ text: button.textContent.trim().slice(0, 40), height: button.getBoundingClientRect().height, className: button.className })));
 }
 
+async function exerciseDetailFocusReturn(page, module, label) {
+  const record = page.locator(`.vnext-density-module-page[data-density-module="${module}"] .vnext-dense-record`).first();
+  await record.waitFor({ state: 'visible' });
+  const identity = await record.evaluate(element => ({
+    type: element.dataset.densityDetailType,
+    id: element.dataset.densityDetailId,
+    text: element.textContent.trim().slice(0, 80)
+  }));
+  await record.focus();
+  const triggerFocused = await page.evaluate(({ type, id }) => {
+    const active = document.activeElement;
+    return active?.dataset?.densityDetailType === type && active?.dataset?.densityDetailId === id;
+  }, identity);
+  expect(triggerFocused, `${label}/${module}: detail trigger can receive focus before opening`, JSON.stringify(identity));
+
+  await record.click();
+  await page.waitForSelector('.vnext-detail-screen', { state: 'visible' });
+  await page.waitForFunction(() => window.YT_MOBILE_VNEXT_FOCUS_RETURN?.getState?.().depth === 1);
+  const detailEntry = await page.evaluate(() => ({
+    closeFocused: document.activeElement?.matches?.('[data-vnext-close-detail]') || false,
+    dialog: document.querySelector('.vnext-detail-screen')?.getAttribute('role') || '',
+    modal: document.querySelector('.vnext-detail-screen')?.getAttribute('aria-modal') || '',
+    stackDepth: window.YT_MOBILE_VNEXT_FOCUS_RETURN?.getState?.().depth ?? -1
+  }));
+  expect(detailEntry.closeFocused, `${label}/${module}: detail opens with focus on the Back control`, JSON.stringify(detailEntry));
+  expect(detailEntry.dialog === 'dialog' && detailEntry.modal === 'true', `${label}/${module}: detail remains a modal dialog`, JSON.stringify(detailEntry));
+
+  const mode = detailExitMode[module];
+  if (mode === 'button') await page.click('[data-vnext-close-detail]');
+  else if (mode === 'browser-back') await page.goBack();
+  else await page.keyboard.press('Escape');
+
+  await page.waitForSelector(`.vnext-density-module-page[data-density-module="${module}"]`, { state: 'visible' });
+  await page.waitForFunction(({ type, id }) => {
+    const active = document.activeElement;
+    return active?.dataset?.densityDetailType === type && active?.dataset?.densityDetailId === id;
+  }, identity, { timeout: 5_000 });
+  const returned = await page.evaluate(({ type, id }) => {
+    const active = document.activeElement;
+    const target = document.querySelector(`[data-density-detail-type="${CSS.escape(type)}"][data-density-detail-id="${CSS.escape(id)}"]`);
+    return {
+      focused: active === target,
+      connected: Boolean(target?.isConnected),
+      stackDepth: window.YT_MOBILE_VNEXT_FOCUS_RETURN?.getState?.().depth ?? -1,
+      detailOpen: Boolean(document.querySelector('.vnext-detail-screen'))
+    };
+  }, identity);
+  expect(returned.focused && returned.connected, `${label}/${module}: ${mode} returns focus to the recreated originating record`, JSON.stringify(returned));
+  expect(returned.stackDepth === 0 && returned.detailOpen === false, `${label}/${module}: detail history closes with an empty focus-return stack`, JSON.stringify(returned));
+  return { identity, mode, detailEntry, returned };
+}
+
 async function runMobile(viewport) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
@@ -207,6 +261,9 @@ async function runMobile(viewport) {
       const short = await smallButtons(page);
       expect(short.length === 0, `${label}/${module}: visible touch targets remain >=44px high`, JSON.stringify(short));
       await page.screenshot({ path: path.join(artifactDir, `mobile-${label}-${module}.png`), fullPage: false });
+
+      evidence.modules[module].focusReturn = await exerciseDetailFocusReturn(page, module, label);
+      await sleep(80);
     }
 
     await page.goBack();
@@ -246,11 +303,13 @@ async function runDesktop() {
       mobileHidden: document.getElementById('mobileAppRoot')?.hidden,
       mobileActive: document.body.classList.contains('mobile-vnext-active'),
       mainDisplay: getComputedStyle(document.querySelector('.main-shell')).display,
-      primaryNav: [...document.querySelectorAll('#mainNav [data-page]')].map(node => node.dataset.page)
+      primaryNav: [...document.querySelectorAll('#mainNav [data-page]')].map(node => node.dataset.page),
+      focusRuntimeLoaded: Boolean(document.getElementById('mobileVNextFocusReturnRuntime'))
     }));
     expect(desktop.mobileHidden === true && desktop.mobileActive === false, 'desktop 1440: Mobile IA remains inactive', JSON.stringify(desktop));
     expect(desktop.mainDisplay !== 'none', 'desktop 1440: Desktop application remains visible', desktop.mainDisplay);
     expect(desktop.primaryNav.length === 9, 'desktop 1440: accepted nine-destination Desktop IA remains intact', JSON.stringify(desktop.primaryNav));
+    expect(desktop.focusRuntimeLoaded, 'desktop 1440: focus-return runtime may load but remains inert outside Mobile');
     await page.screenshot({ path: path.join(artifactDir, 'desktop-1440-smoke.png'), fullPage: false });
   } catch (error) {
     fail('desktop 1440: browser smoke crashed', error.stack || String(error));
