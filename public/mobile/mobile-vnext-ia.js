@@ -77,6 +77,21 @@
     lastRevealedRail = rail;
   }
 
+  function filterRailFor(module) {
+    if (!FILTER_MODULE_SET.has(module)) return null;
+    return root.querySelector(`.vnext-density-module-page[data-density-module="${module}"] .vnext-filter-tags`);
+  }
+
+  function syncFilterSemantics(module) {
+    const filterRail = filterRailFor(module);
+    const filter = activeFilter(module);
+    if (!filterRail || !filter) return;
+
+    for (const button of filterRail.querySelectorAll('[data-density-filter]')) {
+      button.setAttribute('aria-pressed', button.dataset.densityFilter === filter ? 'true' : 'false');
+    }
+  }
+
   function revealActiveFilter(module) {
     if (!FILTER_MODULE_SET.has(module)) {
       lastRevealedFilter = null;
@@ -84,7 +99,7 @@
       return;
     }
 
-    const filterRail = root.querySelector(`.vnext-density-module-page[data-density-module="${module}"] .vnext-filter-tags`);
+    const filterRail = filterRailFor(module);
     const filter = activeFilter(module);
     if (!filterRail || !filter) return;
     if (filterRail === lastRevealedFilterRail && filter === lastRevealedFilter) return;
@@ -135,6 +150,7 @@
       rail.classList.toggle('vnext-domain-rail-hidden', !visible);
       if (visible) revealActiveDomain(rail, module);
       else revealActiveDomain(rail, null);
+      syncFilterSemantics(module);
       revealActiveFilter(module);
     } finally {
       syncing = false;
