@@ -64,7 +64,10 @@
       padding-right:15px;
     }
 
-    /* A1 narrow-screen invariant: four fact cells must wrap 2×2 instead of collapsing into four columns. */
+    /* A1 narrow-screen invariant: hero becomes one column and four fact cells wrap 2×2. */
+    #mobileAppRoot .vnext-density-module-page .vnext-module-hero{
+      grid-template-columns:minmax(0,1fr);
+    }
     #mobileAppRoot .vnext-density-module-page .vnext-module-facts{
       grid-template-columns:repeat(2,minmax(0,1fr));
     }
