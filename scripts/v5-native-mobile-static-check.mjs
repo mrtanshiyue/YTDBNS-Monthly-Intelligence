@@ -139,6 +139,8 @@ for (const file of mobileJsFiles.filter(file => file.includes('/views/'))) {
 expect(runtime.includes('async function comparePrevious()'), 'shared runtime owns comparison retrieval');
 expect(runtime.includes('inventoryDetail: null') && runtime.includes('inventoryReferenceMonth'), 'shared runtime models inventory snapshot detail independently');
 expect(runtime.includes('month <= ceiling'), 'inventory snapshot cannot move later than selected period');
+expect(runtime.includes('const candidate = inventoryReferenceMonth(to);'), 'live inventory resolution uses one authoritative reference month');
+expect(!runtime.includes('for (const candidate of inventoryReferenceMonths(to))'), 'live startup never serially scans historical months for inventory');
 expect(selectors.includes('runtimeState?.inventoryDetail'), 'Inventory selector consumes resolved snapshot detail');
 
 expect(shellCss.includes('env(safe-area-inset-top)') && shellCss.includes('env(safe-area-inset-bottom)'), 'shell handles iPhone safe areas');
