@@ -10,6 +10,7 @@
     "check:mobile": "node scripts/mobile-responsive-acceptance.mjs",
     "check:v5:mobile:static": "node scripts/v5-native-mobile-static-check.mjs",
     "check:v5:mobile:ia": "node scripts/mobile-vnext-ia-static-check.mjs",
+    "check:v5:mobile:ia:browser": "node scripts/mobile-vnext-ia-acceptance.mjs",
     "check:v5:mobile": "node scripts/v5-native-mobile-acceptance.mjs",
     "check:v5:browser": "node scripts/v5-browser-acceptance.mjs",
     "check:ui:static": "node scripts/ui-integrity-static-check.mjs",
