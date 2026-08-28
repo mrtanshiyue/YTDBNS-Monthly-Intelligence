@@ -33,11 +33,20 @@ expect(css.startsWith('@media (max-width:860px){'), 'IA styling is scoped to Mob
 expect(css.includes('.vnext-module-rail[hidden]') && css.includes('display:none!important'), 'hidden business rail is fail-closed in CSS');
 expect(css.includes('[data-vnext-module="today"]') && css.includes('[data-vnext-module="alerts"]'), 'duplicate Today/Alerts rail entries are fail-closed in CSS');
 expect(!css.includes('@media (min-width:861px)'), 'IA stylesheet introduces no Desktop override block');
+expect(css.includes('#mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active') && css.includes('color:#fff!important'), 'active business-domain rail text is release-locked to readable white despite competing button inheritance');
+expect(css.includes('#mobileAppRoot .vnext-density-module-page .vnext-filter-tags') && css.includes('mask-image:linear-gradient'), 'module filter strips expose horizontal overflow with a visual fade affordance');
+expect(css.includes('scroll-snap-type:x proximity') && css.includes('scroll-snap-align:start'), 'module filters use predictable horizontal snap behavior');
+expect(css.includes('#mobileAppRoot .vnext-density-module-page .vnext-filter-tags button.active') && css.includes('color:var(--vx-accent)'), 'active module filters override root button inheritance with explicit selected-state color');
+expect(css.includes('#mobileAppRoot .vnext-density-module-page .vnext-module-section>header') && css.includes('flex-direction:column') && css.includes('align-items:flex-start'), 'module section headers stack label above title/count on Mobile');
 
 const businessBlock = density.match(/const BUSINESS_MODULES = new Set\(\[([\s\S]*?)\]\);/)?.[1] || '';
 const businessDomains = [...businessBlock.matchAll(/'([^']+)'/g)].map(match => match[1]);
 expect(expectedDomains.every(domain => businessDomains.includes(domain)), 'existing business-module routes remain intact underneath the IA overlay');
 expect(!businessDomains.includes('today') && !businessDomains.includes('alerts'), 'primary task destinations remain outside business-module routing');
+for (const domain of ['ads', 'products', 'inventory']) {
+  expect(density.includes(`${domain}: [`), `${domain} retains a first-class filter definition`);
+}
+expect(density.includes('class="vnext-filter-tags"') && density.includes('class="vnext-module-section"'), 'module runtime retains shared filter-strip and section-header structures');
 
 expect(pkg.scripts?.['check:v5:mobile:ia'] === 'node scripts/mobile-vnext-ia-static-check.mjs', 'package exposes Mobile IA static gate');
 
@@ -45,4 +54,4 @@ if (failures.length) {
   console.error(`\nMobile vNext IA static gate failed: ${failures.length} issue(s).`);
   process.exit(1);
 }
-console.log('\nMobile vNext IA static gate passed: primary task navigation and secondary business domains are cleanly separated.');
+console.log('\nMobile vNext IA static gate passed: task IA and module interaction states are cleanly separated and release-gated.');
