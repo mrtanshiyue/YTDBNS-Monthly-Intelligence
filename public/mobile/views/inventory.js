@@ -26,7 +26,8 @@
   });
 
   function filteredRows(inventory) {
-    const avgValue = inventory.length ? inventory.reduce((sum, row) => sum + Number(row.inventoryValue || 0), 0) / inventory.length : 0;
+    const valuedRows = inventory.filter(row => row.inventoryValue != null);
+    const avgValue = valuedRows.length ? valuedRows.reduce((sum, row) => sum + Number(row.inventoryValue || 0), 0) / valuedRows.length : 0;
     const filtered = inventory.filter(row => {
       if (state.filter === 'unsellable') return row.unsellable != null && Number(row.unsellable) > 0;
       if (state.filter === 'lowStock') return row.fulfillable != null && Number(row.fulfillable) <= 20;
