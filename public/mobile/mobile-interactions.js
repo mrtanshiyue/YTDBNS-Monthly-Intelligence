@@ -19,6 +19,7 @@
   const pick = (...values) => values.find(value => value != null && String(value).trim() !== '');
   const MODULES = [
     ['overview', '首页', '经营摘要、核心 KPI、异常提醒与趋势'],
+    ['tasks', '待办', '跨业务异常与经营信号'],
     ['ads', '广告', 'Campaign、广告花费、ACOS、CTR、CVR'],
     ['products', '商品', 'SKU、ASIN、销售、销量、Sessions、CVR'],
     ['inventory', '库存', 'Fulfillable、Inbound、库存资金、不可售'],
