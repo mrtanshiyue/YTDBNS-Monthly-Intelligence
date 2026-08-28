@@ -72,6 +72,12 @@
     line-height:1.05;
   }
 
+  /* Dense board already contains CVR/Sessions, ad sales/spend, inventory value/units and refund sales/returns.
+     Keep the legacy pulse as a fail-safe in base markup, but remove it only when the dense board is present. */
+  body.mobile-vnext-active .vnext-today>.vnext-density-board~.vnext-section+.vnext-section{
+    display:none;
+  }
+
   body.mobile-vnext-active .vnext-home-all-modules{
     margin-top:20px;
   }
