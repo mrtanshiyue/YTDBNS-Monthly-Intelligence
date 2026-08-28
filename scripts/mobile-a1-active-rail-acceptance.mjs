@@ -33,9 +33,11 @@ function staticContract() {
   expect(
     source.includes('function rerenderFocusTarget(event)') &&
       source.includes('function restoreRerenderedFocus(target)') &&
+      source.includes('function focusWithoutScroll(control)') &&
       source.includes("event.detail !== 0") &&
-      source.includes('replacement.focus({ preventScroll: true })'),
-    'A1 static contract: keyboard/synthesized activation restores focus to replacement controls without scrolling the document'
+      source.includes('control.focus({ preventScroll: true })') &&
+      source.includes('focusWithoutScroll(replacement);'),
+    'A1 static contract: keyboard/synthesized activation restores focus to replacement controls through the shared prevent-scroll focus helper'
   );
 }
 

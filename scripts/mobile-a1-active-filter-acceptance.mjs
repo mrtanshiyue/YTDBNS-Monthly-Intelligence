@@ -42,9 +42,11 @@ function staticContract() {
   expect(
     ia.includes('function rerenderFocusTarget(event)') &&
       ia.includes('function restoreRerenderedFocus(target)') &&
+      ia.includes('function focusWithoutScroll(control)') &&
       ia.includes("kind: 'filter'") &&
-      ia.includes('replacement.focus({ preventScroll: true })'),
-    'A1 static contract: synthesized filter activation restores focus to the replacement filter without document scrolling'
+      ia.includes('control.focus({ preventScroll: true })') &&
+      ia.includes('focusWithoutScroll(replacement);'),
+    'A1 static contract: synthesized filter activation restores focus through the shared prevent-scroll focus helper'
   );
 }
 

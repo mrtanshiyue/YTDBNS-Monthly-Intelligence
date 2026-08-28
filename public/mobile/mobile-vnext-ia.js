@@ -25,6 +25,9 @@
   let lastRevealedRail = null;
   let lastRevealedFilter = null;
   let lastRevealedFilterRail = null;
+  let periodFocusOrigin = null;
+  let periodSheetObservedOpen = false;
+  let periodRestoreScheduled = false;
 
   function densityState() {
     return window.YT_MOBILE_VNEXT_DENSITY?.getState?.() || null;
@@ -56,6 +59,13 @@
 
   function shouldShowRail() {
     return activePrimaryTab() === 'today' || Boolean(activeModule());
+  }
+
+  function focusWithoutScroll(control) {
+    if (!control || !control.isConnected) return false;
+    try { control.focus({ preventScroll: true }); }
+    catch { control.focus(); }
+    return document.activeElement === control;
   }
 
   function revealControl(scroller, control, edge = 4) {
@@ -132,12 +142,65 @@
     lastRevealedFilterRail = filterRail;
   }
 
+  function capturePeriodFocusOrigin(event) {
+    if (!media.matches || event.detail !== 0) return;
+    const trigger = event.target.closest('[data-vnext-period]');
+    if (!trigger) return;
+    periodFocusOrigin = {
+      tab: activePrimaryTab(),
+      search: Boolean(trigger.closest('.vnext-search-toolbar'))
+    };
+    periodSheetObservedOpen = false;
+    periodRestoreScheduled = false;
+  }
+
+  function replacementPeriodTrigger(origin) {
+    if (!origin || activePrimaryTab() !== origin.tab) return null;
+    return origin.search
+      ? root.querySelector('.vnext-search-toolbar [data-vnext-period]')
+      : root.querySelector('.vnext-toolbar [data-vnext-period]');
+  }
+
+  function syncPeriodSheetFocus() {
+    const sheetOpen = Boolean(root.querySelector('.vnext-sheet[role="dialog"]'));
+    if (sheetOpen) {
+      if (periodFocusOrigin) periodSheetObservedOpen = true;
+      return;
+    }
+    if (!periodFocusOrigin || !periodSheetObservedOpen || periodRestoreScheduled) return;
+
+    periodRestoreScheduled = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      periodRestoreScheduled = false;
+      if (!periodFocusOrigin || root.querySelector('.vnext-sheet[role="dialog"]')) return;
+      const origin = periodFocusOrigin;
+      const replacement = replacementPeriodTrigger(origin);
+      if (!replacement || !focusWithoutScroll(replacement)) {
+        requestAnimationFrame(syncPeriodSheetFocus);
+        return;
+      }
+
+      /* Keep the logical origin alive for one more frame so a queued history render cannot silently detach the focused replacement. */
+      requestAnimationFrame(() => {
+        if (!periodFocusOrigin || root.querySelector('.vnext-sheet[role="dialog"]')) return;
+        const settledReplacement = replacementPeriodTrigger(periodFocusOrigin);
+        if (settledReplacement && document.activeElement === settledReplacement) {
+          periodFocusOrigin = null;
+          periodSheetObservedOpen = false;
+          return;
+        }
+        requestAnimationFrame(syncPeriodSheetFocus);
+      });
+    }));
+  }
+
   function syncRail() {
     if (syncing || !media.matches || !document.body.classList.contains('mobile-vnext-active')) return;
 
     syncing = true;
     try {
       syncSeveritySemantics();
+      syncPeriodSheetFocus();
 
       const rail = root.querySelector('.vnext-module-rail');
       if (!rail) return;
@@ -215,9 +278,7 @@
     } else if (target.kind === 'module') {
       replacement = root.querySelector(`.vnext-module-rail [data-vnext-module="${target.module}"]`);
     }
-    if (!replacement || !replacement.isConnected) return;
-    try { replacement.focus({ preventScroll: true }); }
-    catch { replacement.focus(); }
+    focusWithoutScroll(replacement);
   }
 
   function settlePrimaryRouteAtTop(event) {
@@ -233,6 +294,7 @@
   observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-tab'] });
 
   root.addEventListener('click', event => {
+    capturePeriodFocusOrigin(event);
     const focusTarget = rerenderFocusTarget(event);
     if (event.target.closest('[data-vnext-tab], [data-vnext-module], [data-density-filter], [data-vnext-severity]')) requestAnimationFrame(syncRail);
     if (focusTarget) requestAnimationFrame(() => restoreRerenderedFocus(focusTarget));
