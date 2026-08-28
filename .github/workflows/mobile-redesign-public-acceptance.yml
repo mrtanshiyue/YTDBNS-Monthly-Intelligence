@@ -1,0 +1,58 @@
+name: Mobile Redesign Public Acceptance
+
+on:
+  push:
+    branches:
+      - mobile-ux-redesign
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies without legacy postinstall gates
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: JavaScript syntax
+        run: |
+          node --check public/mobile/mobile-app-bridge.js
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-redesign.js
+          node --check public/mobile/mobile-interactions.js
+          node --check public/mobile/mobile-compare.js
+          node --check public/mobile/views/overview.js
+          node --check public/mobile/views/ads.js
+          node --check public/mobile/views/products.js
+          node --check public/mobile/views/inventory.js
+          node --check public/mobile/views/finance.js
+          node --check public/mobile/views/charges.js
+          node --check public/mobile/views/returns.js
+          node --check public/mobile/views/history.js
+          node --check public/mobile/views/data.js
+          node --check .github/mobile-redesign-http-acceptance.mjs
+
+      - name: Install Chromium and WebKit
+        run: npx playwright-core install --with-deps chromium webkit
+
+      - name: Chromium + WebKit same-origin mobile runtime acceptance
+        run: node .github/mobile-redesign-http-acceptance.mjs
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-redesign-public-acceptance-${{ github.sha }}
+          path: artifacts/mobile-redesign-acceptance
+          if-no-files-found: ignore
+          retention-days: 7
