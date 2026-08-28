@@ -94,6 +94,22 @@
     });
   }
 
+  function ensureHomeDetailRuntime() {
+    if (window.YT_MOBILE_VNEXT_HOME_DETAIL) return Promise.resolve();
+    if (document.getElementById('mobileVNextHomeDetailRuntime')) {
+      return new Promise(resolve => document.getElementById('mobileVNextHomeDetailRuntime').addEventListener('load', resolve, { once: true }));
+    }
+    return new Promise(resolve => {
+      const script = document.createElement('script');
+      script.id = 'mobileVNextHomeDetailRuntime';
+      script.src = './mobile/mobile-vnext-home-detail.js';
+      script.async = false;
+      script.addEventListener('load', resolve, { once: true });
+      script.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
   function syncSurface() {
     const enabled = mobile.matches;
     const ready = document.documentElement.dataset.mobileVnextReady === 'true';
@@ -110,6 +126,7 @@
   Promise.all([ensureStylesheet(), ensureRuntime()])
     .then(() => Promise.all([ensureDensityStylesheet(), ensureDensityRuntime()]))
     .then(() => Promise.all([ensureHomeBriefStylesheet(), ensureHomeBriefRuntime()]))
+    .then(() => ensureHomeDetailRuntime())
     .then(() => {
       document.documentElement.dataset.mobileVnextReady = 'true';
       syncSurface();
