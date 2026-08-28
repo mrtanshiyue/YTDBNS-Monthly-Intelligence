@@ -1,18 +1,20 @@
 # YTDBNS Monthly Intelligence V5.0
 
-YTDBNS Monthly Intelligence is a Cloudflare Workers application for monthly Amazon US operating intelligence. The product has two deliberately different presentation architectures over the same data contracts:
+YTDBNS Monthly Intelligence is a Cloudflare Workers application for monthly Amazon US operating intelligence. The product now has two deliberately different presentation architectures over the same data contracts:
 
 - **Desktop / PC:** nine-module operating cockpit optimized for wide-screen scanning, comparison, tables, import workflow and detailed analysis.
-- **Native Mobile:** independent iPhone-first view architecture optimized for one-handed navigation, an action queue, compact record lists, bottom sheets, full-screen Search / Detail / Compare and read-only operating review.
+- **Native Mobile:** independent iPhone-first view architecture optimized for one-handed navigation, record cards, bottom sheets, full-screen Search / Detail / Compare and read-only operating review.
 
 ## Production status
 
-V5.0 Native Mobile was merged to `main` on 2026-08-27. The release merge baseline before the current mobile IA redesign is:
+V5.0 Native Mobile was merged to `main` on 2026-08-27. The release merge baseline before the current UI-polish pass is:
 
-- GitHub `main`: `b5b8b736ef480fc97129a92367a34a6f0b3e28c6`
+- GitHub `main`: `3e42ef1ecff923f15dc242bc521c58c113edf8c1`
+- Cloudflare Production build: `9cfb8828-d0f4-4697-8f82-e0463022067d`
+- Production Worker Version: `c6b27555-f366-4e12-981f-0285f5bf8837`
 - Worker: `ytdbns-monthly-intelligence`
 
-The current mobile redesign must continue through PR acceptance before a new Production release. Do not treat a feature branch as deployed Production.
+The current repository work must continue through a branch + acceptance gate before a new Production release. Do not treat an audit or feature branch as deployed Production.
 
 ## Current UI architecture
 
@@ -31,25 +33,35 @@ Historical `v43`–`v53` CSS remains as a compatibility foundation because later
 
 ### Native Mobile
 
-Mobile uses its own root and does not transform the Desktop DOM.
+Mobile uses its own root and does not transform the Desktop DOM:
 
-Authoritative primary navigation is exactly five destinations:
+```text
+public/mobile/
+  mobile-shell.js
+  mobile-shell.css
+  mobile-interactions.js
+  mobile-interactions.css
+  mobile-compare.js
+  mobile-compare.css
+  views/
+    overview.js
+    ads.js
+    products.js
+    inventory.js
+    finance.js
+    charges.js
+    returns.js
+    history.js
+    data.js
+```
 
-`首页 / 待办 / 广告 / 商品 / 库存`
+Primary mobile navigation is exactly five destinations:
 
-Contextual destinations remain available through drill-down, Search and operating signals:
+`首页 / 广告 / 商品 / 库存 / 更多`
 
-`利润 / 扣费 / 退货 / 历史 / 数据`
+`更多` contains `利润 / 扣费 / 退货 / 历史 / 数据`.
 
-The mobile information architecture is action-first:
-
-- `首页` is an Executive Brief: result → exceptions → operating pulse → trend.
-- `待办` is the cross-business Action Queue.
-- `广告 / 商品 / 库存` follow result → risk → records.
-- Filters and sorting use a shared bottom sheet rather than horizontal filter strips.
-- Search, Period, Detail and Compare use modal/full-screen surfaces with contained focus and Safari Back-aware route behavior.
-
-Mobile is designed around iPhone safe areas, >=44px touch targets, no document-level horizontal scrolling, deterministic SVG icons and readable record-card typography.
+Mobile is designed around iPhone safe areas, >=44px touch targets, no document-level horizontal scrolling, native dialog focus lifecycle, deterministic SVG icons and readable record-card typography.
 
 ## Data and mutation boundaries
 
@@ -69,23 +81,33 @@ Cloudflare bindings remain:
 
 ## Quality gates
 
-Legacy V5.1 static/browser gates describe the superseded mobile IA and are not authoritative for the redesigned navigation contract.
+Run the architecture and UI integrity gates before any release:
 
-The accepted redesign was validated on its exact feature head with a dedicated same-origin Playwright runtime matrix covering:
+```bash
+npm install
+npm run check:release:static
+```
 
-- Chromium `393x852`
-- Chromium `430x932`
-- WebKit `393x852`
-- WebKit `430x932`
+Individual gates:
 
-The acceptance matrix verifies primary/contextual routing, browser Back behavior, Search, Period, Filter/Sort, Detail, Compare, modal focus containment, >=44px visible touch targets, zero horizontal overflow, zero console/page errors and GET-only browser API traffic.
+```bash
+npm run check:v5:mobile:static
+npm run check:ui:static
+```
+
+Real browser acceptance should cover the supported matrix before Production promotion:
+
+- iPhone: `375x812`, `390x844`, `393x852`, `430x932`
+- Desktop: `1440x900`, `1920x1080`
+
+The browser gate must remain GET-only and fail on console/page errors, horizontal overflow, broken mobile focus/overlay behavior or Desktop regression.
 
 ## Release discipline
 
 1. Develop on a non-production branch.
-2. Run syntax/source integrity checks on the exact branch head.
-3. Run Chromium/WebKit acceptance on the exact product code before promotion.
-4. Create/review a PR; do not bypass a real P0/P1 gate.
+2. Run static gates on the exact branch head.
+3. Run Chromium acceptance on the exact head when a browser runner is available.
+4. Create/review a PR; do not bypass a failing P0/P1 gate.
 5. Merge to `main` only after acceptance.
 6. Let the existing Cloudflare Production `main` build deploy the merge commit.
 7. Verify exact-main build/version/traffic and narrow Production runtime behavior.
