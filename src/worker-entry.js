@@ -8,6 +8,7 @@ const STORES = Object.freeze([
   { id: 'jj', code: 'JJ', name: 'JJ' }
 ]);
 const STORE_IDS = new Set(STORES.map(store => store.id));
+const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 let catalogPromise = null;
 
 const normalizeStoreId = value => STORE_IDS.has(String(value || '').toLowerCase())
@@ -31,10 +32,7 @@ async function storesResponse(env) {
     ORDER BY CASE id WHEN 'ytdbns' THEN 1 WHEN 'yy' THEN 2 WHEN 'jj' THEN 3 ELSE 9 END`).all()).results || [];
   return new Response(JSON.stringify({ ok: true, stores: rows }), {
     status: 200,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store'
-    }
+    headers: JSON_HEADERS
   });
 }
 
@@ -222,6 +220,14 @@ async function logCommitOutcome(env, body, response) {
   });
 }
 
+function commitFailureResponse(error) {
+  const message = error instanceof Error ? error.message : String(error || '导入写入失败');
+  return new Response(JSON.stringify({ ok: false, error: message }), {
+    status: 500,
+    headers: JSON_HEADERS
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -259,9 +265,15 @@ export default {
 
     if (request.method === 'POST' && url.pathname === '/api/imports/commit') {
       const body = await normalizedRequest.clone().json().catch(() => null);
-      const response = await commitPartialImport(normalizedRequest, env);
-      await logCommitOutcome(env, body, response);
-      return response;
+      try {
+        const response = await commitPartialImport(normalizedRequest, env);
+        await logCommitOutcome(env, body, response);
+        return response;
+      } catch (error) {
+        const response = commitFailureResponse(error);
+        await logCommitOutcome(env, body, response);
+        return response;
+      }
     }
 
     return app.fetch(normalizedRequest, env, ctx);
