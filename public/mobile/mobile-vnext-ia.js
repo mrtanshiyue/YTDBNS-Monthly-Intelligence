@@ -18,6 +18,8 @@
   const DOMAIN_SET = new Set(DOMAIN_IDS);
   const DUPLICATE_PRIMARY_IDS = new Set(['today', 'alerts']);
   let syncing = false;
+  let lastRevealedModule = null;
+  let lastRevealedRail = null;
 
   function activeModule() {
     const module = window.YT_MOBILE_VNEXT_DENSITY?.getState?.().module;
@@ -30,6 +32,34 @@
 
   function shouldShowRail() {
     return activePrimaryTab() === 'today' || Boolean(activeModule());
+  }
+
+  function revealActiveDomain(rail, module) {
+    if (!module) {
+      lastRevealedModule = null;
+      lastRevealedRail = null;
+      return;
+    }
+    if (rail === lastRevealedRail && module === lastRevealedModule) return;
+
+    const button = rail.querySelector(`[data-vnext-module="${module}"]`);
+    if (!button || button.hidden) return;
+
+    const railRect = rail.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    const visibleLeft = railRect.left + 4;
+    const visibleRight = railRect.right - 4;
+    const fullyVisible = buttonRect.left >= visibleLeft && buttonRect.right <= visibleRight;
+
+    if (!fullyVisible) {
+      const railCenter = (railRect.left + railRect.right) / 2;
+      const buttonCenter = (buttonRect.left + buttonRect.right) / 2;
+      const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth);
+      rail.scrollLeft = Math.max(0, Math.min(maxScroll, rail.scrollLeft + buttonCenter - railCenter));
+    }
+
+    lastRevealedModule = module;
+    lastRevealedRail = rail;
   }
 
   function syncRail() {
@@ -68,6 +98,8 @@
       rail.hidden = !visible;
       rail.classList.toggle('vnext-domain-rail-visible', visible);
       rail.classList.toggle('vnext-domain-rail-hidden', !visible);
+      if (visible) revealActiveDomain(rail, module);
+      else revealActiveDomain(rail, null);
     } finally {
       syncing = false;
     }
