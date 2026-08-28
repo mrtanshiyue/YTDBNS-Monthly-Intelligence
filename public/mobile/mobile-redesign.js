@@ -202,7 +202,7 @@
         const totalCvr = products?.totals?.cvr == null ? null : Number(products.totals.cvr);
         if (buyBox != null && buyBox < .90) {
           tasks.push({ route: 'products', tone: 'warning', group: '商品', title: row.sku || row.asin || 'SKU', detail: `Buy Box ${pct(buyBox)} · 销售 ${money(row.sales)}`, score: 180 + Number(row.sales || 0) / 10 });
-        } else if (Number(row.sessions || 0) >= avgSessions && cvr != null && totalCvr != null && cvr < totalCvr) {
+        } else if (row.sessions != null && Number(row.sessions) >= avgSessions && cvr != null && totalCvr != null && cvr < totalCvr) {
           tasks.push({ route: 'products', tone: 'warning', group: '商品', title: row.sku || row.asin || 'SKU', detail: `高流量低转化 · CVR ${pct(cvr)}`, score: 160 + Number(row.sessions || 0) });
         }
       });
@@ -211,13 +211,13 @@
     try {
       const inventory = selectors?.inventoryModel?.(runtimeState);
       (inventory?.inventory || []).forEach(row => {
-        const unsellable = Number(row.unsellable || 0);
-        const total = Number(row.total || 0);
-        const share = total ? unsellable / total : 0;
-        const fulfillable = Number(row.fulfillable || 0);
-        if (unsellable > 0) {
+        const unsellable = row.unsellable == null ? null : Number(row.unsellable);
+        const total = row.total == null ? null : Number(row.total);
+        const share = total && unsellable != null ? unsellable / total : 0;
+        const fulfillable = row.fulfillable == null ? null : Number(row.fulfillable);
+        if (unsellable != null && unsellable > 0) {
           tasks.push({ route: 'inventory', tone: share > .10 ? 'critical' : 'warning', group: '库存', title: row.sku || row.asin || 'SKU', detail: `不可售 ${num(unsellable)} · 库存资金 ${money(row.inventoryValue)}`, score: (share > .10 ? 280 : 190) + Number(row.inventoryValue || 0) / 10 });
-        } else if (fulfillable <= 20) {
+        } else if (fulfillable != null && fulfillable <= 20) {
           tasks.push({ route: 'inventory', tone: 'warning', group: '库存', title: row.sku || row.asin || 'SKU', detail: `可售库存 ${num(fulfillable)} · 低库存`, score: 170 + (20 - fulfillable) });
         }
       });
