@@ -58,6 +58,18 @@
     order:2;
   }
 
+  /* Metric labels carry business meaning; let narrow hero cells use up to two lines instead of ellipsizing the label. */
+  #mobileAppRoot .vnext-density-module-page .vnext-module-facts small{
+    display:-webkit-box;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    white-space:normal;
+    overflow:hidden;
+    text-overflow:clip;
+    line-height:1.15;
+    overflow-wrap:anywhere;
+  }
+
   /* Three-fact heroes should not expose the grid background as a fake empty fourth metric. */
   #mobileAppRoot .vnext-density-module-page .vnext-module-facts:has(>span:nth-child(3):last-child)>span:last-child{
     grid-column:1/-1;
