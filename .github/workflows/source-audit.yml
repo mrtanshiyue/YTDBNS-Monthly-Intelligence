@@ -1,0 +1,26 @@
+name: Source Audit
+on:
+  push:
+    branches: [refactor/report-source-consolidation]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report-consolidation-source
+          path: |
+            public/normalizer.js
+            public/multi-file-import.js
+            public/v44.js
+            public/import-auto-period.js
+            public/import-report-compat.js
+            public/master-data-import-period.js
+            src/partial-import.js
+            src/worker.js
+            src/worker-entry.js
+            package.json
+          if-no-files-found: error
