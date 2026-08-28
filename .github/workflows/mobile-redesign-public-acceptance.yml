@@ -1,0 +1,296 @@
+name: Mobile Redesign Public Acceptance
+
+on:
+  push:
+    branches:
+      - mobile-ux-redesign
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies without legacy postinstall gates
+        run: npm ci --ignore-scripts
+
+      - name: JavaScript syntax
+        run: |
+          node --check public/mobile/mobile-app-bridge.js
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-redesign.js
+          node --check public/mobile/mobile-interactions.js
+          node --check public/mobile/mobile-compare.js
+          node --check public/mobile/views/overview.js
+          node --check public/mobile/views/ads.js
+          node --check public/mobile/views/products.js
+          node --check public/mobile/views/inventory.js
+          node --check public/mobile/views/finance.js
+          node --check public/mobile/views/charges.js
+          node --check public/mobile/views/returns.js
+          node --check public/mobile/views/history.js
+          node --check public/mobile/views/data.js
+
+      - name: Install Chromium and WebKit
+        run: npx playwright-core install --with-deps chromium webkit
+
+      - name: Write redesign acceptance harness
+        run: |
+          mkdir -p artifacts/mobile-redesign-acceptance
+          cat > /tmp/mobile-redesign-acceptance.mjs <<'EOF'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import process from 'node:process';
+          import { pathToFileURL } from 'node:url';
+          import { chromium, webkit } from 'playwright-core';
+
+          const root = process.cwd();
+          const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;
+          const artifactDir = path.join(root, 'artifacts', 'mobile-redesign-acceptance');
+          fs.mkdirSync(artifactDir, { recursive: true });
+          const failures = [];
+          const report = { entry, sha: process.env.GITHUB_SHA, runs: [] };
+          const PRIMARY = ['overview', 'tasks', 'ads', 'products', 'inventory'];
+          const ALL_ROUTES = [...PRIMARY, 'finance', 'charges', 'returns', 'history', 'data'];
+          const EXPECTED_LABELS = ['首页', '待办', '广告', '商品', '库存'];
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+          function pass(message) { console.log(`PASS  ${message}`); }
+          function fail(message, detail = '') {
+            const full = detail ? `${message} — ${detail}` : message;
+            failures.push(full);
+            console.error(`FAIL  ${full}`);
+          }
+          function expect(condition, message, detail = '') { condition ? pass(message) : fail(message, detail); }
+
+          function captureSignals(page) {
+            const signals = { consoleErrors: [], pageErrors: [], apiRequests: [] };
+            page.on('console', message => { if (message.type() === 'error') signals.consoleErrors.push(message.text()); });
+            page.on('pageerror', error => signals.pageErrors.push(error?.stack || error?.message || String(error)));
+            page.on('request', request => {
+              if (request.url().includes('/api/')) signals.apiRequests.push({ method: request.method(), url: request.url() });
+            });
+            return signals;
+          }
+
+          async function waitMobile(page) {
+            await page.goto(entry, { waitUntil: 'load', timeout: 30_000 });
+            await page.waitForFunction(() => document.documentElement.dataset.v52Ready === 'true', null, { timeout: 10_000 });
+            await page.waitForSelector('#mobileAppRoot:not([hidden])', { state: 'visible', timeout: 10_000 });
+            await sleep(250);
+          }
+
+          async function route(page, id) {
+            await page.evaluate(target => window.YT_MOBILE_APP?.navigate?.(target), id);
+            await page.waitForSelector(`[data-mobile-view="${id}"]`, { state: 'visible', timeout: 5_000 });
+            await sleep(60);
+          }
+
+          async function overflow(page) {
+            return page.evaluate(() => {
+              const root = document.getElementById('mobileAppRoot');
+              return {
+                viewport: window.innerWidth,
+                html: document.documentElement.scrollWidth,
+                body: document.body.scrollWidth,
+                mobile: root?.scrollWidth || 0
+              };
+            });
+          }
+
+          async function assertTouchTargets(page, label) {
+            const tooSmall = await page.evaluate(() => {
+              const root = document.getElementById('mobileAppRoot');
+              if (!root) return [];
+              return [...root.querySelectorAll('button')].filter(button => {
+                const rect = button.getBoundingClientRect();
+                const style = getComputedStyle(button);
+                return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && rect.height < 43.5;
+              }).slice(0, 12).map(button => ({ text: (button.textContent || '').trim().slice(0, 50), height: button.getBoundingClientRect().height, className: button.className }));
+            });
+            expect(tooSmall.length === 0, `${label}: visible buttons keep 44px touch-height floor`, JSON.stringify(tooSmall));
+          }
+
+          async function assertModalInert(page, selector, label) {
+            await page.waitForSelector(selector, { state: 'visible', timeout: 4_000 });
+            const inert = await page.$eval('#mobileAppRoot', node => node.inert === true);
+            expect(inert, `${label}: background mobile root is inert while modal is open`);
+          }
+
+          async function closeInteractionOverlay(page) {
+            const close = page.locator('#v5MobileOverlayRoot [data-v5-close-overlay]').first();
+            if (await close.count()) await close.click();
+            await sleep(50);
+          }
+
+          async function runEngine(engineName, browserType, viewport) {
+            const browser = await browserType.launch({ headless: true });
+            const context = await browser.newContext({
+              viewport,
+              deviceScaleFactor: 3,
+              hasTouch: true,
+              isMobile: true
+            });
+            const page = await context.newPage();
+            const signals = captureSignals(page);
+            const label = `${engineName} ${viewport.width}x${viewport.height}`;
+            const evidence = { engine: engineName, viewport, routes: {} };
+
+            try {
+              await waitMobile(page);
+
+              const readiness = await page.evaluate(() => ({
+                ready: document.documentElement.dataset.v52Ready,
+                rootHidden: document.getElementById('mobileAppRoot')?.hidden,
+                ariaHidden: document.getElementById('mobileAppRoot')?.getAttribute('aria-hidden'),
+                view: document.documentElement.dataset.v5View,
+                brandCount: document.querySelectorAll('#mobileAppRoot .v5-mobile-brand').length,
+                legacyTabs: document.querySelectorAll('#mobileAppRoot .v5-mobile-top-tabs').length
+              }));
+              expect(readiness.ready === 'true' && readiness.rootHidden === false && readiness.ariaHidden === 'false' && readiness.view === 'mobile', `${label}: redesign readiness gate resolves to visible mobile app`, JSON.stringify(readiness));
+              expect(readiness.brandCount === 0 && readiness.legacyTabs === 0, `${label}: legacy brand/top-tab override is absent`, JSON.stringify(readiness));
+
+              const nav = await page.evaluate(() => [...document.querySelectorAll('#mobileAppRoot .v5-mobile-bottom-nav [data-mobile-route]')].map(button => ({ route: button.dataset.mobileRoute, text: (button.textContent || '').trim() })));
+              expect(nav.length === 5, `${label}: exactly five primary navigation items`, JSON.stringify(nav));
+              expect(JSON.stringify(nav.map(item => item.route)) === JSON.stringify(PRIMARY), `${label}: primary route order is authoritative`, JSON.stringify(nav));
+              expect(JSON.stringify(nav.map(item => item.text)) === JSON.stringify(EXPECTED_LABELS), `${label}: primary labels are 首页/待办/广告/商品/库存`, JSON.stringify(nav));
+              expect(!nav.some(item => /工作台|更多/.test(item.text)), `${label}: no Workspace/More garbage-bucket navigation`, JSON.stringify(nav));
+
+              for (const id of ALL_ROUTES) {
+                await route(page, id);
+                const state = await page.evaluate(routeId => ({
+                  visible: Boolean(document.querySelector(`[data-mobile-view="${routeId}"]`)),
+                  title: document.getElementById('v5MobileViewTitle')?.textContent?.trim() || '',
+                  active: document.querySelector('#mobileAppRoot .v5-mobile-nav-item[aria-current="page"]')?.dataset.mobileRoute || ''
+                }), id);
+                evidence.routes[id] = state;
+                expect(state.visible, `${label} / ${id}: route renders`);
+                const ov = await overflow(page);
+                expect(Math.max(ov.html, ov.body, ov.mobile) <= ov.viewport + 1, `${label} / ${id}: no horizontal overflow`, JSON.stringify(ov));
+                await assertTouchTargets(page, `${label} / ${id}`);
+              }
+
+              await route(page, 'overview');
+              await page.click('[data-mobile-route="ads"]');
+              await page.waitForSelector('[data-mobile-view="ads"]', { state: 'visible' });
+              await page.click('[data-mobile-route="products"]');
+              await page.waitForSelector('[data-mobile-view="products"]', { state: 'visible' });
+              await page.goBack();
+              await page.waitForSelector('[data-mobile-view="ads"]', { state: 'visible', timeout: 4_000 });
+              pass(`${label}: browser Back restores previous business route`);
+
+              await page.click('[data-mobile-action="search"]');
+              await assertModalInert(page, '#v5MobileOverlayRoot .v5-fullscreen', `${label} / Search`);
+              const hasTasks = await page.locator('#v5MobileOverlayRoot [data-v5-search-results]').getByText('待办', { exact: true }).count();
+              expect(hasTasks > 0, `${label}: Global Search exposes 待办 as first-class module`);
+              await page.goBack();
+              await sleep(120);
+              const afterBackSearch = await page.evaluate(() => ({
+                overlay: Boolean(document.querySelector('#v5MobileOverlayRoot .v5-fullscreen')),
+                route: document.querySelector('[data-mobile-view]')?.dataset.mobileView,
+                inert: document.getElementById('mobileAppRoot')?.inert
+              }));
+              expect(!afterBackSearch.overlay && afterBackSearch.route === 'ads' && afterBackSearch.inert === false, `${label}: Safari-style Back closes Search before leaving route`, JSON.stringify(afterBackSearch));
+
+              const periodButton = page.locator('[data-mobile-action="period"]');
+              if (!(await periodButton.isDisabled())) {
+                await periodButton.click();
+                await assertModalInert(page, '#v5MobileOverlayRoot [data-v5-surface]', `${label} / Period`);
+                await closeInteractionOverlay(page);
+                const inert = await page.$eval('#mobileAppRoot', node => node.inert);
+                expect(inert === false, `${label} / Period: closing restores background interactivity`);
+              } else {
+                pass(`${label} / Period: control correctly disabled in unavailable runtime state`);
+              }
+
+              await route(page, 'ads');
+              await page.click('[data-v52-ops-open="ads"]');
+              await assertModalInert(page, '#v52OpsOverlayRoot [data-v52-surface]', `${label} / FilterSort`);
+              const closeButton = page.locator('#v52OpsOverlayRoot [data-v52-close]').first();
+              await closeButton.focus();
+              await page.keyboard.press('Shift+Tab');
+              const trapped = await page.evaluate(() => document.querySelector('#v52OpsOverlayRoot [data-v52-surface]')?.contains(document.activeElement));
+              expect(Boolean(trapped), `${label} / FilterSort: Shift+Tab stays inside modal`);
+              await page.click('#v52OpsOverlayRoot [data-v52-filter="over45"]');
+              await page.click('#v52OpsOverlayRoot [data-v52-sort="acos"]');
+              await page.click('#v52OpsOverlayRoot [data-v52-apply]');
+              await sleep(100);
+              const opsState = await page.$eval('[data-v52-ops-open="ads"]', button => ({ filter: button.dataset.v52Filter, sort: button.dataset.v52Sort, inert: document.getElementById('mobileAppRoot')?.inert }));
+              expect(opsState.filter === 'over45' && opsState.sort === 'acos' && opsState.inert === false, `${label} / FilterSort: applied state persists and inert clears`, JSON.stringify(opsState));
+
+              await page.click('[data-mobile-action="search"]');
+              await page.fill('[data-v5-search-input]', 'ACOS');
+              await sleep(80);
+              const metricIndex = await page.evaluate(() => {
+                const host = document.querySelector('[data-v5-search-results]');
+                const results = host?._v5Results || [];
+                return results.findIndex(item => item.kind !== 'module' && item.title === 'ACOS');
+              });
+              expect(metricIndex >= 0, `${label} / Detail: ACOS metric exists in Search index`, `index=${metricIndex}`);
+              if (metricIndex >= 0) {
+                await page.click(`[data-v5-search-index="${metricIndex}"]`);
+                await assertModalInert(page, '#v5MobileOverlayRoot .v5-fullscreen', `${label} / Detail`);
+                const detailTitle = await page.textContent('#v5DetailTitle').catch(() => '');
+                expect((detailTitle || '').trim() === '详情', `${label} / Detail: full-screen record detail opens`, String(detailTitle));
+                await closeInteractionOverlay(page);
+              }
+
+              await route(page, 'overview');
+              await page.click('[data-v5-open-compare]');
+              await assertModalInert(page, '#v5MobileCompareRoot .v5-fullscreen', `${label} / Compare`);
+              await page.click('#v5MobileCompareRoot [data-v5-compare-close]');
+              const compareClosed = await page.evaluate(() => !document.querySelector('#v5MobileCompareRoot .v5-fullscreen') && document.getElementById('mobileAppRoot')?.inert === false);
+              expect(compareClosed, `${label} / Compare: close clears modal and inert state`);
+
+              await page.screenshot({ path: path.join(artifactDir, `${engineName}-${viewport.width}x${viewport.height}-overview.png`), fullPage: true });
+
+              const nonGet = signals.apiRequests.filter(item => item.method !== 'GET');
+              expect(nonGet.length === 0, `${label}: browser API traffic remains GET-only`, JSON.stringify(nonGet));
+              expect(signals.pageErrors.length === 0, `${label}: page errors = 0`, JSON.stringify(signals.pageErrors));
+              expect(signals.consoleErrors.length === 0, `${label}: console errors = 0`, JSON.stringify(signals.consoleErrors));
+            } catch (error) {
+              fail(`${label}: acceptance harness exception`, error?.stack || error?.message || String(error));
+              await page.screenshot({ path: path.join(artifactDir, `${engineName}-${viewport.width}x${viewport.height}-failure.png`), fullPage: true }).catch(() => {});
+            } finally {
+              evidence.signals = signals;
+              report.runs.push(evidence);
+              await context.close();
+              await browser.close();
+            }
+          }
+
+          for (const viewport of [{ width: 393, height: 852 }, { width: 430, height: 932 }]) {
+            await runEngine('chromium', chromium, viewport);
+            await runEngine('webkit', webkit, viewport);
+          }
+
+          fs.writeFileSync(path.join(artifactDir, 'report.json'), JSON.stringify(report, null, 2));
+          if (failures.length) {
+            console.error(`\n${failures.length} acceptance failure(s):`);
+            failures.forEach((failure, index) => console.error(`${index + 1}. ${failure}`));
+            process.exit(1);
+          }
+          console.log('\nMobile Redesign Public Acceptance: PASS');
+          EOF
+
+      - name: Chromium + WebKit mobile runtime acceptance
+        run: node /tmp/mobile-redesign-acceptance.mjs
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-redesign-public-acceptance-${{ github.sha }}
+          path: artifacts/mobile-redesign-acceptance
+          if-no-files-found: ignore
+          retention-days: 7
