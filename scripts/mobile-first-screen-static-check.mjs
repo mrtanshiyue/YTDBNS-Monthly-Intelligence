@@ -8,6 +8,7 @@ const expect = (condition, message) => condition ? pass(message) : fail(message)
 
 const shell = read('public/mobile/mobile-shell.js');
 const css = read('public/mobile/mobile-vnext-first-screen.css');
+const fontCss = read('public/mobile/mobile-vnext-fonts.css');
 const density = read('public/mobile/mobile-vnext-density.js');
 const pkg = JSON.parse(read('package.json'));
 
@@ -15,6 +16,14 @@ expect(css.startsWith('@media (max-width:860px){'), 'first-screen stylesheet is 
 expect(!css.includes('@media (min-width:861px)'), 'first-screen stylesheet introduces no Desktop override');
 expect(shell.includes("link.href = './mobile/mobile-vnext-first-screen.css'"), 'mobile shell loads first-screen stylesheet');
 expect(shell.indexOf('ensureFirstScreenStylesheet()') < shell.lastIndexOf("dataset.mobileVnextReady = 'true'"), 'first-screen stylesheet loads before Mobile readiness');
+
+expect(fontCss.startsWith('@media (max-width:860px){'), 'font fallback stylesheet is Mobile-only');
+expect(fontCss.includes('"PingFang SC"') && fontCss.includes('"Hiragino Sans GB"'), 'Apple/iOS Chinese font fallbacks are explicit');
+expect(fontCss.includes('"Microsoft YaHei UI"') && fontCss.includes('"Microsoft YaHei"'), 'Windows Chinese font fallbacks are explicit');
+expect(fontCss.includes('"Noto Sans CJK SC"') && fontCss.includes('"Noto Sans SC"'), 'Android/Linux/CI Chinese font fallbacks are explicit');
+expect(!/@font-face|@import|url\s*\(/i.test(fontCss), 'font hardening uses local platform fallbacks only and adds no remote font dependency');
+expect(shell.includes("link.href = './mobile/mobile-vnext-fonts.css'"), 'mobile shell loads CJK font fallback stylesheet');
+expect(shell.indexOf('ensureFontStylesheet()') < shell.lastIndexOf("dataset.mobileVnextReady = 'true'"), 'font fallback stylesheet loads before Mobile readiness');
 
 const expectedPriority = [
   ['sales', 1], ['profit', 2], ['acos', 3], ['adSpend', 4], ['refund', 5], ['inventory', 6], ['cvr', 7]
@@ -42,4 +51,4 @@ if (failures.length) {
   console.error(`\nMobile first-screen static gate failed: ${failures.length} issue(s).`);
   process.exit(1);
 }
-console.log('\nMobile first-screen static gate passed: first-screen hierarchy is compact, readable, and decision-prioritized.');
+console.log('\nMobile first-screen static gate passed: hierarchy, readability, and cross-platform CJK fallback are release-gated.');

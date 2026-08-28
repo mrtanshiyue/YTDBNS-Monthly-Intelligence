@@ -27,6 +27,7 @@ async function ready(page) {
   await page.waitForSelector('#mobileAppRoot:not([hidden]) .vnext-app[data-tab="today"]', { state: 'visible', timeout: 12_000 });
   await page.waitForSelector('.vnext-module-rail[data-vnext-ia="domain"]', { state: 'visible', timeout: 12_000 });
   await page.waitForSelector('.vnext-density-board .vnext-density-metric', { state: 'visible', timeout: 12_000 });
+  await page.evaluate(() => document.fonts?.ready || Promise.resolve());
   await sleep(120);
 }
 
@@ -37,6 +38,7 @@ async function snapshot(page) {
       return r ? { top: r.top, right: r.right, bottom: r.bottom, left: r.left, width: r.width, height: r.height } : null;
     };
     const px = value => Number.parseFloat(value || '0') || 0;
+    const mobileRoot = document.getElementById('mobileAppRoot');
     const board = document.querySelector('.vnext-density-board');
     const rail = document.querySelector('.vnext-module-rail[data-vnext-ia="domain"]');
     const tabbar = document.querySelector('.vnext-tabbar');
@@ -89,10 +91,14 @@ async function snapshot(page) {
       scroll: {
         html: document.documentElement.scrollWidth,
         body: document.body.scrollWidth,
-        root: document.getElementById('mobileAppRoot')?.scrollWidth || 0
+        root: mobileRoot?.scrollWidth || 0
       },
       homeBriefCount: document.querySelectorAll('.vnext-home-brief').length,
-      stylesheetLoaded: Boolean(document.getElementById('mobileVNextFirstScreenStyles'))
+      stylesheetLoaded: Boolean(document.getElementById('mobileVNextFirstScreenStyles')),
+      font: {
+        stylesheetLoaded: Boolean(document.getElementById('mobileVNextFontStyles')),
+        family: mobileRoot ? getComputedStyle(mobileRoot).fontFamily : ''
+      }
     };
   });
 }
@@ -115,6 +121,9 @@ async function runMobile(viewport) {
     report.push({ label, ...s, errors, apiRequests });
 
     expect(s.stylesheetLoaded, `${label}: first-screen stylesheet is loaded before acceptance`);
+    expect(s.font.stylesheetLoaded, `${label}: CJK font fallback stylesheet is loaded before acceptance`);
+    expect(s.font.family.includes('PingFang SC') && s.font.family.includes('Hiragino Sans GB'), `${label}: Apple Chinese fallbacks are in the active Mobile font stack`, s.font.family);
+    expect(s.font.family.includes('Microsoft YaHei') && s.font.family.includes('Noto Sans CJK SC'), `${label}: Windows/Linux Chinese fallbacks are in the active Mobile font stack`, s.font.family);
     expect(s.metrics.length === 12, `${label}: all 12 operating KPIs remain visible`, `count=${s.metrics.length}`);
     expect(JSON.stringify(s.metrics.slice(0, 6).map(item => item.label)) === JSON.stringify(expectedFirstSix), `${label}: visual KPI priority is Sales → Profit → ACOS → Ad Spend → Refunds → Inventory`, JSON.stringify(s.metrics.slice(0, 6).map(item => item.label)));
     expect(s.board?.height <= 250, `${label}: 12-KPI board stays within 250px vertical budget`, `height=${s.board?.height}`);
@@ -157,9 +166,10 @@ async function runDesktop() {
       rootHidden: document.getElementById('mobileAppRoot')?.hidden,
       mobileActive: document.body.classList.contains('mobile-vnext-active'),
       mainDisplay: getComputedStyle(document.querySelector('.main-shell')).display,
-      firstScreenLink: Boolean(document.getElementById('mobileVNextFirstScreenStyles'))
+      firstScreenLink: Boolean(document.getElementById('mobileVNextFirstScreenStyles')),
+      fontLink: Boolean(document.getElementById('mobileVNextFontStyles'))
     }));
-    expect(state.firstScreenLink, 'desktop 1440: stylesheet may load but remains breakpoint-scoped');
+    expect(state.firstScreenLink && state.fontLink, 'desktop 1440: Mobile presentation styles may load but remain breakpoint-scoped');
     expect(state.rootHidden === true && state.mobileActive === false, 'desktop 1440: Mobile surface remains inactive', JSON.stringify(state));
     expect(state.mainDisplay !== 'none', 'desktop 1440: Desktop product remains visible', state.mainDisplay);
   } catch (error) {
