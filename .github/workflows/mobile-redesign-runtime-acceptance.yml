@@ -1,0 +1,166 @@
+name: Mobile Redesign Runtime Acceptance
+
+on:
+  push:
+    branches:
+      - mobile-ux-redesign
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-app-bridge.js
+          node --check public/mobile/mobile-redesign.js
+          node --check public/mobile/mobile-interactions.js
+          node --check public/mobile/mobile-compare.js
+          node --check public/mobile/views/overview.js
+          node --check public/mobile/views/ads.js
+          node --check public/mobile/views/products.js
+          node --check public/mobile/views/inventory.js
+          node --check public/mobile/views/finance.js
+          node --check public/mobile/views/charges.js
+          node --check public/mobile/views/returns.js
+          node --check public/mobile/views/history.js
+          node --check public/mobile/views/data.js
+      - name: Install browser runner
+        run: |
+          npm install --ignore-scripts
+          npx playwright-core install chromium
+      - name: Exact-head mobile runtime acceptance
+        run: |
+          node --input-type=module <<'NODE'
+          import path from 'node:path';
+          import { pathToFileURL } from 'node:url';
+          import { chromium } from 'playwright-core';
+
+          const entry = pathToFileURL(path.join(process.cwd(), 'public', 'index.html')).href;
+          const expectedNav = ['首页', '待办', '广告', '商品', '库存'];
+          const primaryRoutes = ['overview', 'tasks', 'ads', 'products', 'inventory'];
+          const failures = [];
+          const expect = (ok, message, detail = '') => {
+            if (ok) console.log('PASS', message);
+            else { const full = `${message}${detail ? ` — ${detail}` : ''}`; failures.push(full); console.error('FAIL', full); }
+          };
+
+          const browser = await chromium.launch({ headless: true });
+          for (const viewport of [{ width: 393, height: 852 }, { width: 430, height: 932 }]) {
+            const context = await browser.newContext({ viewport });
+            const page = await context.newPage();
+            const consoleErrors = [];
+            const pageErrors = [];
+            const apiRequests = [];
+            page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+            page.on('pageerror', e => pageErrors.push(e.message || String(e)));
+            page.on('request', r => { if (r.url().includes('/api/')) apiRequests.push({ method: r.method(), url: r.url() }); });
+
+            await page.goto(entry, { waitUntil: 'load', timeout: 30000 });
+            await page.waitForSelector('#mobileAppRoot:not([hidden])', { state: 'visible', timeout: 5000 });
+            const label = `${viewport.width}x${viewport.height}`;
+
+            const ready = await page.evaluate(() => document.documentElement.dataset.v52Ready);
+            expect(ready === 'true', `${label}: redesign readiness gate released`, String(ready));
+
+            const nav = (await page.locator('.v5-mobile-bottom-nav > .v5-mobile-nav-item').allTextContents()).map(t => t.trim());
+            expect(nav.join('|') === expectedNav.join('|'), `${label}: five primary destinations`, nav.join('|'));
+            expect(await page.locator('.v5-mobile-top-tabs').count() === 0, `${label}: obsolete nine-tab navigation absent`);
+
+            for (const route of primaryRoutes) {
+              await page.evaluate(target => window.YT_MOBILE_APP?.navigate?.(target), route);
+              await page.waitForSelector(`[data-mobile-view="${route}"]`, { state: 'visible', timeout: 5000 });
+              expect(true, `${label}: route ${route} renders`);
+            }
+
+            await page.evaluate(() => window.YT_MOBILE_APP.navigate('overview'));
+            await page.click('[data-mobile-action="search"]');
+            await page.waitForSelector('[data-v5-search-input]', { state: 'visible' });
+            const searchModules = await page.locator('[data-v5-search-results] .v5-search-result b').allTextContents();
+            expect(searchModules.includes('待办'), `${label}: Search exposes 待办`, searchModules.join('|'));
+            await page.click('[data-v5-close-overlay]');
+
+            await page.click('.v52-period-pill');
+            await page.waitForSelector('.v5-interaction-sheet', { state: 'visible' });
+            expect(true, `${label}: Period sheet opens`);
+            await page.click('[data-v5-close-overlay]');
+
+            await page.evaluate(() => window.YT_MOBILE_APP.navigate('ads'));
+            await page.waitForSelector('[data-mobile-view="ads"]', { state: 'visible' });
+            await page.click('[data-v52-ops-open="ads"]');
+            await page.waitForSelector('.v52-ops-sheet', { state: 'visible' });
+            const inertOpen = await page.evaluate(() => document.getElementById('mobileAppRoot').inert);
+            expect(inertOpen === true, `${label}: Filter sheet makes background inert`);
+            const activeBefore = await page.evaluate(() => document.activeElement?.getAttribute('data-v52-close') !== null);
+            expect(activeBefore, `${label}: Filter sheet owns initial focus`);
+            await page.keyboard.press('Shift+Tab');
+            const focusInside = await page.evaluate(() => document.querySelector('.v52-ops-sheet')?.contains(document.activeElement));
+            expect(focusInside, `${label}: Filter sheet traps reverse Tab focus`);
+            await page.click('[data-v52-apply]');
+            const inertClosed = await page.evaluate(() => document.getElementById('mobileAppRoot').inert);
+            expect(inertClosed === false, `${label}: Filter sheet restores background interactivity`);
+
+            const record = page.locator('.v5-record-card').first();
+            if (await record.count()) {
+              await record.click();
+              await page.waitForSelector('#v5MobileOverlayRoot .v5-fullscreen', { state: 'visible' });
+              expect(true, `${label}: record Detail opens full-screen`);
+              await page.evaluate(() => history.back());
+              await page.waitForTimeout(120);
+              expect(await page.locator('#v5MobileOverlayRoot .v5-fullscreen').count() === 0, `${label}: Safari Back closes Detail first`);
+              expect(await page.locator('[data-mobile-view="ads"]').isVisible(), `${label}: Back keeps current route after closing Detail`);
+            }
+
+            await page.evaluate(() => window.YT_MOBILE_APP.navigate('products'));
+            await page.waitForSelector('[data-mobile-view="products"]', { state: 'visible' });
+            await page.evaluate(() => history.back());
+            await page.waitForSelector('[data-mobile-view="ads"]', { state: 'visible', timeout: 5000 });
+            expect(true, `${label}: second Back restores previous business route`);
+
+            await page.evaluate(() => window.YT_MOBILE_APP.navigate('overview'));
+            const compare = page.locator('[data-v5-open-compare]');
+            if (await compare.count()) {
+              await compare.click();
+              await page.waitForSelector('#v5MobileCompareRoot .v5-fullscreen', { state: 'visible' });
+              expect(true, `${label}: Compare opens full-screen`);
+              await page.click('[data-v5-compare-close]');
+            }
+
+            const geometry = await page.evaluate(() => ({
+              viewport: innerWidth,
+              html: document.documentElement.scrollWidth,
+              body: document.body.scrollWidth,
+              root: document.getElementById('mobileAppRoot')?.scrollWidth || 0
+            }));
+            expect(Math.max(geometry.html, geometry.body, geometry.root) <= geometry.viewport + 1, `${label}: no horizontal overflow`, JSON.stringify(geometry));
+
+            const shortButtons = await page.evaluate(() => [...document.querySelectorAll('#mobileAppRoot button')].filter(button => {
+              const rect = button.getBoundingClientRect();
+              const style = getComputedStyle(button);
+              return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && rect.height < 43.5;
+            }).slice(0, 12).map(button => ({ text: button.textContent.trim().slice(0, 40), height: button.getBoundingClientRect().height, className: button.className })));
+            expect(shortButtons.length === 0, `${label}: visible mobile buttons keep 44px touch floor`, JSON.stringify(shortButtons));
+
+            const mutations = apiRequests.filter(r => !['GET', 'HEAD'].includes(r.method));
+            expect(mutations.length === 0, `${label}: API traffic remains GET-only`, JSON.stringify(mutations));
+            expect(consoleErrors.length === 0, `${label}: console errors = 0`, JSON.stringify(consoleErrors));
+            expect(pageErrors.length === 0, `${label}: page errors = 0`, JSON.stringify(pageErrors));
+            await context.close();
+          }
+          await browser.close();
+          if (failures.length) {
+            console.error(`Mobile redesign runtime acceptance failed with ${failures.length} issue(s).`);
+            process.exit(1);
+          }
+          console.log('Mobile redesign runtime acceptance passed.');
+          NODE
