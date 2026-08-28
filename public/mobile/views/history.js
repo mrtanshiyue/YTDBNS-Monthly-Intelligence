@@ -35,7 +35,6 @@
 
     return `
       <section class="v5-mobile-view v5-core-view" data-mobile-view="history" aria-labelledby="v5MobileViewTitle">
-        <div class="v5-mobile-view-heading"><div><span class="v5-mobile-eyebrow">MONTHLY INTELLIGENCE</span><h1 id="v5MobileViewTitle">历史</h1><p>12–18 个月经营记录高密度扫描</p></div></div>
         ${latest ? `<section class="v5-intel-ops" aria-label="历史最新状态"><div class="v5-intel-op"><span>Latest</span><strong>${esc(latest.month)}</strong><small>Month</small></div><div class="v5-intel-op"><span>Sales</span><strong>${fmt.compactMoney(latest.sales)}</strong><small>${previous ? esc(deltaLabel(latest.sales, previous.sales)) : '—'}</small></div><div class="v5-intel-op"><span>Profit</span><strong>${fmt.compactMoney(latest.profit)}</strong><small>${previous ? esc(deltaLabel(latest.profit, previous.profit)) : '—'}</small></div><div class="v5-intel-op"><span>ACOS</span><strong>${fmt.percent(latest.acos)}</strong><small>Latest</small></div></section>` : ''}
         <section class="v5-core-section"><div class="v5-core-section-head"><div><span>MONTH MATRIX</span><h2>月度经营记录</h2></div><small>${rows.length ? `最近 ${rows.length} 月` : '暂无历史'}</small></div><div class="v5-secondary-list">${cards || '<div class="v5-core-empty"><strong>暂无月度历史</strong><span>导入月度数据后会在这里形成时间轴。</span></div>'}</div></section>
       </section>`;
