@@ -105,10 +105,13 @@ jobs:
               for(const tab of tabs){
                 await page.click(`[data-vnext-tab="${tab}"]`);
                 await page.waitForSelector(`[data-vnext-page="${tab}"]`,{state:'visible'});
+                await page.evaluate(()=>window.scrollTo(0,0));
+                await page.waitForTimeout(80);
                 const ov=await page.evaluate(()=>({w:innerWidth,html:document.documentElement.scrollWidth,body:document.body.scrollWidth,root:document.getElementById('mobileAppRoot').scrollWidth}));
                 expect(Math.max(ov.html,ov.body,ov.root)<=ov.w+1,`${label}/${tab}: horizontal overflow=0`,JSON.stringify(ov));
                 const small=await page.evaluate(()=>[...document.querySelectorAll('#mobileAppRoot button')].filter(b=>{const r=b.getBoundingClientRect();const s=getComputedStyle(b);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&r.height<43.5}).map(b=>({text:b.textContent.trim().slice(0,30),h:b.getBoundingClientRect().height})).slice(0,10));
                 expect(small.length===0,`${label}/${tab}: visible buttons >=44px high`,JSON.stringify(small));
+                await page.screenshot({path:`artifacts/mobile-vnext/${name}-${viewport.width}x${viewport.height}-${tab}.png`,fullPage:false});
               }
 
               await page.click('[data-vnext-tab="search"]');
@@ -171,7 +174,7 @@ jobs:
               expect(requestFailures.length===0,`${label}: network request failures=0`,JSON.stringify(requestFailures));
               expect(requests.every(r=>r.method==='GET'),`${label}: browser API remains GET-only`,JSON.stringify(requests));
               evidence.errors=errors; evidence.pageErrors=pageErrors; evidence.requestFailures=requestFailures; evidence.badResponses=badResponses; evidence.apiRequests=requests;
-              await page.screenshot({path:`artifacts/mobile-vnext/${name}-${viewport.width}x${viewport.height}.png`,fullPage:true});
+              await page.screenshot({path:`artifacts/mobile-vnext/${name}-${viewport.width}x${viewport.height}-final.png`,fullPage:true});
             }catch(error){
               failures.push(`${label}: ${error.stack||error}`);console.error(`FAIL  ${label}`,error);
               await page.screenshot({path:`artifacts/mobile-vnext/${name}-${viewport.width}x${viewport.height}-failure.png`,fullPage:true}).catch(()=>{});
