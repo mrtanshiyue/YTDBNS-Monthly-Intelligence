@@ -1,4 +1,5 @@
 import app from './worker.js';
+import { commitPartialImport } from './partial-import.js';
 
 const STORES = Object.freeze([
   { id: 'ytdbns', code: 'YTDBNS', name: 'YTDBNS' },
@@ -102,6 +103,9 @@ export default {
     if (request.method === 'GET' && url.pathname === '/api/stores') return storesResponse(env);
 
     const normalizedRequest = await normalizeApiRequest(request);
+    if (request.method === 'POST' && url.pathname === '/api/imports/commit') {
+      return commitPartialImport(normalizedRequest, env);
+    }
     return app.fetch(normalizedRequest, env, ctx);
   }
 };
