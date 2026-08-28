@@ -25,24 +25,31 @@
     rerender('[data-v52-ops-open="ads"]');
   });
 
+  function averageSpend(campaigns) {
+    const known = campaigns.filter(row => row.spend != null);
+    return known.length ? known.reduce((sum, row) => sum + Number(row.spend || 0), 0) / known.length : 0;
+  }
+
+  function isLowConversion(row, avgSpend) {
+    if (row.cvr != null) return Number(row.cvr) < .08;
+    return row.orders != null && row.spend != null && Number(row.orders) === 0 && Number(row.spend) >= avgSpend && Number(row.spend) > 0;
+  }
+
   function filteredRows(campaigns) {
-    const avgSpend = campaigns.length ? campaigns.reduce((sum, row) => sum + Number(row.spend || 0), 0) / campaigns.length : 0;
+    const avgSpend = averageSpend(campaigns);
     const filtered = campaigns.filter(row => {
       const acos = row.acos == null ? null : Number(row.acos);
       if (state.filter === 'over45') return acos != null && acos > .45;
       if (state.filter === 'over60') return acos != null && acos > .60;
-      if (state.filter === 'highSpend') return Number(row.spend || 0) >= avgSpend && Number(row.spend || 0) > 0;
-      if (state.filter === 'lowConversion') {
-        if (row.cvr != null) return Number(row.cvr) < .08;
-        return Number(row.orders || 0) === 0 && Number(row.spend || 0) >= avgSpend && Number(row.spend || 0) > 0;
-      }
+      if (state.filter === 'highSpend') return row.spend != null && Number(row.spend) >= avgSpend && Number(row.spend) > 0;
+      if (state.filter === 'lowConversion') return isLowConversion(row, avgSpend);
       return true;
     });
     return [...filtered].sort((a, b) => {
       if (state.sort === 'acos') return Number(b.acos ?? -1) - Number(a.acos ?? -1);
-      if (state.sort === 'sales') return Number(b.sales || 0) - Number(a.sales || 0);
-      if (state.sort === 'orders') return Number(b.orders || 0) - Number(a.orders || 0);
-      return Number(b.spend || 0) - Number(a.spend || 0);
+      if (state.sort === 'sales') return Number(b.sales ?? -1) - Number(a.sales ?? -1);
+      if (state.sort === 'orders') return Number(b.orders ?? -1) - Number(a.orders ?? -1);
+      return Number(b.spend ?? -1) - Number(a.spend ?? -1);
     });
   }
 
@@ -59,20 +66,26 @@
     const model = selectors.adsModel(runtimeState);
     const filtered = filteredRows(model.campaigns);
     const rows = filtered.slice(0, 30);
+    const avgSpend = averageSpend(model.campaigns);
     const roas = model.totals.spend ? Number(model.totals.sales || 0) / Number(model.totals.spend) : null;
     const highRisk = model.campaigns.filter(row => row.acos != null && Number(row.acos) > .45).length;
     const critical = model.campaigns.filter(row => row.acos != null && Number(row.acos) > .60).length;
-    const lowConversion = model.campaigns.filter(row => row.cvr != null && Number(row.cvr) < .08).length;
+    const lowConversion = model.campaigns.filter(row => isLowConversion(row, avgSpend)).length;
+    const issueCount = new Set(model.campaigns.filter(row =>
+      (row.acos != null && Number(row.acos) > .45) || isLowConversion(row, avgSpend)
+    ).map(row => row.id)).size;
     const empty = !rows.length ? `
       <div class="v5-core-empty"><strong>${model.campaigns.length ? '当前筛选没有匹配活动' : '当前期间没有 Campaign 明细'}</strong><span>${model.campaigns.length ? '调整筛选条件查看其他活动。' : 'Campaign 明细使用完整月份数据；自定义日期仍可查看汇总指标。'}</span></div>` : '';
 
     const cards = rows.map(row => {
       const acos = row.acos == null ? null : Number(row.acos);
-      const risk = acos == null ? 'neutral' : acos > .60 ? 'critical' : acos > .45 ? 'warning' : 'positive';
+      const lowConversionRisk = isLowConversion(row, avgSpend);
+      const risk = acos != null && acos > .60 ? 'critical' : acos != null && acos > .45 ? 'warning' : lowConversionRisk ? 'warning' : acos != null ? 'positive' : 'neutral';
+      const status = risk === 'critical' ? '严重超线' : acos != null && acos > .45 ? '高于目标线' : lowConversionRisk ? '低转化' : risk === 'positive' ? '效率正常' : '效率数据不完整';
       return `
         <button type="button" class="v5-record-card v5-risk-${risk}" data-record-type="campaign" data-record-id="${esc(row.id)}" aria-label="查看广告活动 ${esc(row.campaign)} 详情">
           <div class="v5-record-card-head">
-            <div class="v5-record-card-title"><span>${esc(row.portfolio || '广告活动')}</span><strong>${esc(row.campaign)}</strong><small>${risk === 'critical' ? '严重超线' : risk === 'warning' ? '高于目标线' : risk === 'positive' ? '效率正常' : 'ACOS 暂无数据'}</small></div>
+            <div class="v5-record-card-title"><span>${esc(row.portfolio || '广告活动')}</span><strong>${esc(row.campaign)}</strong><small>${status}</small></div>
             <div class="v5-record-primary"><span>广告花费</span><strong>${fmt.money(row.spend, 0)}</strong></div>
           </div>
           <div class="v5-record-metrics">
@@ -81,7 +94,7 @@
             <div class="v5-record-metric"><span>订单</span><strong>${fmt.number(row.orders)}</strong></div>
             <div class="v5-record-metric"><span>CTR</span><strong>${fmt.percent(row.ctr, 2)}</strong></div>
           </div>
-          <div class="v5-record-card-foot"><span class="v5-record-chip">${esc(row.optimizationLabel || '广告活动')}</span><span>详情 ›</span></div>
+          <div class="v5-record-card-foot"><span class="v5-record-chip">${lowConversionRisk ? '低转化' : esc(row.optimizationLabel || '广告活动')}</span><span>详情 ›</span></div>
         </button>`;
     }).join('');
 
@@ -97,7 +110,7 @@
         </section>
 
         <section class="v52-risk-strip" aria-label="广告待处理摘要">
-          <div><span>需要处理</span><strong>${highRisk}</strong></div>
+          <div><span>需要处理</span><strong>${issueCount}</strong></div>
           <div class="v52-risk-facts"><span><b>${critical}</b> 严重超线</span><span><b>${Math.max(0, highRisk - critical)}</b> 超线</span><span><b>${lowConversion}</b> 低转化</span></div>
         </section>
 
