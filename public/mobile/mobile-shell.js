@@ -245,9 +245,10 @@
 
   function activate() {
     const mobile = media.matches;
+    const ready = document.documentElement.dataset.v52Ready === 'true';
     syncStandaloneMode();
-    root.hidden = !mobile;
-    root.setAttribute('aria-hidden', mobile ? 'false' : 'true');
+    root.hidden = !mobile || !ready;
+    root.setAttribute('aria-hidden', mobile && ready ? 'false' : 'true');
     document.body.classList.toggle('v5-native-mobile', mobile);
     document.documentElement.dataset.v5View = mobile ? 'mobile' : 'desktop';
     if (mobile) {
