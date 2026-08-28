@@ -46,8 +46,8 @@ jobs:
 
       - name: Write redesign acceptance harness
         run: |
-          mkdir -p artifacts/mobile-redesign-acceptance
-          cat > /tmp/mobile-redesign-acceptance.mjs <<'EOF'
+          mkdir -p artifacts/mobile-redesign-acceptance .tmp
+          cat > .tmp/mobile-redesign-acceptance.mjs <<'EOF'
           import fs from 'node:fs';
           import path from 'node:path';
           import process from 'node:process';
@@ -275,7 +275,7 @@ jobs:
           EOF
 
       - name: Chromium + WebKit mobile runtime acceptance
-        run: node /tmp/mobile-redesign-acceptance.mjs
+        run: node .tmp/mobile-redesign-acceptance.mjs
 
       - name: Upload acceptance evidence
         if: always()
