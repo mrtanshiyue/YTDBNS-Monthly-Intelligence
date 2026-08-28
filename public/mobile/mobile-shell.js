@@ -259,6 +259,25 @@
     }
   }
 
+  function closeTransientSurfaceForBack() {
+    const interactionClose = document.querySelector('#v5MobileOverlayRoot [data-v5-close-overlay]');
+    if (interactionClose) {
+      interactionClose.click();
+      return true;
+    }
+    const compareRoot = document.getElementById('v5MobileCompareRoot');
+    if (compareRoot?.querySelector('.v5-fullscreen')) {
+      window.YT_MOBILE_COMPARE?.close?.();
+      return true;
+    }
+    const opsRoot = document.getElementById('v52OpsOverlayRoot');
+    if (opsRoot?.classList.contains('open')) {
+      window.YT_MOBILE_REDESIGN?.closeOps?.();
+      return true;
+    }
+    return false;
+  }
+
   root.addEventListener('click', event => {
     const routeButton = event.target.closest('[data-mobile-route]');
     if (routeButton) {
@@ -287,6 +306,10 @@
 
   window.addEventListener('popstate', event => {
     if (!media.matches) return;
+    if (closeTransientSurfaceForBack()) {
+      syncHistory(ui.route, 'push');
+      return;
+    }
     const route = event.state?.[HISTORY_KEY] || 'overview';
     if (!TITLES[route]) return;
     ui.route = route;
