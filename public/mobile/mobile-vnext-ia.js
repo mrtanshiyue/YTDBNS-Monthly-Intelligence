@@ -157,6 +157,35 @@
     }
   }
 
+  function rerenderFocusTarget(event) {
+    if (!media.matches || event.detail !== 0) return null;
+
+    const filterButton = event.target.closest('[data-density-filter]');
+    if (filterButton) {
+      const module = filterButton.dataset.densityFilterModule;
+      const filter = filterButton.dataset.densityFilter;
+      if (FILTER_MODULE_SET.has(module) && filter) return { kind: 'filter', module, filter };
+    }
+
+    const moduleButton = event.target.closest('.vnext-module-rail [data-vnext-module]');
+    const module = moduleButton?.dataset.vnextModule;
+    if (moduleButton && DOMAIN_SET.has(module)) return { kind: 'module', module };
+    return null;
+  }
+
+  function restoreRerenderedFocus(target) {
+    if (!target) return;
+    let replacement = null;
+    if (target.kind === 'filter') {
+      replacement = filterRailFor(target.module)?.querySelector(`[data-density-filter="${target.filter}"]`) || null;
+    } else if (target.kind === 'module') {
+      replacement = root.querySelector(`.vnext-module-rail [data-vnext-module="${target.module}"]`);
+    }
+    if (!replacement || !replacement.isConnected) return;
+    try { replacement.focus({ preventScroll: true }); }
+    catch { replacement.focus(); }
+  }
+
   function settlePrimaryRouteAtTop(event) {
     if (!media.matches || !event.target.closest('.vnext-tabbar [data-vnext-tab]')) return;
     /* Core render preserves scroll on rerender. Run after its queued frame so real route changes finish at the top. */
@@ -170,7 +199,9 @@
   observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-tab'] });
 
   root.addEventListener('click', event => {
+    const focusTarget = rerenderFocusTarget(event);
     if (event.target.closest('[data-vnext-tab], [data-vnext-module], [data-density-filter]')) requestAnimationFrame(syncRail);
+    if (focusTarget) requestAnimationFrame(() => restoreRerenderedFocus(focusTarget));
   }, true);
   root.addEventListener('click', settlePrimaryRouteAtTop);
   window.addEventListener('popstate', () => requestAnimationFrame(syncRail));
