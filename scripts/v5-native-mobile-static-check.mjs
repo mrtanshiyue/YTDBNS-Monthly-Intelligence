@@ -29,8 +29,32 @@ const activeBrowserJs = `${shell}\n${bridge}\n${vnext}\n${runtime}\n${selectors}
 expect(index.includes('id="mobileAppRoot"'), 'independent mobile root remains in canonical document');
 expect(index.includes('./shared/runtime.js') && index.includes('./shared/selectors.js') && index.includes('./shared/secondary-selectors.js'), 'Mobile vNext reuses canonical read-only shared data layer');
 expect(index.includes('./mobile/mobile-shell.js') && index.includes('./mobile/mobile-app-bridge.js'), 'canonical document still loads mobile bootstrap and compatibility bridge');
+expect(index.includes('id="mobileVNextStyles"') && index.includes('./mobile/mobile-vnext.css'), 'vNext CSS is render-critical in the document head');
+expect(index.includes('media="(max-width:860px)" content="#F4F3EF"'), 'mobile browser chrome matches the new neutral vNext surface');
 
-expect(shell.includes("link.href = './mobile/mobile-vnext.css'"), 'mobile bootstrap loads vNext stylesheet');
+const retiredMobileEntrypoints = [
+  './mobile/mobile-shell.css',
+  './mobile/mobile-interactions.css',
+  './mobile/mobile-compare.css',
+  './mobile/views/overview.css',
+  './mobile/views/core.css',
+  './mobile/views/secondary.css',
+  './mobile/views/overview.js',
+  './mobile/views/ads.js',
+  './mobile/views/products.js',
+  './mobile/views/inventory.js',
+  './mobile/views/finance.js',
+  './mobile/views/charges.js',
+  './mobile/views/returns.js',
+  './mobile/views/history.js',
+  './mobile/views/data.js',
+  './mobile/mobile-interactions.js',
+  './mobile/mobile-compare.js',
+  './mobile/mobile-compare-trigger.js'
+];
+for (const asset of retiredMobileEntrypoints) expect(!index.includes(asset), `retired Mobile asset is absent from canonical entrypoint: ${asset}`);
+
+expect(shell.includes("link.href = './mobile/mobile-vnext.css'"), 'mobile bootstrap retains vNext stylesheet fallback loading');
 expect(shell.includes("script.src = './mobile/mobile-vnext.js'"), 'mobile bootstrap loads vNext runtime');
 expect(shell.includes("dataset.mobileVnextReady = 'false'") && shell.includes("dataset.mobileVnextReady = 'true'"), 'vNext first paint is readiness-gated');
 expect(shell.includes("document.body.classList.toggle('mobile-vnext-active'"), 'Mobile vNext owns explicit Desktop/Mobile surface switch');
@@ -59,6 +83,7 @@ expect(vnext.includes('先看这些') && vnext.includes('经营脉搏'), 'Today 
 
 expect(vnext.includes('runtime.comparePrevious()'), 'Trends uses canonical previous-period retrieval');
 expect(vnext.includes('本期 vs 上期') && vnext.includes('最近 6 个月'), 'Trends focuses on change and direction rather than module snapshots');
+expect(vnext.includes('function selectTrendMonth(month)') && !/function selectTrendMonth\([\s\S]*?history\.back\(\)/.test(vnext), 'Trend-month selection changes period without synthesizing Browser Back');
 expect(vnext.includes('function searchItems()'), 'Search owns a single cross-domain searchable index');
 for (const token of ['Campaign', 'SKU', 'ASIN', '扣费']) expect(vnext.includes(token), `universal search covers ${token}`);
 expect(vnext.includes('data-vnext-search-input') && vnext.includes('type="search"'), 'Search is a dedicated first-class mobile destination');
@@ -69,6 +94,8 @@ expect(vnext.includes('detailRegistry') && vnext.includes('detailKey'), 'detail 
 expect(vnext.includes("sheet: 'period'"), 'period sheet participates in browser history');
 expect(vnext.includes("event.key === 'Escape'"), 'transient vNext surfaces support Escape');
 expect(vnext.includes("event.key !== 'Tab'"), 'transient vNext surfaces trap keyboard focus');
+expect(vnext.includes("document.documentElement.dataset.mobileVnextReady !== 'true'"), 'vNext cannot activate before shell readiness');
+expect(!vnext.includes('if (media.matches) activate();'), 'vNext runtime cannot self-activate before render-critical assets are ready');
 
 expect(vnext.includes('runtime.setQuickRange') && vnext.includes('runtime.setRange'), 'period controls use shared runtime range API');
 expect(!/\bfetch\s*\(/.test(vnext), 'vNext never bypasses shared runtime with direct fetch');
@@ -107,4 +134,4 @@ if (failures.length) {
   console.error(`\nMobile vNext static gate failed: ${failures.length} issue(s).`);
   process.exit(1);
 }
-console.log('\nMobile vNext static gate passed: zero-based operating radar architecture is intact.');
+console.log('\nMobile vNext static gate passed: one active zero-based operating-radar architecture is intact.');
