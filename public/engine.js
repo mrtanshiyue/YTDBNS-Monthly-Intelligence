@@ -1,3 +1,121 @@
+(() => {
+  'use strict';
+  const STORES = Object.freeze([
+    Object.freeze({ id: 'ytdbns', name: 'YTDBNS' }),
+    Object.freeze({ id: 'yy', name: 'YY' }),
+    Object.freeze({ id: 'jj', name: 'JJ' })
+  ]);
+  const STORAGE_KEY = 'ytdbns.activeStore.v1';
+  const valid = id => STORES.some(store => store.id === id);
+  let activeStoreId = 'ytdbns';
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (valid(saved)) activeStoreId = saved;
+  } catch {}
+
+  const activeStore = () => STORES.find(store => store.id === activeStoreId) || STORES[0];
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = function storeScopedFetch(input, init) {
+    const rawUrl = input instanceof Request ? input.url : String(input);
+    const url = new URL(rawUrl, location.href);
+    let nextInit = init ? { ...init } : undefined;
+
+    if (url.origin === location.origin && url.pathname.startsWith('/api/') && !['/api/health', '/api/stores'].includes(url.pathname)) {
+      url.searchParams.set('store', activeStoreId);
+      if (nextInit?.body instanceof FormData) {
+        nextInit.body.set('storeId', activeStoreId);
+      } else if (typeof nextInit?.body === 'string' && url.pathname.startsWith('/api/imports/')) {
+        try {
+          const body = JSON.parse(nextInit.body);
+          if (body && typeof body === 'object') {
+            body.storeId = activeStoreId;
+            if (body.payload && typeof body.payload === 'object') body.payload.storeId = activeStoreId;
+            nextInit.body = JSON.stringify(body);
+          }
+        } catch {}
+      }
+      return originalFetch(url.href, nextInit);
+    }
+    return originalFetch(input, init);
+  };
+
+  function setStore(id) {
+    if (!valid(id) || id === activeStoreId) return;
+    activeStoreId = id;
+    try { localStorage.setItem(STORAGE_KEY, id); } catch {}
+    window.dispatchEvent(new CustomEvent('ytdbns:storechange', { detail: { store: activeStore() } }));
+    location.reload();
+  }
+
+  function ensureStyles() {
+    if (document.getElementById('ytStoreSwitcherStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'ytStoreSwitcherStyles';
+    style.textContent = `
+      .yt-store-switcher{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 10px;border:1px solid rgba(21,31,38,.12);border-radius:13px;background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.03);color:#5f686d;white-space:nowrap}
+      .yt-store-switcher>span{font-size:11px;font-weight:700;letter-spacing:.04em;color:#7a8286}
+      .yt-store-switcher select{height:42px;min-width:86px;border:0;background:transparent;color:#172126;font:700 13px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;outline:none;cursor:pointer}
+      .yt-store-import-note{margin:0 0 16px;padding:12px 14px;border:1px solid rgba(30,111,92,.14);border-radius:14px;background:rgba(30,111,92,.06);color:#53615e;font-size:12px;line-height:1.5}
+      .yt-store-import-note b{color:#1e6f5c;font-size:13px}
+      @media(max-width:860px){.yt-store-switcher{margin-left:auto;min-height:44px;height:44px;padding:0 8px;border-radius:14px;background:rgba(255,255,255,.86);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}.yt-store-switcher>span{display:none}.yt-store-switcher select{height:42px;min-width:76px;font-size:13px}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function ensureSwitcher() {
+    ensureStyles();
+    let host = document.getElementById('ytStoreSwitcher');
+    if (!host) {
+      host = document.createElement('label');
+      host.id = 'ytStoreSwitcher';
+      host.className = 'yt-store-switcher';
+      host.setAttribute('aria-label', '当前店铺');
+      host.innerHTML = `<span>店铺</span><select aria-label="选择店铺">${STORES.map(store => `<option value="${store.id}">${store.name}</option>`).join('')}</select>`;
+      host.querySelector('select').addEventListener('change', event => setStore(event.target.value));
+    }
+    const select = host.querySelector('select');
+    if (select && select.value !== activeStoreId) select.value = activeStoreId;
+    const mobile = matchMedia('(max-width:860px)').matches;
+    const target = mobile
+      ? document.querySelector('#mobileAppRoot .vnext-toolbar')
+      : document.querySelector('.global-actions');
+    if (target && host.parentElement !== target) {
+      if (mobile) target.appendChild(host);
+      else target.insertBefore(host, target.firstChild);
+    }
+  }
+
+  function ensureImportNote() {
+    const drawerBody = document.querySelector('#importDrawer .drawer-body');
+    if (!drawerBody) return;
+    let note = document.getElementById('ytStoreImportNote');
+    if (!note) {
+      note = document.createElement('div');
+      note.id = 'ytStoreImportNote';
+      note.className = 'yt-store-import-note';
+      drawerBody.insertBefore(note, drawerBody.firstChild);
+    }
+    note.innerHTML = `当前店铺：<b>${activeStore().name}</b><br>本次上传、校验、原始文件归档和数据库写入只属于该店铺。`;
+  }
+
+  function reconcileStoreUI() {
+    ensureSwitcher();
+    ensureImportNote();
+  }
+
+  window.YT_STORE_CONTEXT = Object.freeze({
+    stores: STORES,
+    getStore: () => activeStore(),
+    getStoreId: () => activeStoreId,
+    setStore
+  });
+
+  reconcileStoreUI();
+  const observer = new MutationObserver(() => reconcileStoreUI());
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  matchMedia('(max-width:860px)').addEventListener?.('change', reconcileStoreUI);
+})();
+
 (function(){
 const ROLE_HINTS={cost:/采购成本|cost/i,parent:/父体|parent/i,ads:/广告|advert/i,transactions:/联合|transaction/i,product:/商品信息|product/i,returns:/退货|return/i,inventory:/库存|inventory/i,storage:/仓储|storage/i,child:/子体|child/i};
 function csvParse(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const ch=text[i];if(q){if(ch==='"'&&text[i+1]==='"'){cell+='"';i++}else if(ch==='"')q=false;else cell+=ch}else{if(ch==='"')q=true;else if(ch===','){row.push(cell);cell=''}else if(ch==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell=''}else cell+=ch}}if(cell.length||row.length){row.push(cell.replace(/\r$/,''));rows.push(row)}return rows}
