@@ -7,11 +7,11 @@
     script.async=false;
     document.head.appendChild(script);
   }
-  function loadCoreReportModel(){
-    if(document.getElementById('coreReportModelRuntime')) return;
+  function loadCoreFiveReportModel(){
+    if(document.getElementById('coreFiveReportModelRuntime')) return;
     const script=document.createElement('script');
-    script.id='coreReportModelRuntime';
-    script.src='./core-report-model.js';
+    script.id='coreFiveReportModelRuntime';
+    script.src='./core-five-report-model.js';
     script.async=false;
     document.head.appendChild(script);
   }
@@ -48,7 +48,7 @@
     }
   }
   loadImportReportCompat();
-  loadCoreReportModel();
+  loadCoreFiveReportModel();
   loadMultiFileImport();
   loadMasterDataImportPeriod();
   loadOperationLog();
