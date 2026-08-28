@@ -101,8 +101,8 @@ jobs:
             assert.ok(commit, 'IMPORT_COMMITTED log missing');
             assert.equal(commit.detail.fileCount, 3);
             assert.equal(commit.detail.sourceCount, 2);
-            assert.equal(commit.detail.sourceFiles.length, 3);
-            assert.deepEqual(commit.detail.sourceFiles.map(file => file.filename).sort(), ['ads-part-1.csv', 'ads-part-2.csv', 'returns.csv']);
+            assert.equal(commit.detail.files.length, 3);
+            assert.deepEqual(commit.detail.files.map(file => file.filename).sort(), ['ads-part-1.csv', 'ads-part-2.csv', 'returns.csv']);
 
             const importsResponse = await page.request.get('http://127.0.0.1:8787/api/imports?store=ytdbns');
             const importsPayload = await importsResponse.json();
