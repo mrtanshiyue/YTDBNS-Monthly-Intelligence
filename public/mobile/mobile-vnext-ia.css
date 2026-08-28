@@ -72,4 +72,41 @@
       grid-template-columns:repeat(2,minmax(0,1fr));
     }
   }
+
+  @media (max-width:380px){
+    /*
+      A1 toolbar budget: the three-store switcher is mandatory, so narrow iPhones compact
+      secondary status chrome instead of truncating the active reporting period.
+    */
+    #mobileAppRoot .vnext-toolbar{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      gap:8px;
+      padding-left:14px;
+      padding-right:14px;
+    }
+    #mobileAppRoot .vnext-toolbar-left{
+      gap:8px;
+    }
+    #mobileAppRoot .vnext-toolbar .vnext-live{
+      gap:0;
+      font-size:0;
+    }
+    #mobileAppRoot .vnext-toolbar .vnext-period{
+      width:100%;
+      min-width:0;
+      max-width:none;
+      padding-inline:8px;
+    }
+    #mobileAppRoot .vnext-toolbar .yt-store-switcher{
+      margin-left:0;
+      min-width:0;
+      padding-inline:4px;
+    }
+    #mobileAppRoot .vnext-toolbar .yt-store-switcher select{
+      width:64px;
+      min-width:64px;
+      font-size:12px;
+    }
+  }
 }

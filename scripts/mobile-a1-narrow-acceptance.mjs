@@ -31,6 +31,16 @@ function staticContract() {
       iaCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))'),
     'A1 static contract: current vNext narrow module hero is one column with two-column facts'
   );
+
+  expect(
+    iaCss.includes('@media (max-width:380px)') &&
+      iaCss.includes('grid-template-columns:auto minmax(0,1fr) auto') &&
+      iaCss.includes('#mobileAppRoot .vnext-toolbar .vnext-period') &&
+      iaCss.includes('max-width:none') &&
+      iaCss.includes('#mobileAppRoot .vnext-toolbar .yt-store-switcher select') &&
+      iaCss.includes('min-width:64px'),
+    'A1 static contract: <=380px toolbar reserves explicit budget for full period plus store switcher'
+  );
 }
 
 async function ready(page) {
@@ -38,6 +48,7 @@ async function ready(page) {
   await page.waitForFunction(() => document.documentElement.dataset.mobileVnextReady === 'true', null, { timeout: 12_000 });
   await page.waitForSelector('#mobileAppRoot:not([hidden]) .vnext-app', { state: 'visible', timeout: 12_000 });
   await page.waitForSelector('.vnext-module-rail[data-vnext-ia="domain"]', { state: 'visible', timeout: 12_000 });
+  await page.waitForSelector('#mobileAppRoot .vnext-toolbar #ytStoreSwitcher', { state: 'visible', timeout: 12_000 });
   await sleep(100);
 }
 
@@ -60,6 +71,46 @@ async function scrollDown(page) {
 async function waitForTop(page) {
   await page.waitForFunction(() => scrollY <= 2, null, { timeout: 2_000 });
   return page.evaluate(() => scrollY);
+}
+
+async function toolbarLayout(page) {
+  return page.evaluate(() => {
+    const toolbar = document.querySelector('#mobileAppRoot .vnext-toolbar');
+    const left = toolbar?.querySelector('.vnext-toolbar-left');
+    const live = toolbar?.querySelector('.vnext-live');
+    const liveDot = live?.querySelector('i');
+    const period = toolbar?.querySelector('.vnext-period');
+    const periodText = period?.querySelector('span');
+    const store = toolbar?.querySelector('#ytStoreSwitcher');
+    const select = store?.querySelector('select');
+    const rect = element => {
+      if (!element) return null;
+      const value = element.getBoundingClientRect();
+      return { left: value.left, right: value.right, top: value.top, bottom: value.bottom, width: value.width, height: value.height };
+    };
+    const periodTextStyle = periodText ? getComputedStyle(periodText) : null;
+    const liveStyle = live ? getComputedStyle(live) : null;
+    return {
+      exists: Boolean(toolbar && left && live && liveDot && period && periodText && store && select),
+      toolbar: rect(toolbar),
+      left: rect(left),
+      live: rect(live),
+      liveDot: rect(liveDot),
+      period: rect(period),
+      periodTextRect: rect(periodText),
+      periodText: periodText?.textContent?.trim() || '',
+      periodClientWidth: periodText?.clientWidth || 0,
+      periodScrollWidth: periodText?.scrollWidth || 0,
+      periodOverflow: periodTextStyle?.overflow || '',
+      store: rect(store),
+      storeSelect: rect(select),
+      storeValue: select?.selectedOptions?.[0]?.textContent?.trim() || '',
+      liveText: live?.textContent?.trim() || '',
+      liveFontSize: Number.parseFloat(liveStyle?.fontSize || '0'),
+      display: getComputedStyle(toolbar || document.body).display,
+      viewport: innerWidth
+    };
+  });
 }
 
 async function moduleLayout(page, module) {
@@ -138,6 +189,20 @@ async function runViewport(viewport) {
   const evidence = { viewport, modules: {} };
   try {
     await ready(page);
+
+    const toolbar = await toolbarLayout(page);
+    evidence.toolbar = toolbar;
+    expect(toolbar.exists, `${label}/toolbar: period, live status, and three-store switcher are all present`, JSON.stringify(toolbar));
+    expect(toolbar.periodText.length > 0 && toolbar.periodScrollWidth <= toolbar.periodClientWidth + 1, `${label}/toolbar: active reporting period is fully visible without ellipsis`, JSON.stringify(toolbar));
+    expect(toolbar.store?.height >= 43.5 && toolbar.storeSelect?.height >= 41.5, `${label}/toolbar: store switcher keeps a touch-safe control height`, JSON.stringify(toolbar));
+    expect(Boolean(toolbar.storeValue), `${label}/toolbar: selected store remains readable`, JSON.stringify(toolbar));
+    expect(toolbar.liveDot?.width >= 6 && toolbar.liveDot?.height >= 6, `${label}/toolbar: live/demo status dot remains visible`, JSON.stringify(toolbar));
+    if (viewport.width <= 380) {
+      expect(toolbar.display === 'grid', `${label}/toolbar: <=380px uses deterministic three-column space allocation`, `display=${toolbar.display}`);
+      expect(toolbar.liveFontSize === 0, `${label}/toolbar: <=380px compacts secondary status text before primary controls`, `fontSize=${toolbar.liveFontSize}`);
+    }
+    const ordered = toolbar.left && toolbar.period && toolbar.store && toolbar.left.right <= toolbar.period.left + 1 && toolbar.period.right <= toolbar.store.left + 1;
+    expect(ordered, `${label}/toolbar: brand, period, and store controls do not overlap`, JSON.stringify(toolbar));
 
     const modules = [
       ['ads', 4],
