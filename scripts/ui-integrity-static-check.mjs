@@ -62,8 +62,10 @@ expect(!bridge.includes('v5:navigate') && !bridge.includes('v52Ready'), 'compati
 const tabBlock = vnext.match(/const TABS = \[([\s\S]*?)\];/)?.[1] || '';
 expect(tabBlock.includes("['today', '今日'") && tabBlock.includes("['alerts', '异常'") && tabBlock.includes("['trends', '趋势'") && tabBlock.includes("['search', '搜索'"), 'Mobile vNext top-level IA is 今日 / 异常 / 趋势 / 搜索');
 expect(!tabBlock.includes("['ads'") && !tabBlock.includes("['products'") && !tabBlock.includes("['inventory'"), 'domain modules are detail/search objects rather than top-level tabs');
-expect(vnext.includes('function buildSignals()') && vnext.includes('function verdict(signals, summary)'), 'Today and Alerts are driven by one signal/decision model');
-expect(vnext.includes('只看偏离正常状态的地方'), 'Alerts expresses exception-first intent');
+const issueGroupConsumers = [...vnext.matchAll(/const signals = buildIssueGroups\(\);/g)].length;
+expect(vnext.includes('function buildSignals()') && vnext.includes('function buildIssueGroups()') && vnext.includes('function verdict(signals, summary)') && issueGroupConsumers >= 2, 'Today and Alerts share raw-signal → decision-cluster model');
+expect(vnext.includes('先看问题类型，再看受影响对象') && vnext.includes('同类异常先聚合成一个决策入口') && vnext.includes("type: 'issue-group'"), 'Alerts aggregates record-level anomalies before action');
+expect(vnext.includes('issueMembersMarkup(group)') && vnext.includes('影响最大') && vnext.includes('前 ${members.length} 个对象'), 'issue clusters preserve drilldown to highest-impact objects');
 expect(vnext.includes('本期正在往哪走') && vnext.includes('runtime.comparePrevious()'), 'Trends is direction/period-comparison oriented');
 expect(vnext.includes('一个入口，查全部') && vnext.includes('function searchItems()'), 'Search is a first-class cross-domain destination');
 expect(vnext.includes('Campaign') && vnext.includes('SKU') && vnext.includes('ASIN') && vnext.includes('扣费'), 'Search covers core operating objects');
