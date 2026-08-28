@@ -1,0 +1,116 @@
+name: Mobile vNext Browser Acceptance
+
+on:
+  push:
+    branches:
+      - mobile-vnext-zero-based
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-app-bridge.js
+          node --check public/mobile/mobile-vnext.js
+      - name: Install browser package
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install browsers
+        run: npx playwright-core install --with-deps chromium webkit
+      - name: Serve static site
+        run: |
+          python3 -m http.server 8788 --directory public > /tmp/vnext-http.log 2>&1 &
+          echo $! > /tmp/vnext-http.pid
+      - name: Run vNext matrix
+        run: |
+          cat > .tmp-vnext-acceptance.mjs <<'EOF'
+          import { chromium, webkit } from 'playwright-core';
+          const base = 'http://127.0.0.1:8788';
+          const failures = [];
+          const pass = m => console.log(`PASS  ${m}`);
+          const expect = (c,m,d='') => c ? pass(m) : (failures.push(`${m}${d?` — ${d}`:''}`), console.error(`FAIL  ${m}${d?` — ${d}`:''}`));
+          const tabs = ['today','alerts','trends','search'];
+          const labels = ['今日','异常','趋势','搜索'];
+
+          async function run(name,type,viewport){
+            const browser = await type.launch({headless:true});
+            const context = await browser.newContext({viewport,deviceScaleFactor:3,hasTouch:true,isMobile:true});
+            const page = await context.newPage();
+            const errors=[]; const pageErrors=[]; const requests=[];
+            page.on('console',m=>{if(m.type()==='error') errors.push(m.text())});
+            page.on('pageerror',e=>pageErrors.push(e.message));
+            page.on('request',r=>{if(r.url().includes('/api/')) requests.push({method:r.method(),url:r.url()})});
+            const label=`${name} ${viewport.width}x${viewport.height}`;
+            try{
+              await page.goto(base,{waitUntil:'load',timeout:30000});
+              await page.waitForFunction(()=>document.documentElement.dataset.mobileVnextReady==='true',{timeout:10000});
+              await page.waitForSelector('#mobileAppRoot:not([hidden]) .vnext-app',{state:'visible',timeout:10000});
+              await page.waitForFunction(()=>window.YT_SHARED_RUNTIME?.getState?.()?.loading===false,{timeout:15000});
+              const runtime=await page.evaluate(()=>window.YT_SHARED_RUNTIME.getState());
+              expect(runtime.mode==='demo',`${label}: localhost uses demo runtime`,runtime.mode);
+
+              const nav=await page.evaluate(()=>[...document.querySelectorAll('.vnext-tabbar [data-vnext-tab]')].map(x=>({id:x.dataset.vnextTab,text:x.textContent.trim()})));
+              expect(JSON.stringify(nav.map(x=>x.id))===JSON.stringify(tabs),`${label}: exact 4-tab IA`,JSON.stringify(nav));
+              expect(JSON.stringify(nav.map(x=>x.text))===JSON.stringify(labels),`${label}: exact tab labels`,JSON.stringify(nav));
+              expect(!document.querySelector?.('.v5-mobile-bottom-nav'),`${label}: legacy 5-tab nav absent`);
+
+              for(const tab of tabs){
+                await page.click(`[data-vnext-tab="${tab}"]`);
+                await page.waitForSelector(`[data-vnext-page="${tab}"]`,{state:'visible'});
+                const ov=await page.evaluate(()=>({w:innerWidth,html:document.documentElement.scrollWidth,body:document.body.scrollWidth,root:document.getElementById('mobileAppRoot').scrollWidth}));
+                expect(Math.max(ov.html,ov.body,ov.root)<=ov.w+1,`${label}/${tab}: horizontal overflow=0`,JSON.stringify(ov));
+                const small=await page.evaluate(()=>[...document.querySelectorAll('#mobileAppRoot button')].filter(b=>{const r=b.getBoundingClientRect();const s=getComputedStyle(b);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&r.height<43.5}).map(b=>({text:b.textContent.trim().slice(0,30),h:b.getBoundingClientRect().height})).slice(0,10));
+                expect(small.length===0,`${label}/${tab}: visible buttons >=44px`,JSON.stringify(small));
+              }
+
+              await page.click('[data-vnext-tab="search"]');
+              await page.fill('[data-vnext-search-input]','ACOS');
+              await page.waitForSelector('[data-vnext-result="metric-acos"]',{state:'visible'});
+              expect(true,`${label}: universal search finds ACOS`);
+              await page.click('[data-vnext-result="metric-acos"]');
+              await page.waitForSelector('.vnext-detail-screen',{state:'visible'});
+              expect((await page.textContent('#vnextDetailTitle')).trim()==='ACOS',`${label}: detail opens from search`);
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="search"]',{state:'visible'});
+              expect(!(await page.locator('.vnext-detail-screen').count()),`${label}: Back closes detail`);
+
+              await page.click('[data-vnext-period]');
+              await page.waitForSelector('.vnext-sheet',{state:'visible'});
+              expect((await page.locator('[data-vnext-quick]').count())===5,`${label}: period sheet exposes 5 quick ranges`);
+              await page.goBack();
+              await page.waitForTimeout(50);
+              expect(!(await page.locator('.vnext-sheet').count()),`${label}: Back closes period sheet`);
+
+              await page.click('[data-vnext-tab="alerts"]');
+              expect((await page.locator('[data-vnext-severity]').count())===3,`${label}: anomaly severity control present`);
+              await page.click('[data-vnext-tab="today"]');
+              await page.click('[data-vnext-tab="alerts"]');
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="today"]',{state:'visible'});
+              expect(true,`${label}: Back restores previous top-level tab`);
+
+              expect(errors.length===0,`${label}: console errors=0`,JSON.stringify(errors));
+              expect(pageErrors.length===0,`${label}: page errors=0`,JSON.stringify(pageErrors));
+              expect(requests.every(r=>r.method==='GET'),`${label}: browser API remains GET-only`,JSON.stringify(requests));
+            }catch(error){
+              failures.push(`${label}: ${error.stack||error}`);console.error(`FAIL  ${label}`,error);
+            }finally{await context.close();await browser.close()}
+          }
+
+          for(const viewport of [{width:393,height:852},{width:430,height:932}]){
+            await run('chromium',chromium,viewport);
+            await run('webkit',webkit,viewport);
+          }
+          if(failures.length){console.error(`\n${failures.length} failure(s)`);failures.forEach((f,i)=>console.error(`${i+1}. ${f}`));process.exit(1)}
+          console.log('\nMOBILE VNEXT BROWSER ACCEPTANCE: PASS');
+          EOF
+          node .tmp-vnext-acceptance.mjs
