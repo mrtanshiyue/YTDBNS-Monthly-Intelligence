@@ -58,6 +58,11 @@
     order:2;
   }
 
+  /* Three-fact heroes should not expose the grid background as a fake empty fourth metric. */
+  #mobileAppRoot .vnext-density-module-page .vnext-module-facts:has(>span:nth-child(3):last-child)>span:last-child{
+    grid-column:1/-1;
+  }
+
   @media (max-width:390px){
     .vnext-module-rail[data-vnext-ia="domain"]{
       padding-left:15px;
