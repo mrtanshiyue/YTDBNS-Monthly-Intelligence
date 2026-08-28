@@ -1,4 +1,22 @@
 (() => {
+  function loadOperationLog(){
+    if(!document.getElementById('operationLogStyles')){
+      const link=document.createElement('link');
+      link.id='operationLogStyles';
+      link.rel='stylesheet';
+      link.href='./operation-log.css';
+      document.head.appendChild(link);
+    }
+    if(!document.getElementById('operationLogRuntime')){
+      const script=document.createElement('script');
+      script.id='operationLogRuntime';
+      script.src='./operation-log.js';
+      script.defer=true;
+      document.head.appendChild(script);
+    }
+  }
+  loadOperationLog();
+
   document.body.classList.add('studio-v44');
   const pop=document.getElementById('viewPopover');
   if(!pop || pop.querySelector('.v44-font-scale')) return;
