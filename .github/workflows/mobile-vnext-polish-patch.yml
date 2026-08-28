@@ -1,0 +1,90 @@
+name: Mobile vNext Final Polish Patch
+
+on:
+  push:
+    branches:
+      - mobile-vnext-zero-based
+    paths:
+      - .github/workflows/mobile-vnext-polish-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mobile-vnext-zero-based
+      - name: Apply narrow Mobile polish and acceptance patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          css_path = Path('public/mobile/mobile-vnext.css')
+          css = css_path.read_text()
+          old_title = '.vnext-brief h1{font-size:clamp(30px,8.4vw,42px);line-height:1.05;max-width:12ch}'
+          new_title = '.vnext-brief h1{font-size:clamp(30px,8.4vw,42px);line-height:1.05;max-width:none}'
+          if old_title not in css:
+              raise SystemExit('expected vNext title rule not found')
+          css = css.replace(old_title, new_title, 1)
+
+          old_search = '.vnext-search-field>svg{width:19px;height:19px;color:var(--vx-faint);flex:0 0 auto}.vnext-search-field input{border:0;outline:0;background:transparent;min-width:0;width:100%;font-size:16px;color:var(--vx-ink);padding:0}.vnext-search-field input::placeholder{color:#A2A49E}'
+          new_search = '.vnext-search-field:focus-within{box-shadow:0 0 0 1px rgba(30,111,92,.28),0 4px 14px rgba(24,28,24,.04)}\n  .vnext-search-field>svg{width:19px;height:19px;color:var(--vx-faint);flex:0 0 auto}.vnext-search-field input{border:0;outline:0;background:transparent;min-width:0;width:100%;font-size:16px;color:var(--vx-ink);padding:0}.vnext-search-field input:focus,.vnext-search-field input:focus-visible{outline:none!important;box-shadow:none!important}.vnext-search-field input::placeholder{color:#A2A49E}'
+          if old_search not in css:
+              raise SystemExit('expected vNext search rule not found')
+          css = css.replace(old_search, new_search, 1)
+          css_path.write_text(css)
+
+          workflow_path = Path('.github/workflows/mobile-vnext-browser-acceptance.yml')
+          workflow = workflow_path.read_text()
+          old_block = '''              await page.click('[data-vnext-tab="alerts"]');
+              expect((await page.locator('[data-vnext-severity]').count())===3,`${label}: anomaly severity control present`);
+              await page.click('[data-vnext-tab="today"]');
+              await page.click('[data-vnext-tab="alerts"]');
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="today"]',{state:'visible'});
+              expect(true,`${label}: Back restores previous top-level tab`);
+'''
+          new_block = '''              await page.click('[data-vnext-tab="alerts"]');
+              await page.waitForSelector('[data-vnext-page="alerts"]',{state:'visible'});
+              expect((await page.locator('[data-vnext-severity]').count())===3,`${label}: anomaly severity control present`);
+              const issueRows=page.locator('[data-vnext-page="alerts"] [data-vnext-signal]');
+              const issueCount=await issueRows.count();
+              expect(issueCount>0&&issueCount<=12,`${label}: Alerts exposes decision-level issue groups rather than record flood`,`count=${issueCount}`);
+              const firstIssueTitle=((await issueRows.first().locator('strong').textContent())||'').trim();
+              await issueRows.first().click();
+              await page.waitForSelector('.vnext-detail-screen',{state:'visible'});
+              expect(((await page.locator('.vnext-detail-toolbar>span').first().textContent())||'').trim()==='问题类型',`${label}: first drilldown opens issue-group detail`);
+              const impactedRows=page.locator('.vnext-detail-screen [data-vnext-signal]');
+              const impactedCount=await impactedRows.count();
+              expect(impactedCount>0&&impactedCount<=8,`${label}: issue group limits impacted-object drilldown`,`count=${impactedCount}`);
+              await impactedRows.first().click();
+              await page.waitForSelector('.vnext-detail-screen',{state:'visible'});
+              expect(((await page.locator('.vnext-detail-toolbar>span').first().textContent())||'').trim()!=='问题类型',`${label}: second drilldown opens concrete operating object`);
+              await page.goBack();
+              await page.waitForFunction(title=>document.querySelector('#vnextDetailTitle')?.textContent?.trim()===title,firstIssueTitle);
+              expect(true,`${label}: first Back restores issue-group detail`);
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="alerts"]',{state:'visible'});
+              expect((await page.locator('.vnext-detail-screen').count())===0,`${label}: second Back restores Alerts list`);
+
+              await page.click('[data-vnext-tab="today"]');
+              await page.click('[data-vnext-tab="alerts"]');
+              await page.goBack();
+              await page.waitForSelector('[data-vnext-page="today"]',{state:'visible'});
+              expect(true,`${label}: Back restores previous top-level tab`);
+'''
+          if old_block not in workflow:
+              raise SystemExit('expected Alerts acceptance block not found')
+          workflow = workflow.replace(old_block, new_block, 1)
+          workflow_path.write_text(workflow)
+          PY
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/mobile/mobile-vnext.css .github/workflows/mobile-vnext-browser-acceptance.yml
+          git commit -m 'Mobile vNext: polish first-screen typography and drilldown acceptance'
+          git push origin HEAD:mobile-vnext-zero-based
