@@ -44,7 +44,7 @@
     const standalone = Boolean(standaloneMedia.matches || window.navigator.standalone === true);
     document.documentElement.classList.toggle('v5-standalone', standalone);
     document.documentElement.dataset.v5Display = standalone ? 'standalone' : 'browser';
-    if (mobileTheme) mobileTheme.setAttribute('content', standalone ? '#F5F5F7' : '#F5F5F7');
+    if (mobileTheme) mobileTheme.setAttribute('content', '#F5F5F7');
   }
   syncStandaloneMode();
   standaloneMedia.addEventListener?.('change', syncStandaloneMode);
@@ -193,7 +193,7 @@
       <div class="v5-mobile-app" aria-busy="${loading ? 'true' : 'false'}">
         <header class="v5-mobile-topbar">
           <div class="v52-mobile-context">
-            <h1>${esc(routeTitle())}</h1>
+            <h1 id="v5MobileViewTitle">${esc(routeTitle())}</h1>
             <button type="button" class="v52-period-pill" data-mobile-action="period"><span>${esc(periodLabel())}</span><i aria-hidden="true">⌄</i></button>
           </div>
           <div class="v5-mobile-top-actions">
@@ -239,7 +239,7 @@
     const changed = ui.route !== route;
     ui.route = route;
     render();
-    if (changed) resetRouteScroll();
+    resetRouteScroll();
     if (changed && historyMode !== 'none') syncHistory(route, historyMode);
   }
 
