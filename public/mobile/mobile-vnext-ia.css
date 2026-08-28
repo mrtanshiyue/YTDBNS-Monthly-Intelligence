@@ -18,6 +18,46 @@
     padding-inline:11px;
   }
 
+  /* #mobileAppRoot button{color:inherit} has ID specificity. Keep selected domain text readable. */
+  #mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active{
+    color:#fff;
+  }
+  #mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active b{
+    color:#fff;
+  }
+
+  /* Ads / Products / Inventory filters are horizontally scrollable; expose overflow and make stops predictable. */
+  #mobileAppRoot .vnext-density-module-page .vnext-filter-tags{
+    scroll-padding-inline:1px 26px;
+    scroll-snap-type:x proximity;
+    padding-right:26px;
+    -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
+    mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
+  }
+  #mobileAppRoot .vnext-density-module-page .vnext-filter-tags button{
+    scroll-snap-align:start;
+  }
+  #mobileAppRoot .vnext-density-module-page .vnext-filter-tags button.active{
+    color:var(--vx-accent);
+  }
+  #mobileAppRoot .vnext-density-module-page .vnext-filter-tags button.active b{
+    color:var(--vx-accent);
+  }
+
+  /* Mobile module headers read as label -> title/count, not two competing columns. */
+  #mobileAppRoot .vnext-density-module-page .vnext-module-section>header{
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:flex-start;
+    gap:2px;
+  }
+  #mobileAppRoot .vnext-density-module-page .vnext-module-section>header>span{
+    order:1;
+  }
+  #mobileAppRoot .vnext-density-module-page .vnext-module-section>header>h2{
+    order:2;
+  }
+
   @media (max-width:390px){
     .vnext-module-rail[data-vnext-ia="domain"]{
       padding-left:15px;
