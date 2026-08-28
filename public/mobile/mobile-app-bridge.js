@@ -4,28 +4,54 @@
   const root = document.getElementById('mobileAppRoot');
   if (!root) return;
 
+  const mobileMedia = window.matchMedia('(max-width: 860px)');
+  const restoreVisibility = () => {
+    const mobile = mobileMedia.matches;
+    root.hidden = !mobile;
+    root.setAttribute('aria-hidden', mobile ? 'false' : 'true');
+  };
+
   function ensureStylesheet() {
     const id = 'v52MobileRedesignStyles';
-    if (document.getElementById(id)) return;
-    const link = document.createElement('link');
-    link.id = id;
-    link.rel = 'stylesheet';
-    link.href = './mobile/mobile-redesign.css';
-    document.head.appendChild(link);
+    const existing = document.getElementById(id);
+    if (existing) return Promise.resolve(existing);
+    return new Promise(resolve => {
+      const link = document.createElement('link');
+      link.id = id;
+      link.rel = 'stylesheet';
+      link.href = './mobile/mobile-redesign.css';
+      link.addEventListener('load', () => resolve(link), { once: true });
+      link.addEventListener('error', () => resolve(link), { once: true });
+      document.head.appendChild(link);
+    });
   }
 
   function ensureScript() {
     const id = 'v52MobileRedesignRuntime';
-    if (document.getElementById(id)) return;
-    const script = document.createElement('script');
-    script.id = id;
-    script.src = './mobile/mobile-redesign.js';
-    script.async = false;
-    document.head.appendChild(script);
+    const existing = document.getElementById(id);
+    if (existing) return Promise.resolve(existing);
+    return new Promise(resolve => {
+      const script = document.createElement('script');
+      script.id = id;
+      script.src = './mobile/mobile-redesign.js';
+      script.async = false;
+      script.addEventListener('load', () => resolve(script), { once: true });
+      script.addEventListener('error', () => resolve(script), { once: true });
+      document.head.appendChild(script);
+    });
   }
 
-  ensureStylesheet();
-  ensureScript();
+  if (mobileMedia.matches) {
+    root.hidden = true;
+    root.setAttribute('aria-hidden', 'true');
+  }
+
+  Promise.all([ensureStylesheet(), ensureScript()]).then(() => {
+    restoreVisibility();
+    root.dispatchEvent(new CustomEvent('v5:refresh-view', { bubbles: true }));
+  });
+
+  mobileMedia.addEventListener?.('change', restoreVisibility);
 
   window.YT_MOBILE_APP = Object.freeze({
     navigate(route) {
