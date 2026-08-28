@@ -1,0 +1,151 @@
+name: Mobile Redesign Validation
+
+on:
+  push:
+    branches:
+      - mobile-ux-redesign
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-redesign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-app-bridge.js
+          node --check public/mobile/mobile-redesign.js
+          node --check public/mobile/mobile-interactions.js
+          node --check public/mobile/mobile-compare.js
+          node --check public/mobile/views/overview.js
+          node --check public/mobile/views/ads.js
+          node --check public/mobile/views/products.js
+          node --check public/mobile/views/inventory.js
+          node --check public/mobile/views/finance.js
+          node --check public/mobile/views/charges.js
+          node --check public/mobile/views/returns.js
+          node --check public/mobile/views/history.js
+          node --check public/mobile/views/data.js
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+      - name: Install Chromium
+        run: npx playwright-core install chromium
+      - name: Mobile IA browser acceptance
+        run: |
+          node --input-type=module <<'NODE'
+          import path from 'node:path';
+          import { pathToFileURL } from 'node:url';
+          import { chromium } from 'playwright-core';
+
+          const entry = pathToFileURL(path.join(process.cwd(), 'public', 'index.html')).href;
+          const expectedNav = ['首页', '待办', '广告', '商品', '库存'];
+          const routes = ['overview', 'tasks', 'ads', 'products', 'inventory'];
+          const browser = await chromium.launch({ headless: true });
+          const failures = [];
+          const fail = message => { failures.push(message); console.error('FAIL', message); };
+          const pass = message => console.log('PASS', message);
+          const expect = (condition, message, detail = '') => condition ? pass(message) : fail(`${message}${detail ? ` — ${detail}` : ''}`);
+
+          for (const viewport of [{ width: 393, height: 852 }, { width: 430, height: 932 }]) {
+            const context = await browser.newContext({ viewport });
+            const page = await context.newPage();
+            const consoleErrors = [];
+            const pageErrors = [];
+            const apiRequests = [];
+            page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+            page.on('pageerror', error => pageErrors.push(error.message || String(error)));
+            page.on('request', request => { if (request.url().includes('/api/')) apiRequests.push({ method: request.method(), url: request.url() }); });
+
+            await page.goto(entry, { waitUntil: 'load', timeout: 30000 });
+            await page.waitForTimeout(900);
+            await page.waitForSelector('#mobileAppRoot:not([hidden])', { state: 'visible', timeout: 5000 });
+            const label = `${viewport.width}x${viewport.height}`;
+
+            const nav = await page.locator('.v5-mobile-bottom-nav > .v5-mobile-nav-item').allTextContents();
+            expect(nav.map(text => text.trim()).join('|') === expectedNav.join('|'), `${label}: five primary destinations`, nav.join('|'));
+            expect(await page.locator('.v5-mobile-topbar').isVisible(), `${label}: contextual topbar visible`);
+            expect(await page.locator('.v5-mobile-brand').count() === 0, `${label}: no standalone YTDBNS brand header`);
+            expect(await page.locator('.v5-mobile-top-tabs').count() === 0, `${label}: obsolete nine-tab navigation absent`);
+
+            for (const route of routes) {
+              await page.evaluate(target => window.YT_MOBILE_APP?.navigate?.(target), route);
+              await page.waitForSelector(`[data-mobile-view="${route}"]`, { state: 'visible', timeout: 5000 });
+              expect(true, `${label}: route ${route} renders`);
+            }
+
+            await page.evaluate(() => window.YT_MOBILE_APP?.navigate?.('ads'));
+            await page.waitForSelector('[data-mobile-view="ads"]', { state: 'visible' });
+            await page.evaluate(() => window.YT_MOBILE_APP?.navigate?.('products'));
+            await page.waitForSelector('[data-mobile-view="products"]', { state: 'visible' });
+            await page.evaluate(() => history.back());
+            await page.waitForSelector('[data-mobile-view="ads"]', { state: 'visible', timeout: 5000 });
+            expect(true, `${label}: browser Back restores previous mobile route`);
+
+            await page.evaluate(() => window.YT_MOBILE_APP?.navigate?.('overview'));
+            await page.waitForSelector('[data-mobile-view="overview"]', { state: 'visible' });
+            await page.click('[data-mobile-action="search"]');
+            await page.waitForSelector('#v5MobileOverlayRoot .v5-fullscreen', { state: 'visible', timeout: 5000 });
+            expect(await page.locator('[data-v5-search-input]').isVisible(), `${label}: full-screen Search opens`);
+            await page.click('#v5MobileOverlayRoot [data-v5-close-overlay]');
+
+            await page.click('.v52-period-pill');
+            await page.waitForSelector('#v5MobileOverlayRoot .v5-interaction-sheet', { state: 'visible', timeout: 5000 });
+            expect(true, `${label}: Period bottom sheet opens`);
+            await page.click('#v5MobileOverlayRoot [data-v5-close-overlay]');
+
+            await page.evaluate(() => window.YT_MOBILE_APP?.navigate?.('ads'));
+            await page.waitForSelector('[data-mobile-view="ads"]', { state: 'visible' });
+            await page.click('[data-v52-ops-open="ads"]');
+            await page.waitForSelector('.v52-ops-sheet', { state: 'visible', timeout: 5000 });
+            expect(true, `${label}: unified Filter/Sort sheet opens`);
+            const alternateFilter = page.locator('.v52-ops-option[data-v52-filter]:not(.active)').first();
+            if (await alternateFilter.count()) await alternateFilter.click();
+            await page.click('[data-v52-apply]');
+            await page.waitForFunction(() => !document.getElementById('v52OpsOverlayRoot')?.classList.contains('open'));
+            expect(true, `${label}: Filter/Sort applies and closes`);
+
+            const record = page.locator('.v5-record-card').first();
+            if (await record.count()) {
+              await record.click();
+              await page.waitForSelector('#v5MobileOverlayRoot .v5-fullscreen', { state: 'visible', timeout: 5000 });
+              expect(true, `${label}: record Detail opens full-screen`);
+              await page.click('#v5MobileOverlayRoot [data-v5-close-overlay]');
+            }
+
+            const geometry = await page.evaluate(() => ({
+              viewport: innerWidth,
+              html: document.documentElement.scrollWidth,
+              body: document.body.scrollWidth,
+              root: document.getElementById('mobileAppRoot')?.scrollWidth || 0
+            }));
+            expect(Math.max(geometry.html, geometry.body, geometry.root) <= geometry.viewport + 1, `${label}: no horizontal overflow`, JSON.stringify(geometry));
+
+            const shortButtons = await page.evaluate(() => [...document.querySelectorAll('#mobileAppRoot button')].filter(button => {
+              const rect = button.getBoundingClientRect();
+              const style = getComputedStyle(button);
+              return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && rect.height < 43.5;
+            }).slice(0, 12).map(button => ({ text: button.textContent.trim().slice(0, 40), height: button.getBoundingClientRect().height, className: button.className })));
+            expect(shortButtons.length === 0, `${label}: visible touch targets keep 44px height floor`, JSON.stringify(shortButtons));
+
+            const mutationRequests = apiRequests.filter(item => !['GET', 'HEAD'].includes(item.method));
+            expect(mutationRequests.length === 0, `${label}: API traffic remains GET-only`, JSON.stringify(mutationRequests));
+            expect(consoleErrors.length === 0, `${label}: console errors = 0`, JSON.stringify(consoleErrors));
+            expect(pageErrors.length === 0, `${label}: page errors = 0`, JSON.stringify(pageErrors));
+            await context.close();
+          }
+
+          await browser.close();
+          if (failures.length) {
+            console.error(`\nMobile redesign acceptance failed with ${failures.length} issue(s).`);
+            process.exit(1);
+          }
+          console.log('\nMobile redesign acceptance passed.');
+          NODE
