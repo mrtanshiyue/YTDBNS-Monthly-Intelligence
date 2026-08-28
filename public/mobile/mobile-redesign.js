@@ -133,7 +133,8 @@
 
   overlayRoot.addEventListener('click', event => {
     if (!current) return;
-    if (event.target.matches('[data-v52-close="backdrop"]') || event.target.closest('[data-v52-close]')) {
+    const explicitClose = event.target.closest('[data-v52-close]:not([data-v52-close="backdrop"])');
+    if (event.target.matches('[data-v52-close="backdrop"]') || explicitClose) {
       closeOps();
       return;
     }
