@@ -65,6 +65,20 @@
     info: { label: '观察', rank: 1 }
   };
 
+  const ISSUE_META = {
+    'finance-profit': { title: '利润已经转负', noun: '指标' },
+    'finance-margin': { title: '利润安全垫偏薄', noun: '指标' },
+    'ads-acos': { title: '广告 ACOS 高位', noun: 'Campaign' },
+    'ads-zero-orders': { title: '广告花费无订单', noun: 'Campaign' },
+    'products-buybox': { title: 'Buy Box 流失', noun: 'SKU' },
+    'products-cvr': { title: '高流量低转化', noun: 'SKU' },
+    'inventory-low-stock': { title: '库存即将见底', noun: 'SKU' },
+    'inventory-unsellable': { title: '不可售库存积压', noun: 'SKU' },
+    'inventory-capital': { title: '库存资金过度集中', noun: 'SKU' },
+    'returns-refund': { title: '退款侵蚀销售', noun: '指标' },
+    'data-quality': { title: '数据质量异常', noun: '检查项' }
+  };
+
   function models() {
     const s = state.runtimeState || {};
     return {
@@ -81,14 +95,17 @@
   }
 
   function median(values) {
-    const list = values.filter(value => value != null && Number.isFinite(Number(value))).map(Number).sort((a, b) => a - b);
+    const list = values
+      .filter(value => value != null && Number.isFinite(Number(value)))
+      .map(Number)
+      .sort((a, b) => a - b);
     if (!list.length) return null;
     const mid = Math.floor(list.length / 2);
     return list.length % 2 ? list[mid] : (list[mid - 1] + list[mid]) / 2;
   }
 
-  function signalKey(domain, id) {
-    return `${domain}:${id}`;
+  function signalKey(domain, id, issue = '') {
+    return `${domain}:${id}${issue ? `:${issue}` : ''}`;
   }
 
   function buildSignals() {
@@ -98,7 +115,7 @@
 
     if (m.finance.profit != null && m.finance.profit < 0) {
       push({
-        id: 'profit-negative', severity: 'critical', domain: 'finance', score: 100,
+        id: 'finance:profit-negative', issueKey: 'finance-profit', severity: 'critical', domain: 'finance', score: 100,
         title: '贡献利润为负', subtitle: '先拆广告、退款、扣费与采购成本', value: fmt.money(m.finance.profit, 0),
         detail: { type: 'metric', title: '贡献利润', value: fmt.money(m.finance.profit, 2), rows: [
           ['销售额', fmt.money(m.finance.sales, 0)], ['利润率', fmt.percent(m.finance.profitMargin)], ['广告花费', fmt.money(m.finance.adSpend, 0)], ['退款销售额', fmt.money(m.finance.refundSales, 0)]
@@ -106,72 +123,87 @@
       });
     } else if (m.finance.profitMargin != null && m.finance.profitMargin < 0.08) {
       push({
-        id: 'margin-low', severity: 'warning', domain: 'finance', score: 72,
+        id: 'finance:margin-low', issueKey: 'finance-margin', severity: 'warning', domain: 'finance', score: 72,
         title: '利润率偏薄', subtitle: '销售有规模，但安全垫较小', value: fmt.percent(m.finance.profitMargin),
         detail: { type: 'metric', title: '利润率', value: fmt.percent(m.finance.profitMargin), rows: [['贡献利润', fmt.money(m.finance.profit, 0)], ['销售额', fmt.money(m.finance.sales, 0)]] }
       });
     }
 
-    const averageSpend = m.ads.campaigns.length
-      ? m.ads.campaigns.reduce((sum, row) => sum + Number(row.spend || 0), 0) / m.ads.campaigns.length
-      : 0;
+    const knownSpends = m.ads.campaigns.map(row => row.spend).filter(value => value != null && Number.isFinite(Number(value))).map(Number);
+    const averageSpend = knownSpends.length ? knownSpends.reduce((sum, value) => sum + value, 0) / knownSpends.length : 0;
     for (const row of m.ads.campaigns) {
-      const candidates = [];
-      if (row.acos != null && row.acos > 0.65) candidates.push({ severity: 'critical', score: 94, reason: `ACOS ${fmt.percent(row.acos)}，明显高于目标线` });
-      else if (row.acos != null && row.acos > 0.45) candidates.push({ severity: 'warning', score: 78, reason: `ACOS ${fmt.percent(row.acos)}，高于目标线` });
-      if (row.orders === 0 && row.spend >= Math.max(averageSpend, 20)) candidates.push({ severity: 'warning', score: 80, reason: `${fmt.money(row.spend, 0)} 花费仍无订单` });
-      if (!candidates.length) continue;
-      const winner = candidates.sort((a, b) => SEVERITY[b.severity].rank - SEVERITY[a.severity].rank || b.score - a.score)[0];
-      push({
-        id: signalKey('ads', row.id), severity: winner.severity, domain: 'ads', score: winner.score,
-        title: row.campaign, subtitle: winner.reason, value: row.acos != null ? fmt.percent(row.acos) : fmt.money(row.spend, 0),
-        detail: { type: 'campaign', title: row.campaign, context: winner.reason, item: row }
-      });
+      if (row.acos != null && row.acos > 0.45) {
+        const critical = row.acos > 0.65;
+        push({
+          id: signalKey('ads', row.id, 'acos'), issueKey: 'ads-acos', severity: critical ? 'critical' : 'warning', domain: 'ads', score: critical ? 94 : 78,
+          title: row.campaign, subtitle: `ACOS ${fmt.percent(row.acos)}，${critical ? '明显高于' : '高于'}目标线`, value: fmt.percent(row.acos),
+          detail: { type: 'campaign', title: row.campaign, context: `ACOS ${fmt.percent(row.acos)}，${critical ? '明显高于' : '高于'}目标线`, item: row }
+        });
+      }
+      if (row.orders === 0 && row.spend != null && Number(row.spend) >= Math.max(averageSpend, 20)) {
+        const critical = Number(row.spend) >= Math.max(averageSpend * 2, 50);
+        push({
+          id: signalKey('ads', row.id, 'zero-orders'), issueKey: 'ads-zero-orders', severity: critical ? 'critical' : 'warning', domain: 'ads', score: critical ? 90 : 80,
+          title: row.campaign, subtitle: `${fmt.money(row.spend, 0)} 花费仍无订单`, value: fmt.money(row.spend, 0),
+          detail: { type: 'campaign', title: row.campaign, context: `${fmt.money(row.spend, 0)} 花费仍无订单`, item: row }
+        });
+      }
     }
 
     const productMedianSessions = median(m.products.products.map(row => row.sessions));
     const baselineCvr = m.products.totals.cvr;
     for (const row of m.products.products) {
-      let candidate = null;
-      if (row.buyBox != null && row.buyBox < 0.8) candidate = { severity: 'critical', score: 92, reason: `Buy Box 仅 ${fmt.percent(row.buyBox)}` };
-      else if (row.buyBox != null && row.buyBox < 0.9) candidate = { severity: 'warning', score: 76, reason: `Buy Box ${fmt.percent(row.buyBox)}，需要关注` };
-      if (row.sessions != null && row.cvr != null && productMedianSessions != null && row.sessions >= productMedianSessions && baselineCvr != null && row.cvr < baselineCvr * 0.65) {
-        const low = { severity: 'warning', score: 82, reason: `高流量但 CVR 仅 ${fmt.percent(row.cvr)}` };
-        if (!candidate || low.score > candidate.score) candidate = low;
+      if (row.buyBox != null && row.buyBox < 0.9) {
+        const critical = row.buyBox < 0.8;
+        push({
+          id: signalKey('products', row.id, 'buybox'), issueKey: 'products-buybox', severity: critical ? 'critical' : 'warning', domain: 'products', score: critical ? 92 : 76,
+          title: row.sku === '—' ? row.asin : row.sku, subtitle: `Buy Box ${critical ? '仅 ' : ''}${fmt.percent(row.buyBox)}`, value: fmt.percent(row.buyBox),
+          detail: { type: 'product', title: row.sku === '—' ? row.asin : row.sku, context: `Buy Box ${fmt.percent(row.buyBox)}`, item: row }
+        });
       }
-      if (!candidate) continue;
-      push({
-        id: signalKey('products', row.id), severity: candidate.severity, domain: 'products', score: candidate.score,
-        title: row.sku === '—' ? row.asin : row.sku, subtitle: candidate.reason, value: fmt.money(row.sales, 0),
-        detail: { type: 'product', title: row.sku === '—' ? row.asin : row.sku, context: candidate.reason, item: row }
-      });
+      if (row.sessions != null && row.cvr != null && productMedianSessions != null && baselineCvr != null && row.sessions >= productMedianSessions && row.cvr < baselineCvr * 0.65) {
+        push({
+          id: signalKey('products', row.id, 'cvr'), issueKey: 'products-cvr', severity: 'warning', domain: 'products', score: 82,
+          title: row.sku === '—' ? row.asin : row.sku, subtitle: `高流量但 CVR 仅 ${fmt.percent(row.cvr)}`, value: fmt.percent(row.cvr),
+          detail: { type: 'product', title: row.sku === '—' ? row.asin : row.sku, context: `高流量但 CVR 仅 ${fmt.percent(row.cvr)}`, item: row }
+        });
+      }
     }
 
-    const inventoryValues = m.inventory.inventory.map(row => row.inventoryValue).filter(value => value != null);
-    const averageInventoryValue = inventoryValues.length ? inventoryValues.reduce((sum, value) => sum + Number(value), 0) / inventoryValues.length : null;
+    const inventoryValues = m.inventory.inventory.map(row => row.inventoryValue).filter(value => value != null && Number.isFinite(Number(value))).map(Number);
+    const averageInventoryValue = inventoryValues.length ? inventoryValues.reduce((sum, value) => sum + value, 0) / inventoryValues.length : null;
     for (const row of m.inventory.inventory) {
-      const candidates = [];
-      if (row.fulfillable != null && row.fulfillable <= 10) candidates.push({ severity: 'critical', score: 90, reason: `可售库存仅 ${fmt.number(row.fulfillable)} 件` });
-      else if (row.fulfillable != null && row.fulfillable <= 20) candidates.push({ severity: 'warning', score: 74, reason: `可售库存 ${fmt.number(row.fulfillable)} 件` });
+      if (row.fulfillable != null && row.fulfillable <= 20) {
+        const critical = row.fulfillable <= 10;
+        push({
+          id: signalKey('inventory', row.id, 'low-stock'), issueKey: 'inventory-low-stock', severity: critical ? 'critical' : 'warning', domain: 'inventory', score: critical ? 90 : 74,
+          title: row.sku === '—' ? row.asin : row.sku, subtitle: `可售库存${critical ? '仅 ' : ' '}${fmt.number(row.fulfillable)} 件`, value: `${fmt.number(row.fulfillable)}件`,
+          detail: { type: 'inventory', title: row.sku === '—' ? row.asin : row.sku, context: `可售库存 ${fmt.number(row.fulfillable)} 件`, item: row }
+        });
+      }
       if (row.unsellable != null && row.unsellable > 0) {
         const ratio = row.total ? row.unsellable / row.total : null;
-        candidates.push({ severity: ratio != null && ratio >= 0.1 ? 'critical' : 'warning', score: ratio != null && ratio >= 0.1 ? 88 : 70, reason: `不可售库存 ${fmt.number(row.unsellable)} 件` });
+        const critical = ratio != null && ratio >= 0.1;
+        push({
+          id: signalKey('inventory', row.id, 'unsellable'), issueKey: 'inventory-unsellable', severity: critical ? 'critical' : 'warning', domain: 'inventory', score: critical ? 88 : 70,
+          title: row.sku === '—' ? row.asin : row.sku, subtitle: `不可售库存 ${fmt.number(row.unsellable)} 件`, value: `${fmt.number(row.unsellable)}件`,
+          detail: { type: 'inventory', title: row.sku === '—' ? row.asin : row.sku, context: `不可售库存 ${fmt.number(row.unsellable)} 件`, item: row }
+        });
       }
-      if (averageInventoryValue != null && row.inventoryValue > averageInventoryValue * 1.6) candidates.push({ severity: 'warning', score: 68, reason: `库存资金占用 ${fmt.money(row.inventoryValue, 0)}` });
-      if (!candidates.length) continue;
-      const winner = candidates.sort((a, b) => SEVERITY[b.severity].rank - SEVERITY[a.severity].rank || b.score - a.score)[0];
-      push({
-        id: signalKey('inventory', row.id), severity: winner.severity, domain: 'inventory', score: winner.score,
-        title: row.sku === '—' ? row.asin : row.sku, subtitle: winner.reason, value: fmt.number(row.fulfillable),
-        detail: { type: 'inventory', title: row.sku === '—' ? row.asin : row.sku, context: winner.reason, item: row }
-      });
+      if (averageInventoryValue != null && row.inventoryValue != null && Number(row.inventoryValue) > averageInventoryValue * 2) {
+        push({
+          id: signalKey('inventory', row.id, 'capital'), issueKey: 'inventory-capital', severity: 'warning', domain: 'inventory', score: 68,
+          title: row.sku === '—' ? row.asin : row.sku, subtitle: `库存资金占用 ${fmt.money(row.inventoryValue, 0)}`, value: fmt.money(row.inventoryValue, 0),
+          detail: { type: 'inventory', title: row.sku === '—' ? row.asin : row.sku, context: `库存资金占用 ${fmt.money(row.inventoryValue, 0)}`, item: row }
+        });
+      }
     }
 
     const refundRate = m.finance.sales && m.finance.refundSales != null ? m.finance.refundSales / m.finance.sales : null;
     if (refundRate != null && refundRate > 0.04) {
       push({
-        id: 'refund-rate', severity: refundRate > 0.08 ? 'critical' : 'warning', domain: 'returns', score: refundRate > 0.08 ? 86 : 66,
-        title: '退款占销售偏高', subtitle: `退款销售额占本期销售 ${fmt.percent(refundRate)}`, value: fmt.money(m.finance.refundSales, 0),
+        id: 'returns:refund-rate', issueKey: 'returns-refund', severity: refundRate > 0.08 ? 'critical' : 'warning', domain: 'returns', score: refundRate > 0.08 ? 86 : 66,
+        title: '退款占销售偏高', subtitle: `退款销售额占本期销售 ${fmt.percent(refundRate)}`, value: fmt.percent(refundRate),
         detail: { type: 'metric', title: '退款销售额', value: fmt.money(m.finance.refundSales, 2), rows: [['退款占比', fmt.percent(refundRate)], ['退货量', fmt.number(m.returns.total)], ['销售额', fmt.money(m.finance.sales, 0)]] }
       });
     }
@@ -180,13 +212,56 @@
       if (!['FAIL', 'ERROR', 'WARN', 'WARNING'].includes(row.status)) continue;
       const critical = ['FAIL', 'ERROR'].includes(row.status);
       push({
-        id: signalKey('data', row.id), severity: critical ? 'critical' : 'warning', domain: 'data', score: critical ? 96 : 64,
+        id: signalKey('data', row.id, 'quality'), issueKey: 'data-quality', severity: critical ? 'critical' : 'warning', domain: 'data', score: critical ? 96 : 64,
         title: row.name, subtitle: row.message || `数据检查状态：${row.status}`, value: row.status,
         detail: { type: 'quality', title: row.name, context: row.message, item: row }
       });
     }
 
     return signals.sort((a, b) => SEVERITY[b.severity].rank - SEVERITY[a.severity].rank || b.score - a.score || a.title.localeCompare(b.title));
+  }
+
+  function buildIssueGroups() {
+    const groups = new Map();
+    for (const signal of buildSignals()) {
+      const meta = ISSUE_META[signal.issueKey] || { title: signal.title, noun: '对象' };
+      if (!groups.has(signal.issueKey)) {
+        groups.set(signal.issueKey, {
+          id: `group:${signal.issueKey}`,
+          issueKey: signal.issueKey,
+          title: meta.title,
+          noun: meta.noun,
+          domain: signal.domain,
+          severity: signal.severity,
+          score: signal.score,
+          members: []
+        });
+      }
+      const group = groups.get(signal.issueKey);
+      group.members.push(signal);
+      if (SEVERITY[signal.severity].rank > SEVERITY[group.severity].rank || signal.score > group.score) {
+        if (SEVERITY[signal.severity].rank >= SEVERITY[group.severity].rank) group.severity = signal.severity;
+        group.score = Math.max(group.score, signal.score);
+      }
+    }
+
+    return [...groups.values()].map(group => {
+      const members = group.members.sort((a, b) => SEVERITY[b.severity].rank - SEVERITY[a.severity].rank || b.score - a.score);
+      const top = members[0];
+      const countText = `${members.length} 个${group.noun}受影响`;
+      return {
+        ...group,
+        members,
+        subtitle: `${countText}${top?.subtitle ? ` · ${top.subtitle}` : ''}`,
+        value: `${members.length} 项`,
+        detail: {
+          type: 'issue-group',
+          title: group.title,
+          context: `${countText}。先看影响最大的对象，不把数百条记录平铺成待办。`,
+          group: { ...group, members }
+        }
+      };
+    }).sort((a, b) => SEVERITY[b.severity].rank - SEVERITY[a.severity].rank || b.score - a.score || b.members.length - a.members.length || a.title.localeCompare(b.title));
   }
 
   function periodLabel() {
@@ -221,8 +296,8 @@
   function verdict(signals, summary) {
     const critical = signals.filter(item => item.severity === 'critical').length;
     const warning = signals.filter(item => item.severity === 'warning').length;
-    if (critical) return { tone: 'critical', eyebrow: '需要处理', text: `有 ${critical} 个问题需要先看` };
-    if (warning) return { tone: 'warning', eyebrow: '整体可控', text: `经营基本稳定，${warning} 个信号值得关注` };
+    if (critical) return { tone: 'critical', eyebrow: '需要处理', text: `${critical} 类问题需要先看` };
+    if (warning) return { tone: 'warning', eyebrow: '整体可控', text: `${warning} 类信号值得关注` };
     if (summary.sales != null) return { tone: 'calm', eyebrow: '本期平稳', text: '没有发现明显的经营异常' };
     return { tone: 'calm', eyebrow: '等待数据', text: '导入数据后，这里只展示真正需要看的内容' };
   }
@@ -247,7 +322,7 @@
   function todayMarkup() {
     const m = models();
     const summary = m.overview.summary;
-    const signals = buildSignals();
+    const signals = buildIssueGroups();
     const topSignals = signals.slice(0, 3);
     const v = verdict(signals, summary);
     const critical = signals.filter(item => item.severity === 'critical').length;
@@ -271,7 +346,7 @@
         <section class="vnext-section">
           <div class="vnext-section-head">
             <div><span>现在</span><h2>先看这些</h2></div>
-            ${signals.length ? `<button type="button" data-vnext-tab="alerts">全部 ${signals.length}</button>` : ''}
+            ${signals.length ? `<button type="button" data-vnext-tab="alerts">全部 ${signals.length} 类</button>` : ''}
           </div>
           <div class="vnext-list">
             ${topSignals.length ? topSignals.map(item => signalRow(item, true)).join('') : emptyMarkup('当前没有明显异常', '销售、利润、广告、商品、库存和数据质量都没有触发高优先级信号。')}
@@ -289,15 +364,15 @@
         </section>
 
         <section class="vnext-footnote">
-          <span>${critical ? `${critical} 个优先处理` : '0 个优先处理'}</span>
-          <span>${warning ? `${warning} 个值得关注` : '0 个值得关注'}</span>
+          <span>${critical} 类优先处理</span>
+          <span>${warning} 类值得关注</span>
           <span>${esc(m.inventory.snapshotDate ? `库存快照 ${m.inventory.snapshotDate}` : '库存快照暂无')}</span>
         </section>
       </main>`;
   }
 
   function alertsMarkup() {
-    const signals = buildSignals();
+    const signals = buildIssueGroups();
     const counts = {
       all: signals.length,
       critical: signals.filter(item => item.severity === 'critical').length,
@@ -309,8 +384,8 @@
       <main class="vnext-main" data-vnext-page="alerts">
         <section class="vnext-page-intro">
           <span class="vnext-eyebrow">经营信号</span>
-          <h1>只看偏离正常状态的地方</h1>
-          <p>不按模块堆报表，按优先级把跨业务问题排到一起。</p>
+          <h1>先看问题类型，再看受影响对象</h1>
+          <p>同类异常先聚合成一个决策入口，避免把几十个 Campaign 或 SKU 平铺成待办。</p>
         </section>
         <div class="vnext-segmented" role="group" aria-label="异常级别">
           <button type="button" data-vnext-severity="all" class="${state.severity === 'all' ? 'active' : ''}">全部 <b>${counts.all}</b></button>
@@ -412,7 +487,7 @@
 
   function searchMarkup() {
     const results = filteredSearchItems();
-    const signals = buildSignals().slice(0, 4);
+    const signals = buildIssueGroups().slice(0, 4);
     return `
       <header class="vnext-search-toolbar">
         <label class="vnext-search-field">
@@ -436,8 +511,8 @@
             </div>
           </section>
           <section class="vnext-section">
-            <div class="vnext-section-head"><div><span>可能要查</span><h2>当前异常对象</h2></div></div>
-            <div class="vnext-list">${signals.length ? signals.map(item => signalRow(item, true)).join('') : emptyMarkup('没有异常对象', '可以直接搜索任意指标、Campaign、SKU、ASIN 或扣费名称。')}</div>
+            <div class="vnext-section-head"><div><span>可能要查</span><h2>当前问题类型</h2></div></div>
+            <div class="vnext-list">${signals.length ? signals.map(item => signalRow(item, true)).join('') : emptyMarkup('没有异常类型', '可以直接搜索任意指标、Campaign、SKU、ASIN 或扣费名称。')}</div>
           </section>`}
       </main>`;
   }
@@ -459,14 +534,31 @@
     return `<div class="vnext-detail-facts">${rows.filter(row => row && row[0]).map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value ?? '—')}</strong></div>`).join('')}</div>`;
   }
 
+  function issueMembersMarkup(group) {
+    if (!group?.members?.length) return '';
+    const members = group.members.slice(0, 8);
+    return `
+      <section class="vnext-section" style="margin-top:28px">
+        <div class="vnext-section-head"><div><span>影响最大</span><h2>前 ${members.length} 个对象</h2></div></div>
+        <div class="vnext-list">${members.map(member => signalRow(member, true)).join('')}</div>
+      </section>`;
+  }
+
   function detailBody(detail) {
     if (!detail) return '';
     const item = detail.item || {};
     let value = detail.value || '';
     let rows = detail.rows || [];
     let kicker = detail.type === 'metric' ? '指标' : DOMAIN[detail.type === 'campaign' ? 'ads' : detail.type === 'product' ? 'products' : detail.type] || '详情';
+    let extra = '';
 
-    if (detail.type === 'campaign') {
+    if (detail.type === 'issue-group') {
+      const group = detail.group || {};
+      kicker = '问题类型';
+      value = `${group.members?.length || 0} 个受影响对象`;
+      rows = [['业务', DOMAIN[group.domain] || group.domain || '—'], ['级别', SEVERITY[group.severity]?.label || '—'], ['查看方式', '先看影响最大的对象']];
+      extra = issueMembersMarkup(group);
+    } else if (detail.type === 'campaign') {
       value = item.acos != null ? fmt.percent(item.acos) : fmt.money(item.spend, 0);
       rows = [['花费', fmt.money(item.spend, 2)], ['广告销售', fmt.money(item.sales, 2)], ['ACOS', fmt.percent(item.acos)], ['订单', fmt.number(item.orders)], ['CTR', fmt.percent(item.ctr)], ['CVR', fmt.percent(item.cvr)], ['Portfolio', item.portfolio || '—']];
     } else if (detail.type === 'product') {
@@ -499,6 +591,7 @@
           ${detail.context ? `<p class="vnext-detail-context">${esc(detail.context)}</p>` : ''}
           ${value ? `<div class="vnext-detail-value">${esc(value)}</div>` : ''}
           ${detailRowsMarkup(rows)}
+          ${extra}
           <div class="vnext-detail-note">只读查看 · 当前期间 ${esc(periodLabel())}</div>
         </main>
       </section>`;
@@ -677,7 +770,7 @@
   }
 
   function findSignal(id) {
-    return buildSignals().find(item => item.id === id) || null;
+    return buildIssueGroups().find(item => item.id === id) || buildSignals().find(item => item.id === id) || null;
   }
 
   function findSearchItem(id) {
@@ -693,9 +786,11 @@
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault(); last.focus();
+      event.preventDefault();
+      last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault(); first.focus();
+      event.preventDefault();
+      first.focus();
     }
   }
 
