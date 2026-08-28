@@ -74,7 +74,7 @@
       <div class="v5-core-empty"><strong>${model.products.length ? '当前筛选没有匹配 SKU' : '当前期间没有 SKU 明细'}</strong><span>${model.products.length ? '调整筛选条件查看其他商品。' : '商品明细使用完整月份数据；顶部仍保留所选期间经营汇总。'}</span></div>` : '';
 
     const cards = rows.map(row => {
-      const lowCvr = row.sessions != null && row.cvr != null && model.totals.cvr != null && Number(row.cvr) < Number(model.totals.cvr);
+      const lowCvr = row.sessions != null && Number(row.sessions) >= avgSessions && row.cvr != null && model.totals.cvr != null && Number(row.cvr) < Number(model.totals.cvr);
       const lowBuyBox = row.buyBox != null && Number(row.buyBox) < .90;
       const lowVelocityRow = row.units != null && Number(row.units) <= 1;
       const risk = lowBuyBox || lowCvr || lowVelocityRow ? 'warning' : 'positive';
