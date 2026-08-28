@@ -1,0 +1,96 @@
+name: Localized Ads Import Acceptance
+
+on:
+  push:
+    branches:
+      - fix/chinese-ad-report-month
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Static and deployment gates
+        run: |
+          node --check public/import-report-compat.js
+          npm run check:release:static
+          npx wrangler deploy --dry-run
+      - name: Prepare local D1
+        run: npm run db:migrate:local
+      - name: Install Chromium
+        run: npx playwright-core install chromium
+      - name: Start local Worker
+        run: |
+          nohup npx wrangler dev --local --port 8787 > /tmp/import-compat-wrangler.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8787/api/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/import-compat-wrangler.log
+          exit 1
+      - name: Chromium localized Ads import acceptance
+        run: |
+          mkdir -p artifacts/import-report-compat
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { chromium } from 'playwright-core';
+
+          const csv = '\uFEFF广告组合名称,广告活动名称,日期,总成本,购买量,销售额,展示量,点击量\nPortfolio A,Campaign A,2025年6月2日,10.50,2,30.00,100,5\nPortfolio A,Campaign A,2025年6月16日,12.25,3,45.00,120,7\n';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+          await page.goto('http://127.0.0.1:8787', { waitUntil: 'networkidle' });
+          await page.waitForFunction(() => Boolean(window.YT_IMPORT_REPORT_COMPAT));
+          await page.locator('#topImportBtn').click();
+          await page.locator('#importFiles').setInputFiles({ name: '202506.csv', mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf8') });
+          await page.locator('#importPeriodValue').filter({ hasText: '2025年6月' }).waitFor({ state: 'visible' });
+          assert.equal(await page.locator('#validateBtn').isEnabled(), true);
+
+          const normalized = await page.evaluate(async csvText => {
+            const file = new File([csvText], '202506.csv', { type: 'text/csv' });
+            const parsed = await window.YT_ENGINE.parseFile(file);
+            const role = window.YT_ENGINE.detectRole(file.name, parsed);
+            const bundle = window.YT_NORMALIZER.normalizeBundle({ [role]: { file, parsed } }, '2025-06');
+            return {
+              role,
+              month: bundle.month,
+              rangeStart: bundle.rangeStart,
+              rangeEnd: bundle.rangeEnd,
+              adSpend: bundle.monthly.adSpend,
+              adSales: bundle.monthly.adSales,
+              adOrders: bundle.monthly.adOrders,
+              impressions: bundle.monthly.impressions,
+              clicks: bundle.monthly.clicks,
+              dailyDates: bundle.daily.map(row => row.date)
+            };
+          }, csv);
+
+          assert.equal(normalized.role, 'ads');
+          assert.equal(normalized.month, '2025-06');
+          assert.equal(normalized.adSpend, 22.75);
+          assert.equal(normalized.adSales, 75);
+          assert.equal(normalized.adOrders, 5);
+          assert.equal(normalized.impressions, 220);
+          assert.equal(normalized.clicks, 12);
+          assert.deepEqual(normalized.dailyDates, ['2025-06-02', '2025-06-16']);
+          await page.screenshot({ path: 'artifacts/import-report-compat/2025-06-auto-period.png', fullPage: true });
+          await browser.close();
+          console.log('Localized Ads month + normalization acceptance: PASS');
+          NODE
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localized-ads-import-acceptance-${{ github.sha }}
+          path: artifacts/import-report-compat
+          if-no-files-found: ignore
+          retention-days: 7
