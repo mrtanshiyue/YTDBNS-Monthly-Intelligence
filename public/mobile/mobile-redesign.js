@@ -207,18 +207,29 @@
   function num(value) {
     return fmt?.number ? fmt.number(value) : Number(value || 0).toLocaleString('en-US');
   }
+  function averageKnown(rows, key) {
+    const known = rows.filter(row => row?.[key] != null);
+    return known.length ? known.reduce((sum, row) => sum + Number(row[key] || 0), 0) / known.length : 0;
+  }
+  function isAdsLowConversion(row, avgSpend) {
+    if (row.cvr != null) return Number(row.cvr) < .08;
+    return row.orders != null && row.spend != null && Number(row.orders) === 0 && Number(row.spend) >= avgSpend && Number(row.spend) > 0;
+  }
 
   function collectTasks(runtimeState) {
     const tasks = [];
     try {
       const ads = selectors?.adsModel?.(runtimeState);
       const campaigns = ads?.campaigns || [];
+      const avgSpend = averageKnown(campaigns, 'spend');
       campaigns.forEach(row => {
         const acos = row.acos == null ? null : Number(row.acos);
         if (acos != null && acos > .60) {
           tasks.push({ route: 'ads', tone: 'critical', group: '广告', title: row.campaign || '广告活动', detail: `ACOS ${pct(acos)} · 花费 ${money(row.spend)}`, score: 300 + Number(row.spend || 0) });
         } else if (acos != null && acos > .45) {
           tasks.push({ route: 'ads', tone: 'warning', group: '广告', title: row.campaign || '广告活动', detail: `ACOS ${pct(acos)} · 高于45%目标线`, score: 220 + Number(row.spend || 0) });
+        } else if (isAdsLowConversion(row, avgSpend)) {
+          tasks.push({ route: 'ads', tone: 'warning', group: '广告', title: row.campaign || '广告活动', detail: `低转化 · 花费 ${money(row.spend)}`, score: 150 + Number(row.spend || 0) });
         }
       });
     } catch {}
@@ -236,21 +247,28 @@
           tasks.push({ route: 'products', tone: 'warning', group: '商品', title: row.sku || row.asin || 'SKU', detail: `Buy Box ${pct(buyBox)} · 销售 ${money(row.sales)}`, score: 180 + Number(row.sales || 0) / 10 });
         } else if (row.sessions != null && Number(row.sessions) >= avgSessions && cvr != null && totalCvr != null && cvr < totalCvr) {
           tasks.push({ route: 'products', tone: 'warning', group: '商品', title: row.sku || row.asin || 'SKU', detail: `高流量低转化 · CVR ${pct(cvr)}`, score: 160 + Number(row.sessions || 0) });
+        } else if (row.units != null && Number(row.units) <= 1) {
+          tasks.push({ route: 'products', tone: 'warning', group: '商品', title: row.sku || row.asin || 'SKU', detail: `低动销 · 销量 ${num(row.units)}`, score: 130 + Number(row.sales || 0) / 20 });
         }
       });
     } catch {}
 
     try {
       const inventory = selectors?.inventoryModel?.(runtimeState);
-      (inventory?.inventory || []).forEach(row => {
+      const rows = inventory?.inventory || [];
+      const avgValue = averageKnown(rows, 'inventoryValue');
+      rows.forEach(row => {
         const unsellable = row.unsellable == null ? null : Number(row.unsellable);
         const total = row.total == null ? null : Number(row.total);
         const share = total && unsellable != null ? unsellable / total : 0;
         const fulfillable = row.fulfillable == null ? null : Number(row.fulfillable);
+        const inventoryValue = row.inventoryValue == null ? null : Number(row.inventoryValue);
         if (unsellable != null && unsellable > 0) {
           tasks.push({ route: 'inventory', tone: share > .10 ? 'critical' : 'warning', group: '库存', title: row.sku || row.asin || 'SKU', detail: `不可售 ${num(unsellable)} · 库存资金 ${money(row.inventoryValue)}`, score: (share > .10 ? 280 : 190) + Number(row.inventoryValue || 0) / 10 });
         } else if (fulfillable != null && fulfillable <= 20) {
           tasks.push({ route: 'inventory', tone: 'warning', group: '库存', title: row.sku || row.asin || 'SKU', detail: `可售库存 ${num(fulfillable)} · 低库存`, score: 170 + (20 - fulfillable) });
+        } else if (inventoryValue != null && inventoryValue >= avgValue && inventoryValue > 0) {
+          tasks.push({ route: 'inventory', tone: 'warning', group: '库存', title: row.sku || row.asin || 'SKU', detail: `高资金占用 · ${money(inventoryValue)}`, score: 120 + inventoryValue / 20 });
         }
       });
     } catch {}
