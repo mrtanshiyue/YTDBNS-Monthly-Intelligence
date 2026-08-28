@@ -1,0 +1,98 @@
+@media (max-width:860px){
+  .vnext-home-all-modules{margin:26px 0 6px}
+  .vnext-home-all-head{margin:0 0 12px;padding:0 2px}
+  .vnext-home-all-head>span{display:block;font-size:9px;font-weight:780;letter-spacing:.08em;color:var(--vx-faint)}
+  .vnext-home-all-head h2{margin:3px 0 0;font-size:23px;line-height:1.08;letter-spacing:-.035em}
+  .vnext-home-all-head p{margin:6px 0 0;font-size:11px;line-height:1.45;color:var(--vx-muted)}
+
+  .vnext-home-brief{
+    margin:0 0 14px;
+    padding:13px;
+    border-radius:19px;
+    background:rgba(255,255,255,.95);
+    box-shadow:0 0 0 1px rgba(30,33,29,.07),0 8px 22px rgba(25,28,25,.035);
+  }
+  .vnext-home-brief-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 0 10px}
+  .vnext-home-brief-head>div{min-width:0;flex:1}
+  .vnext-home-brief-head>div>span{display:block;font-size:8px;font-weight:780;letter-spacing:.08em;color:var(--vx-faint)}
+  .vnext-home-brief-head h2{margin:2px 0 0;font-size:17px;line-height:1.12;letter-spacing:-.025em}
+  .vnext-home-brief-head p{margin:4px 0 0;font-size:9px;line-height:1.35;color:var(--vx-muted)}
+  .vnext-home-brief-head>button{
+    min-height:44px;
+    flex:0 0 auto;
+    border:0;
+    border-radius:13px;
+    padding:0 11px;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--vx-accent-soft);
+    color:var(--vx-accent);
+    font-size:10px;
+    font-weight:720;
+  }
+  .vnext-home-brief-head>button b{font-size:15px;line-height:1}
+
+  .vnext-home-brief-primary{display:grid;grid-template-columns:minmax(108px,.75fr) minmax(0,1.25fr);gap:10px;align-items:stretch;margin:0 0 10px}
+  .vnext-home-brief-primary>strong{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    padding:11px;
+    border-radius:14px;
+    background:var(--vx-panel);
+    font-size:22px;
+    line-height:1;
+    letter-spacing:-.04em;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .vnext-home-brief-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;overflow:hidden;border-radius:14px;background:var(--vx-line)}
+  .vnext-home-brief-facts span{min-width:0;padding:7px 8px;display:flex;flex-direction:column;justify-content:center;gap:2px;background:#fff}
+  .vnext-home-brief-facts small{font-size:8px;color:var(--vx-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vnext-home-brief-facts b{font-size:10px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vnext-home-brief-facts .tone-warning{background:rgba(183,111,0,.075)}
+  .vnext-home-brief-facts .tone-warning b{color:var(--vx-warning)}
+  .vnext-home-brief-facts .tone-critical{background:rgba(198,61,47,.07)}
+  .vnext-home-brief-facts .tone-critical b{color:var(--vx-critical)}
+
+  .vnext-home-mini-list{box-shadow:0 0 0 1px rgba(30,33,29,.055)}
+  .vnext-home-mini-list .vnext-dense-record{min-height:62px}
+  .vnext-home-mini-list .vnext-density-empty{min-height:62px}
+
+  .vnext-home-risk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .vnext-home-risk-grid button{
+    min-height:68px;
+    border:0;
+    padding:9px 10px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-rows:auto auto;
+    align-items:center;
+    gap:2px 8px;
+    text-align:left;
+    border-radius:14px;
+    background:var(--vx-panel);
+  }
+  .vnext-home-risk-grid button span{font-size:10px;font-weight:720}
+  .vnext-home-risk-grid button b{font-size:18px;line-height:1;letter-spacing:-.04em}
+  .vnext-home-risk-grid button small{grid-column:1/-1;font-size:8px;color:var(--vx-muted)}
+
+  .vnext-home-cost-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;overflow:hidden;border-radius:15px;background:var(--vx-line)}
+  .vnext-home-cost-grid>div{min-width:0;min-height:66px;padding:9px 8px;display:flex;flex-direction:column;justify-content:center;gap:2px;background:#fff}
+  .vnext-home-cost-grid span{font-size:8px;color:var(--vx-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vnext-home-cost-grid strong{font-size:13px;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vnext-home-cost-grid small{font-size:7px;color:var(--vx-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .vnext-home-history{box-shadow:0 0 0 1px rgba(30,33,29,.055)}
+  .vnext-home-history button{min-height:58px}
+
+  @media (max-width:390px){
+    .vnext-home-brief{padding:11px}
+    .vnext-home-brief-primary{grid-template-columns:1fr}
+    .vnext-home-brief-primary>strong{min-height:58px}
+    .vnext-home-brief-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .vnext-home-cost-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+}
