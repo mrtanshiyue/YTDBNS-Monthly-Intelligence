@@ -139,6 +139,19 @@
     });
   }
 
+  function ensureFirstScreenStylesheet() {
+    if (document.getElementById('mobileVNextFirstScreenStyles')) return Promise.resolve();
+    return new Promise(resolve => {
+      const link = document.createElement('link');
+      link.id = 'mobileVNextFirstScreenStyles';
+      link.rel = 'stylesheet';
+      link.href = './mobile/mobile-vnext-first-screen.css';
+      link.addEventListener('load', resolve, { once: true });
+      link.addEventListener('error', resolve, { once: true });
+      document.head.appendChild(link);
+    });
+  }
+
   function syncSurface() {
     const enabled = mobile.matches;
     const ready = document.documentElement.dataset.mobileVnextReady === 'true';
@@ -156,7 +169,7 @@
     .then(() => Promise.all([ensureDensityStylesheet(), ensureDensityRuntime()]))
     .then(() => Promise.all([ensureHomeBriefStylesheet(), ensureHomeBriefRuntime()]))
     .then(() => ensureHomeDetailRuntime())
-    .then(() => Promise.all([ensureIaStylesheet(), ensureIaRuntime()]))
+    .then(() => Promise.all([ensureIaStylesheet(), ensureIaRuntime(), ensureFirstScreenStylesheet()]))
     .then(() => {
       document.documentElement.dataset.mobileVnextReady = 'true';
       syncSurface();
