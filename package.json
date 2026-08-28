@@ -16,12 +16,12 @@
     "check:import-report-compat": "node scripts/import-report-compat-check.mjs",
     "check:multi-file-import": "node scripts/multi-file-import-check.mjs",
     "check:master-data-import-period": "node scripts/master-data-import-period-check.mjs",
-    "check:release:static": "npm run check:v5:mobile:static && npm run check:ui:static && npm run check:operation-log && npm run check:import-report-compat && npm run check:multi-file-import && npm run check:master-data-import-period && npm run check:core-report-model",
+    "check:core-five-report-model": "node scripts/core-five-report-model-check.mjs",
+    "check:release:static": "npm run check:v5:mobile:static && npm run check:ui:static && npm run check:operation-log && npm run check:import-report-compat && npm run check:multi-file-import && npm run check:master-data-import-period && npm run check:core-five-report-model",
     "db:create": "wrangler d1 create ytdbns-monthly-db",
     "db:migrate:local": "wrangler d1 migrations apply ytdbns-monthly-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply ytdbns-monthly-db --remote",
-    "r2:create": "wrangler r2 bucket create ytdbns-monthly-raw-reports",
-    "check:core-report-model": "node scripts/core-report-model-check.mjs"
+    "r2:create": "wrangler r2 bucket create ytdbns-monthly-raw-reports"
   },
   "devDependencies": {
     "playwright-core": "1.62.1",
