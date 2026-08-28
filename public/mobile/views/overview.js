@@ -45,8 +45,9 @@
   registry.overview = ({ runtimeState, esc }) => {
     const model = selectors?.overviewModel?.(runtimeState) || { summary: {}, insights: [], salesSeries: [] };
     const s = model.summary || {};
-    const priority = model.insights.filter(item => item.tone === 'critical' || item.tone === 'warning');
-    const actionItems = priority.slice(0, 3);
+    const fallbackPriority = model.insights.filter(item => item.tone === 'critical' || item.tone === 'warning');
+    const actionQueue = window.YT_MOBILE_REDESIGN?.collectTasks?.(runtimeState) || fallbackPriority;
+    const actionItems = actionQueue.slice(0, 3);
     const pulse = [
       ['ACOS', fmt.percent(s.acos), 'ads'],
       ['TACOS', fmt.percent(s.tacos), 'ads'],
@@ -71,7 +72,7 @@
         <section class="v52-home-section" aria-labelledby="v52HomeActions">
           <div class="v52-home-section-head">
             <div><span>异常优先</span><h2 id="v52HomeActions">现在需要处理</h2></div>
-            <button type="button" data-mobile-route="tasks">查看全部 ${priority.length ? `· ${priority.length}` : ''}</button>
+            <button type="button" data-mobile-route="tasks">查看全部 ${actionQueue.length ? `· ${actionQueue.length}` : ''}</button>
           </div>
           <div class="v52-home-actions">${actionMarkup(actionItems, esc)}</div>
         </section>
