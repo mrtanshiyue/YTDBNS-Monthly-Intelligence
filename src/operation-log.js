@@ -61,38 +61,46 @@ export async function safeAppendOperationLog(env, entry) {
 }
 
 export async function operationLogsResponse(request, env) {
-  await ensureOperationLogSchema(env);
-  const url = new URL(request.url);
-  const rawStore = String(url.searchParams.get('store') || 'all').toLowerCase();
-  const month = String(url.searchParams.get('month') || '');
-  const batchId = String(url.searchParams.get('batchId') || '');
-  const limit = Math.max(1, Math.min(150, Number(url.searchParams.get('limit') || 100) || 100));
-  const clauses = [];
-  const args = [];
+  try {
+    await ensureOperationLogSchema(env);
+    const url = new URL(request.url);
+    const rawStore = String(url.searchParams.get('store') || 'all').toLowerCase();
+    const month = String(url.searchParams.get('month') || '');
+    const batchId = String(url.searchParams.get('batchId') || '');
+    const limit = Math.max(1, Math.min(150, Number(url.searchParams.get('limit') || 100) || 100));
+    const clauses = [];
+    const args = [];
 
-  if (rawStore !== 'all') {
-    const storeId = STORE_IDS.has(rawStore) ? rawStore : 'ytdbns';
-    clauses.push('store_id=?');
-    args.push(storeId);
-  }
-  if (/^\d{4}-\d{2}$/.test(month)) {
-    clauses.push('report_month=?');
-    args.push(month);
-  }
-  if (batchId) {
-    clauses.push('batch_id=?');
-    args.push(batchId);
-  }
+    if (rawStore !== 'all') {
+      const storeId = STORE_IDS.has(rawStore) ? rawStore : 'ytdbns';
+      clauses.push('store_id=?');
+      args.push(storeId);
+    }
+    if (/^\d{4}-\d{2}$/.test(month)) {
+      clauses.push('report_month=?');
+      args.push(month);
+    }
+    if (batchId) {
+      clauses.push('batch_id=?');
+      args.push(batchId);
+    }
 
-  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-  const result = await env.DB.prepare(`SELECT id,event_id,store_id,batch_id,report_month,event_type,status,actor,summary,detail_json,created_at
-      FROM operation_logs ${where} ORDER BY id DESC LIMIT ?`)
-    .bind(...args, limit).all();
-  const logs = (result.results || []).map(row => {
-    let detail = {};
-    try { detail = JSON.parse(row.detail_json || '{}'); } catch {}
-    const { detail_json, ...base } = row;
-    return { ...base, detail };
-  });
-  return json({ ok: true, logs, limit });
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    let statement = env.DB.prepare(`SELECT id,event_id,store_id,batch_id,report_month,event_type,status,actor,summary,detail_json,created_at
+        FROM operation_logs ${where} ORDER BY id DESC LIMIT ${limit}`);
+    if (args.length) statement = statement.bind(...args);
+    const result = await statement.all();
+    const logs = (result.results || []).map(row => {
+      let detail = {};
+      try { detail = JSON.parse(row.detail_json || '{}'); } catch {}
+      const base = { ...row };
+      delete base.detail_json;
+      return { ...base, detail };
+    });
+    return json({ ok: true, logs, limit });
+  } catch (error) {
+    console.error('operation log read failed', error);
+    const message = error instanceof Error ? error.message : String(error || '操作日志读取失败');
+    return json({ ok: false, error: message }, 500);
+  }
 }
