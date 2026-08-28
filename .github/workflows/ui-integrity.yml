@@ -50,6 +50,7 @@ jobs:
           node --check scripts/mobile-first-screen-static-check.mjs
           node --check scripts/mobile-first-screen-acceptance.mjs
           node --check scripts/mobile-a1-narrow-acceptance.mjs
+          node --check scripts/mobile-a1-active-rail-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
@@ -67,6 +68,8 @@ jobs:
         run: npm run check:v5:mobile:first-screen:browser
       - name: Mobile A1 narrow-screen Chromium acceptance
         run: node scripts/mobile-a1-narrow-acceptance.mjs
+      - name: Mobile A1 active-rail Chromium acceptance
+        run: node scripts/mobile-a1-active-rail-acceptance.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,5 +79,6 @@ jobs:
             artifacts/mobile-vnext-ia
             artifacts/mobile-first-screen
             artifacts/mobile-a1-narrow
+            artifacts/mobile-a1-active-rail
           if-no-files-found: ignore
           retention-days: 7
