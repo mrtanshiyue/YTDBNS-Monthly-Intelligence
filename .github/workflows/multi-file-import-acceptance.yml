@@ -1,0 +1,113 @@
+name: True Multi File Import Acceptance
+
+on:
+  push:
+    branches:
+      - fix/true-multi-file-import
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Static and deployment gates
+        run: |
+          node --check public/multi-file-import.js
+          npm run check:release:static
+          npx wrangler deploy --dry-run
+      - name: Prepare local D1
+        run: npm run db:migrate:local
+      - name: Install Chromium
+        run: npx playwright-core install chromium
+      - name: Start local Worker
+        run: |
+          nohup npx wrangler dev --local --port 8787 > /tmp/multi-file-wrangler.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8787/api/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/multi-file-wrangler.log
+          exit 1
+      - name: Chromium true multi-file import acceptance
+        run: |
+          mkdir -p artifacts/multi-file-import
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { chromium } from 'playwright-core';
+
+          const ads1 = '\uFEFF广告组合名称,广告活动名称,日期,总成本,购买量,销售额,展示量,点击量\nP1,C1,2025年6月2日,10.50,2,30.00,100,5\n';
+          const ads2 = '\uFEFF广告组合名称,广告活动名称,日期,总成本,购买量,销售额,展示量,点击量\nP1,C1,2025年6月16日,12.25,3,45.00,120,7\n';
+          const returns = 'return-date,sku,reason,quantity,detailed-disposition\n2025-06-20,SKU-1,UNWANTED_ITEM,2,SELLABLE\n';
+
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+          await page.goto('http://127.0.0.1:8787', { waitUntil: 'networkidle' });
+          await page.waitForFunction(() => Boolean(window.YT_MULTI_FILE_IMPORT));
+          await page.locator('#topImportBtn').click();
+          await page.locator('#importFiles').setInputFiles([
+            { name: 'ads-part-1.csv', mimeType: 'text/csv', buffer: Buffer.from(ads1, 'utf8') },
+            { name: 'ads-part-2.csv', mimeType: 'text/csv', buffer: Buffer.from(ads2, 'utf8') },
+            { name: 'returns.csv', mimeType: 'text/csv', buffer: Buffer.from(returns, 'utf8') }
+          ]);
+          await page.locator('#importPeriodValue').filter({ hasText: '2025年6月' }).waitFor({ state: 'visible' });
+          await page.locator('#validateBtn').click();
+          await page.locator('#validationBox').filter({ hasText: '3 个 · 全部将单独归档' }).waitFor({ state: 'visible' });
+          await page.locator('#validationBox').filter({ hasText: '广告每日视图 × 2' }).waitFor({ state: 'visible' });
+
+          const snapshot = await page.evaluate(() => window.YT_MULTI_FILE_IMPORT.getSnapshot());
+          assert.equal(snapshot.selectedFileCount, 3);
+          assert.equal(snapshot.validatedFileCount, 3);
+          assert.equal(snapshot.sourceCount, 2);
+          assert.deepEqual(snapshot.roles, ['ads', 'ads', 'returns']);
+          assert.equal(snapshot.normalized.monthly.adSpend, 22.75);
+          assert.equal(snapshot.normalized.monthly.adSales, 75);
+          assert.equal(snapshot.normalized.monthly.adOrders, 5);
+          assert.equal(snapshot.normalized.monthly.impressions, 220);
+          assert.equal(snapshot.normalized.monthly.clicks, 12);
+          assert.equal(snapshot.normalized.monthly.returns, 2);
+
+          await page.locator('#commitBtn').click();
+          await page.waitForFunction(() => document.querySelector('#commitBtn')?.textContent?.includes('正在上传') || document.querySelector('#commitBtn')?.textContent === '写入数据库');
+          await page.waitForTimeout(1800);
+
+          const logsResponse = await page.request.get('http://127.0.0.1:8787/api/operation-logs?store=ytdbns&limit=30');
+          assert.equal(logsResponse.ok(), true);
+          const logsPayload = await logsResponse.json();
+          const logs = logsPayload.logs || [];
+          const commit = logs.find(log => log.event_type === 'IMPORT_COMMITTED');
+          assert.ok(commit, 'IMPORT_COMMITTED log missing');
+          assert.equal(commit.detail.fileCount, 3);
+          assert.equal(commit.detail.sourceCount, 2);
+          assert.equal(commit.detail.sourceFiles.length, 3);
+          assert.deepEqual(commit.detail.sourceFiles.map(file => file.filename).sort(), ['ads-part-1.csv', 'ads-part-2.csv', 'returns.csv']);
+
+          const importsResponse = await page.request.get('http://127.0.0.1:8787/api/imports?store=ytdbns');
+          assert.equal(importsResponse.ok(), true);
+          const importsPayload = await importsResponse.json();
+          const batch = (importsPayload.batches || [])[0];
+          assert.ok(batch, 'import batch missing');
+          assert.equal(Number(batch.file_count), 3);
+          assert.equal(Number(batch.source_count), 2);
+
+          await page.screenshot({ path: 'artifacts/multi-file-import/true-multi-file-import.png', fullPage: true });
+          await browser.close();
+          console.log('True multi-file import browser/API acceptance: PASS');
+          NODE
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: true-multi-file-import-${{ github.sha }}
+          path: artifacts/multi-file-import
+          if-no-files-found: ignore
+          retention-days: 7
