@@ -242,7 +242,7 @@ async function runViewport(viewport) {
     const primaryScroll = await waitForTop(page);
     expect(primaryScroll <= 2, `${label}/alerts: primary-route navigation resets scroll to the top`, `scrollY=${primaryScroll}`);
 
-    const methods = [...new Set(requests.map(request => request.method()))];
+    const methods = [...new Set(requests.map(request => request.method))];
     expect(methods.every(method => method === 'GET'), `${label}: Mobile API traffic remains GET-only`, JSON.stringify(methods));
     expect(pageErrors.length === 0, `${label}: page errors remain zero`, JSON.stringify(pageErrors));
     expect(consoleErrors.length === 0, `${label}: console errors remain zero`, JSON.stringify(consoleErrors));
