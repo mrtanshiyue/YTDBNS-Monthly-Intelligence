@@ -1,8 +1,39 @@
 @media (max-width:860px){
+  body.mobile-vnext-active .vnext-toolbar,
+  body.mobile-vnext-active .vnext-search-toolbar{
+    min-height:calc(52px + env(safe-area-inset-top));
+    padding:calc(4px + env(safe-area-inset-top)) 18px 4px;
+    gap:8px;
+  }
+  body.mobile-vnext-active .vnext-toolbar-left{
+    gap:7px;
+  }
+  body.mobile-vnext-active .vnext-wordmark{
+    font-size:13px;
+    letter-spacing:.07em;
+  }
+  body.mobile-vnext-active .vnext-live{
+    gap:4px;
+    font-size:10px;
+  }
+  body.mobile-vnext-active .vnext-live i{
+    width:6px;
+    height:6px;
+  }
+  body.mobile-vnext-active .vnext-period{
+    min-height:44px;
+    padding-inline:10px;
+    max-width:46vw;
+  }
+  body.mobile-vnext-active .vnext-toolbar>button:not(.vnext-period){
+    min-height:44px;
+  }
+
   body.mobile-vnext-active .vnext-module-rail[data-vnext-ia="domain"]{
+    top:calc(52px + env(safe-area-inset-top));
     gap:5px;
-    padding-top:4px;
-    padding-bottom:5px;
+    padding-top:3px;
+    padding-bottom:3px;
     scroll-padding-inline:18px;
     scroll-snap-type:x proximity;
     -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
@@ -135,6 +166,11 @@
   }
 
   @media (max-width:390px){
+    body.mobile-vnext-active .vnext-toolbar,
+    body.mobile-vnext-active .vnext-search-toolbar{
+      padding-left:15px;
+      padding-right:15px;
+    }
     body.mobile-vnext-active .vnext-main[data-vnext-page="today"]{
       padding-left:15px;
       padding-right:15px;
