@@ -15,6 +15,14 @@
     script.async=false;
     document.head.appendChild(script);
   }
+  function loadMasterDataImportPeriod(){
+    if(document.getElementById('masterDataImportPeriodRuntime')) return;
+    const script=document.createElement('script');
+    script.id='masterDataImportPeriodRuntime';
+    script.src='./master-data-import-period.js';
+    script.async=false;
+    document.head.appendChild(script);
+  }
   function loadOperationLog(){
     if(!document.getElementById('operationLogStyles')){
       const link=document.createElement('link');
@@ -33,6 +41,7 @@
   }
   loadImportReportCompat();
   loadMultiFileImport();
+  loadMasterDataImportPeriod();
   loadOperationLog();
 
   document.body.classList.add('studio-v44');
