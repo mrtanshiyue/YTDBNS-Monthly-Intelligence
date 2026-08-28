@@ -73,6 +73,12 @@
     }
   }
 
+  function settlePrimaryRouteAtTop(event) {
+    if (!media.matches || !event.target.closest('.vnext-tabbar [data-vnext-tab]')) return;
+    /* Core render preserves scroll on rerender. Run after its queued frame so real route changes finish at the top. */
+    requestAnimationFrame(() => window.scrollTo(0, 0));
+  }
+
   const observer = new MutationObserver(() => {
     if (syncing) return;
     requestAnimationFrame(syncRail);
@@ -82,6 +88,7 @@
   root.addEventListener('click', event => {
     if (event.target.closest('[data-vnext-tab], [data-vnext-module]')) requestAnimationFrame(syncRail);
   }, true);
+  root.addEventListener('click', settlePrimaryRouteAtTop);
   window.addEventListener('popstate', () => requestAnimationFrame(syncRail));
   media.addEventListener?.('change', () => requestAnimationFrame(syncRail));
 
