@@ -34,7 +34,7 @@
       if (state.filter === 'trafficLowCvr') return row.sessions != null && Number(row.sessions) >= avgSessions && row.cvr != null && totalCvr != null && Number(row.cvr) < Number(totalCvr);
       if (state.filter === 'buyBoxLow') return row.buyBox != null && Number(row.buyBox) < .90;
       if (state.filter === 'topSeller') return topIds.has(row.id);
-      if (state.filter === 'lowVelocity') return Number(row.units || 0) <= 1;
+      if (state.filter === 'lowVelocity') return row.units != null && Number(row.units) <= 1;
       return true;
     });
     return [...filtered].sort((a, b) => {
@@ -59,22 +59,24 @@
     const model = selectors.productsModel(runtimeState);
     const filtered = filteredRows(model.products, model.totals.cvr);
     const rows = filtered.slice(0, 30);
-    const buyBoxRows = model.products.filter(row => row.buyBox != null);
-    const avgBuyBox = buyBoxRows.length ? buyBoxRows.reduce((sum, row) => sum + Number(row.buyBox || 0), 0) / buyBoxRows.length : null;
     const withSessions = model.products.filter(row => row.sessions != null);
     const avgSessions = withSessions.length ? withSessions.reduce((sum, row) => sum + Number(row.sessions || 0), 0) / withSessions.length : 0;
     const trafficLowCvr = model.products.filter(row => row.sessions != null && Number(row.sessions) >= avgSessions && row.cvr != null && model.totals.cvr != null && Number(row.cvr) < Number(model.totals.cvr)).length;
     const buyBoxLow = model.products.filter(row => row.buyBox != null && Number(row.buyBox) < .90).length;
-    const lowVelocity = model.products.filter(row => Number(row.units || 0) <= 1).length;
-    const issueCount = new Set(model.products.filter(row => (row.buyBox != null && Number(row.buyBox) < .90) || (row.sessions != null && Number(row.sessions) >= avgSessions && row.cvr != null && model.totals.cvr != null && Number(row.cvr) < Number(model.totals.cvr)) || Number(row.units || 0) <= 1).map(row => row.id)).size;
+    const lowVelocity = model.products.filter(row => row.units != null && Number(row.units) <= 1).length;
+    const issueCount = new Set(model.products.filter(row =>
+      (row.buyBox != null && Number(row.buyBox) < .90) ||
+      (row.sessions != null && Number(row.sessions) >= avgSessions && row.cvr != null && model.totals.cvr != null && Number(row.cvr) < Number(model.totals.cvr)) ||
+      (row.units != null && Number(row.units) <= 1)
+    ).map(row => row.id)).size;
 
     const empty = !rows.length ? `
       <div class="v5-core-empty"><strong>${model.products.length ? '当前筛选没有匹配 SKU' : '当前期间没有 SKU 明细'}</strong><span>${model.products.length ? '调整筛选条件查看其他商品。' : '商品明细使用完整月份数据；顶部仍保留所选期间经营汇总。'}</span></div>` : '';
 
     const cards = rows.map(row => {
-      const lowCvr = row.cvr != null && model.totals.cvr != null && Number(row.cvr) < Number(model.totals.cvr);
+      const lowCvr = row.sessions != null && row.cvr != null && model.totals.cvr != null && Number(row.cvr) < Number(model.totals.cvr);
       const lowBuyBox = row.buyBox != null && Number(row.buyBox) < .90;
-      const lowVelocityRow = Number(row.units || 0) <= 1;
+      const lowVelocityRow = row.units != null && Number(row.units) <= 1;
       const risk = lowBuyBox || lowCvr || lowVelocityRow ? 'warning' : 'positive';
       return `
         <button type="button" class="v5-record-card v5-risk-${risk}" data-record-type="product" data-record-id="${esc(row.id)}" aria-label="查看商品 ${esc(row.sku)} 详情">
