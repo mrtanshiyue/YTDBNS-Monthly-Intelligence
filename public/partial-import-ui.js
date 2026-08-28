@@ -9,7 +9,6 @@
   const commitButton = document.getElementById('commitBtn');
   const validateButton = document.getElementById('validateBtn');
   const monthInput = document.getElementById('importMonth');
-  const periodStatus = document.getElementById('importPeriodStatus');
   const fileInput = document.getElementById('importFiles');
   const toastStack = document.getElementById('toastStack');
   if (!engine || !normalizer || !sourceCount || !sourceBar || !validationBox || !commitButton || !validateButton || !monthInput || !fileInput) return;
@@ -48,6 +47,9 @@
       if (found) return found[1];
     }
     return '';
+  }
+  function setText(node, value) {
+    if (node && node.textContent !== value) node.textContent = value;
   }
 
   function buildReturnEvents(roleMap) {
@@ -168,7 +170,7 @@
       progress.appendChild(note);
     }
     const label = progress.querySelector('.source-progress-top b');
-    if (label) label.textContent = '本次识别数据源';
+    setText(label, '本次识别数据源');
   }
 
   function countFromUi() {
@@ -182,25 +184,27 @@
     const validated = Boolean(validationBox.querySelector('.validation-line')) && !validationBox.textContent.includes('计算失败');
     const monthReady = /^\d{4}-\d{2}$/.test(monthInput.value || '');
     const live = document.documentElement.dataset.dataTruth === 'live-only' || /D1/.test(document.getElementById('dbModeLabel')?.textContent || '');
-    sourceCount.textContent = count ? `${count} 类` : '0 类';
+    const countLabel = count ? `${count} 类` : '0 类';
+    setText(sourceCount, countLabel);
     const progress = sourceCount.closest('.source-progress');
-    if (progress) progress.dataset.partialReady = count > 0 ? 'true' : 'false';
-    if (count > 0) sourceBar.style.width = '100%';
-    else sourceBar.style.width = '0%';
+    const readyValue = count > 0 ? 'true' : 'false';
+    if (progress && progress.dataset.partialReady !== readyValue) progress.dataset.partialReady = readyValue;
+    const width = count > 0 ? '100%' : '0%';
+    if (sourceBar.style.width !== width) sourceBar.style.width = width;
 
     for (const line of validationBox.querySelectorAll('.validation-line')) {
       const title = line.querySelector('b');
       const value = line.querySelector('span');
       if (!title || !value) continue;
-      if (title.textContent.trim() === '9类数据源' || title.textContent.trim() === '本次数据源') {
-        title.textContent = '本次识别数据源';
-        value.textContent = `${count} 类 · 可独立写入`;
+      if (title.textContent.trim() === '9类数据源' || title.textContent.trim() === '本次数据源' || title.textContent.trim() === '本次识别数据源') {
+        setText(title, '本次识别数据源');
+        setText(value, `${count} 类 · 可独立写入`);
         value.classList.remove('warn');
         value.classList.add('good');
       }
     }
 
-    if (validated && count > 0 && monthReady && live && commitButton.textContent.trim() !== '正在写入…') {
+    if (validated && count > 0 && monthReady && live && commitButton.textContent.trim() !== '正在写入…' && commitButton.disabled) {
       commitButton.disabled = false;
     }
   }
@@ -257,8 +261,8 @@
     const detail = box.querySelector('#importPeriodDetail');
     const [year, number] = month.split('-');
     box.dataset.state = 'warn';
-    if (value) value.textContent = `${year}年${Number(number)}月`;
-    if (detail) detail.textContent = `已从 ${evidence.map(item => ROLE_LABELS[item.role] || item.role).join('、')} 的日期字段自动识别；本次可单独写入。`;
+    setText(value, `${year}年${Number(number)}月`);
+    setText(detail, `已从 ${evidence.map(item => ROLE_LABELS[item.role] || item.role).join('、')} 的日期字段自动识别；本次可单独写入。`);
     monthInput.value = month;
     validateButton.disabled = false;
   }
