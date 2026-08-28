@@ -81,13 +81,12 @@
   );
 
   async function resolveLiveInventoryDetail(month, monthDetail, to) {
-    for (const candidate of inventoryReferenceMonths(to)) {
-      const detail = candidate === month && monthDetail
-        ? monthDetail
-        : await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(candidate)}`).catch(() => null);
-      if (hasInventorySnapshot(detail)) return detail;
-    }
-    return null;
+    const candidate = inventoryReferenceMonth(to);
+    if (!candidate) return null;
+    const detail = candidate === month && monthDetail
+      ? monthDetail
+      : await requestJson(`/api/month?store=yt-us&month=${encodeURIComponent(candidate)}`).catch(() => null);
+    return hasInventorySnapshot(detail) ? detail : null;
   }
 
   const monthOverlapDays = (month, from, to) => {
