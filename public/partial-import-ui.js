@@ -192,11 +192,16 @@
     const width = count > 0 ? '100%' : '0%';
     if (sourceBar.style.width !== width) sourceBar.style.width = width;
 
-    for (const line of validationBox.querySelectorAll('.validation-line')) {
+    for (const line of [...validationBox.querySelectorAll('.validation-line')]) {
       const title = line.querySelector('b');
       const value = line.querySelector('span');
       if (!title || !value) continue;
-      if (title.textContent.trim() === '9类数据源' || title.textContent.trim() === '本次数据源' || title.textContent.trim() === '本次识别数据源') {
+      const titleText = title.textContent.trim();
+      if (titleText === '识别数据源') {
+        line.remove();
+        continue;
+      }
+      if (titleText === '9类数据源' || titleText === '本次数据源' || titleText === '本次识别数据源') {
         setText(title, '本次识别数据源');
         setText(value, `${count} 类 · 可独立写入`);
         value.classList.remove('warn');
