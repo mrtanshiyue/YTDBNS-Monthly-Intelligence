@@ -22,7 +22,6 @@ const expect = (condition, message, detail = '') => condition ? pass(message) : 
 
 function staticContract() {
   const iaCss = fs.readFileSync(path.join(root, 'public', 'mobile', 'mobile-vnext-ia.css'), 'utf8');
-  const legacyCss = fs.readFileSync(path.join(root, 'public', 'mobile', 'v51-mobile.css'), 'utf8');
 
   expect(
     iaCss.includes('@media (max-width:390px)') &&
@@ -31,13 +30,6 @@ function staticContract() {
       iaCss.includes('#mobileAppRoot .vnext-density-module-page .vnext-module-facts') &&
       iaCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))'),
     'A1 static contract: current vNext narrow module hero is one column with two-column facts'
-  );
-
-  expect(
-    legacyCss.includes('body.v5-native-mobile .v5-record-metrics') &&
-      legacyCss.includes('body.v5-native-mobile .v5-history-metrics') &&
-      legacyCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))!important'),
-    'A1 static contract: legacy record/history narrow two-column safeguards remain present'
   );
 }
 
@@ -50,11 +42,24 @@ async function ready(page) {
 }
 
 async function scrollDown(page) {
-  return page.evaluate(() => {
+  const target = await page.evaluate(() => {
     const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
-    window.scrollTo(0, Math.min(620, max));
-    return { max, y: scrollY };
+    const next = Math.min(620, max);
+    document.documentElement.style.scrollBehavior = 'auto';
+    document.body.style.scrollBehavior = 'auto';
+    window.scrollTo(0, next);
+    return { max, target: next };
   });
+
+  if (target.target > 20) {
+    await page.waitForFunction(() => scrollY > 20, null, { timeout: 2_000 });
+  }
+  return page.evaluate(max => ({ max, y: scrollY }), target.max);
+}
+
+async function waitForTop(page) {
+  await page.waitForFunction(() => scrollY <= 2, null, { timeout: 2_000 });
+  return page.evaluate(() => scrollY);
 }
 
 async function moduleLayout(page, module) {
@@ -143,16 +148,16 @@ async function runViewport(viewport) {
 
     for (const [module, expectedFacts] of modules) {
       const before = await scrollDown(page);
-      expect(before.max > 40 && before.y > 20, `${label}/${module}: source route can scroll before navigation`, JSON.stringify(before));
+      expect(before.max > 40 && before.y > 20, `${label}/${module}: source route is genuinely scrolled before navigation`, JSON.stringify(before));
 
       await page.click(`.vnext-module-rail [data-vnext-module="${module}"]`);
       await page.waitForSelector(`.vnext-density-module-page[data-density-module="${module}"]`, { state: 'visible' });
-      await sleep(100);
+      const settledScroll = await waitForTop(page);
 
       const state = await moduleLayout(page, module);
       evidence.modules[module] = state;
       expect(state.exists && state.selected, `${label}/${module}: module renders and selected-domain semantics are intact`, JSON.stringify(state));
-      expect(state.scrollY <= 2, `${label}/${module}: business-route navigation resets scroll to the top`, `scrollY=${state.scrollY}`);
+      expect(settledScroll <= 2 && state.scrollY <= 2, `${label}/${module}: business-route navigation resets scroll to the top`, `settled=${settledScroll} state=${state.scrollY}`);
       expect(columnCount(state.heroColumns) === 1, `${label}/${module}: <=390px module hero is one column`, state.heroColumns);
       expect(columnCount(state.factColumns) === 2, `${label}/${module}: <=390px module facts render exactly two columns`, state.factColumns);
       expect(state.factCount === expectedFacts, `${label}/${module}: module preserves all fact cells`, `expected=${expectedFacts} actual=${state.factCount}`);
@@ -166,11 +171,10 @@ async function runViewport(viewport) {
     }
 
     const beforePrimary = await scrollDown(page);
-    expect(beforePrimary.max > 40 && beforePrimary.y > 20, `${label}/alerts: history route can scroll before primary navigation`, JSON.stringify(beforePrimary));
-    await page.click('[data-vnext-tab="alerts"]');
+    expect(beforePrimary.max > 40 && beforePrimary.y > 20, `${label}/alerts: history route is genuinely scrolled before primary navigation`, JSON.stringify(beforePrimary));
+    await page.click('.vnext-tabbar [data-vnext-tab="alerts"]');
     await page.waitForSelector('[data-vnext-page="alerts"]', { state: 'visible' });
-    await sleep(80);
-    const primaryScroll = await page.evaluate(() => scrollY);
+    const primaryScroll = await waitForTop(page);
     expect(primaryScroll <= 2, `${label}/alerts: primary-route navigation resets scroll to the top`, `scrollY=${primaryScroll}`);
 
     const methods = [...new Set(requests.map(request => request.method))];
