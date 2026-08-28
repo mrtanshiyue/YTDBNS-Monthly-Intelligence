@@ -1,0 +1,62 @@
+name: Report Source Inventory
+on:
+  push:
+    branches: [refactor/report-source-consolidation]
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query production import evidence
+        run: |
+          set -euo pipefail
+          base='https://ytdbns-monthly-intelligence.tanshiyuesir.workers.dev'
+          curl -fsS "$base/api/operation-logs?store=ytdbns&limit=200" -o /tmp/logs.json
+          curl -fsS "$base/api/imports?store=ytdbns" -o /tmp/imports.json
+          node <<'NODE'
+          const fs=require('fs');
+          const logs=JSON.parse(fs.readFileSync('/tmp/logs.json','utf8'));
+          const imports=JSON.parse(fs.readFileSync('/tmp/imports.json','utf8'));
+          const out={
+            generatedAt:new Date().toISOString(),
+            logCount:Array.isArray(logs.logs)?logs.logs.length:0,
+            reportTypes:{},
+            committedBatches:[],
+            batches:Array.isArray(imports.batches)?imports.batches.map(b=>({
+              id:b.id,
+              report_month:b.report_month,
+              status:b.status,
+              model_status:b.model_status,
+              file_count:b.file_count,
+              source_count:b.source_count,
+              stored_files:b.stored_files,
+              created_at:b.created_at,
+              committed_at:b.committed_at
+            })):[]
+          };
+          for(const log of (logs.logs||[])){
+            if(log.event_type==='FILE_STORED'){
+              const t=log?.detail?.reportType||'unknown';
+              out.reportTypes[t]=(out.reportTypes[t]||0)+1;
+            }
+            if(log.event_type==='IMPORT_COMMITTED'){
+              out.committedBatches.push({
+                batchId:log.batch_id,
+                reportMonth:log.report_month,
+                status:log.status,
+                rowCounts:log?.detail?.rowCounts||{},
+                files:(log?.detail?.files||[]).map(f=>({reportType:f.reportType,rowCount:f.rowCount,status:f.status})),
+                touchedMonths:log?.detail?.touchedMonths||[]
+              });
+            }
+          }
+          fs.writeFileSync('/tmp/report-source-inventory.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify({reportTypes:out.reportTypes,batchCount:out.batches.length,committedCount:out.committedBatches.length}));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report-source-inventory
+          path: /tmp/report-source-inventory.json
+          if-no-files-found: error
