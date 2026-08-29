@@ -9,7 +9,9 @@
   const VNEXT_HISTORY_KEY = 'ytdbnsMobileVnext';
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
   const NAVIGATION_SEVERITIES = new Set(['all', 'critical', 'warning']);
+  const DETAIL_REF_TYPES = new Set(['signal', 'result']);
   const QUERY_LIMIT = 256;
+  const DETAIL_REF_ID_LIMIT = 512;
   const nativePushState = history.pushState.bind(history);
   const nativeReplaceState = history.replaceState.bind(history);
   let pendingPeriodSelection = false;
@@ -20,6 +22,10 @@
   let restoringNavigationContext = false;
   let navigationPersistFrame = 0;
   let navigationRestoreFrame = 0;
+  let pendingDetailRef = null;
+  let restoringDetailContext = false;
+  let detailRestoreFrame = 0;
+  let detailRefClearFrame = 0;
 
   const syncRuntimeMode = next => {
     const mode = next?.mode || runtime?.getState?.()?.mode || '';
@@ -60,6 +66,25 @@
     return value.slice(0, QUERY_LIMIT);
   }
 
+  function normalizeDetailRef(value) {
+    if (!value || typeof value !== 'object') return null;
+    const type = String(value.type || '');
+    const id = String(value.id || '').slice(0, DETAIL_REF_ID_LIMIT);
+    return DETAIL_REF_TYPES.has(type) && id ? { type, id } : null;
+  }
+
+  function detailRefFromState(source = history.state) {
+    const payload = source?.[VNEXT_HISTORY_KEY];
+    if (!payload || typeof payload !== 'object') return null;
+    return normalizeDetailRef(payload.detailRef);
+  }
+
+  function setPendingDetailRef(next) {
+    const normalized = normalizeDetailRef(next);
+    pendingDetailRef = normalized ? Object.freeze({ ...normalized }) : null;
+    return pendingDetailRef;
+  }
+
   function navigationContextFromState(source = history.state, fallback = { severity: 'all', query: '' }) {
     const payload = source?.[VNEXT_HISTORY_KEY];
     if (!payload || typeof payload !== 'object') {
@@ -88,11 +113,15 @@
     if (!payload || typeof payload !== 'object') return candidate;
     const range = rangeFromState(candidate) || rangeFromState(history.state) || runtimeRange();
     const context = navigationContextFromState(candidate, navigationContext);
+    const detailRef = payload.detailKey
+      ? (normalizeDetailRef(payload.detailRef) || pendingDetailRef)
+      : null;
     return {
       ...candidate,
       [VNEXT_HISTORY_KEY]: {
         ...payload,
         ...context,
+        detailRef: detailRef ? { ...detailRef } : null,
         ...(range || {})
       }
     };
@@ -120,7 +149,11 @@
 
   history.pushState = function mobilePeriodPushState(state, title, url) {
     const enriched = enrichVnextHistoryState(state);
-    const result = nativePushState(enriched, title, url);
+    const payload = enriched?.[VNEXT_HISTORY_KEY];
+    const result = restoringDetailContext && payload?.detailKey
+      ? nativeReplaceState(enriched, title, url)
+      : nativePushState(enriched, title, url);
+    setPendingDetailRef(null);
     if (navigationDestinationNeedsRestore(enriched)) queueNavigationRestore();
     return result;
   };
@@ -128,6 +161,7 @@
   history.replaceState = function mobilePeriodReplaceState(state, title, url) {
     const enriched = enrichVnextHistoryState(state);
     const result = nativeReplaceState(enriched, title, url);
+    setPendingDetailRef(null);
     if (navigationDestinationNeedsRestore(enriched)) queueNavigationRestore();
     return result;
   };
@@ -216,6 +250,66 @@
     return true;
   }
 
+  function findDetailRestoreTarget(ref) {
+    const normalized = normalizeDetailRef(ref);
+    if (!normalized) return null;
+    const selector = normalized.type === 'signal' ? '[data-vnext-signal]' : '[data-vnext-result]';
+    const datasetKey = normalized.type === 'signal' ? 'vnextSignal' : 'vnextResult';
+    return [...root.querySelectorAll(selector)].find(node => node.dataset?.[datasetKey] === normalized.id) || null;
+  }
+
+  function restoreDetailContext() {
+    if (!mobile.matches || document.documentElement.dataset.mobileVnextReady !== 'true') return false;
+    const payload = history.state?.[VNEXT_HISTORY_KEY];
+    const ref = detailRefFromState(history.state);
+    const core = window.YT_MOBILE_VNEXT?.getState?.();
+    if (!payload?.detailKey || !ref || !core) return false;
+    if (core.detailOpen) return true;
+
+    const target = findDetailRestoreTarget(ref);
+    if (!target) return false;
+
+    restoringDetailContext = true;
+    setPendingDetailRef(ref);
+    try {
+      target.click();
+    } finally {
+      restoringDetailContext = false;
+      setPendingDetailRef(null);
+    }
+    return Boolean(window.YT_MOBILE_VNEXT?.getState?.()?.detailOpen);
+  }
+
+  function queueDetailRestore(attempt = 0) {
+    if (!mobile.matches) return;
+    const payload = history.state?.[VNEXT_HISTORY_KEY];
+    if (!payload?.detailKey || !detailRefFromState(history.state)) return;
+    if (detailRestoreFrame) cancelAnimationFrame(detailRestoreFrame);
+    detailRestoreFrame = requestAnimationFrame(() => {
+      detailRestoreFrame = 0;
+      if (restoreDetailContext()) return;
+      if (attempt < 8) queueDetailRestore(attempt + 1);
+    });
+  }
+
+  function captureDetailRefFromClick(event) {
+    if (restoringNavigationContext) return;
+    const signalId = event.target.closest('[data-vnext-signal]')?.dataset.vnextSignal;
+    const resultId = event.target.closest('[data-vnext-result]')?.dataset.vnextResult;
+    const next = signalId
+      ? { type: 'signal', id: signalId }
+      : (resultId ? { type: 'result', id: resultId } : null);
+    if (!next) return;
+
+    setPendingDetailRef(next);
+    if (detailRefClearFrame) cancelAnimationFrame(detailRefClearFrame);
+    detailRefClearFrame = requestAnimationFrame(() => {
+      detailRefClearFrame = 0;
+      const stored = detailRefFromState(history.state);
+      if (!stored || stored.type !== next.type || stored.id !== next.id) setPendingDetailRef(null);
+    });
+  }
+
   function mobileRuntimeReady(next) {
     return document.documentElement.dataset.mobileVnextReady === 'true' &&
       mobile.matches &&
@@ -255,6 +349,7 @@
   }
 
   root.addEventListener('click', event => {
+    captureDetailRefFromClick(event);
     if (event.target.closest('[data-vnext-quick], [data-vnext-period-month], [data-vnext-month], [data-density-month]')) {
       pendingPeriodSelection = true;
     }
@@ -291,6 +386,7 @@
     if (!mobile.matches) return;
     setNavigationContext(navigationContextFromState(event.state));
     queueNavigationRestore();
+    queueDetailRestore();
     if (pendingPeriodSelection) {
       pendingRestore = null;
       requestAnimationFrame(() => persistRuntimeRange(runtime?.getState?.()));
@@ -307,6 +403,7 @@
       persistNavigationContext();
       restoreNavigationContext();
       syncPeriodHistory(runtime?.getState?.());
+      queueDetailRestore();
     });
   });
   readyObserver.observe(document.documentElement, {
@@ -320,6 +417,7 @@
   runtime?.subscribe?.(next => {
     syncRuntimeMode(next);
     syncPeriodHistory(next);
+    if (history.state?.[VNEXT_HISTORY_KEY]?.detailKey && !window.YT_MOBILE_VNEXT?.getState?.()?.detailOpen) queueDetailRestore();
   });
   mobile.addEventListener?.('change', event => {
     if (!event.matches) return;
@@ -329,6 +427,7 @@
       persistNavigationContext();
       restoreNavigationContext();
       syncPeriodHistory(runtime?.getState?.());
+      queueDetailRestore();
     });
   });
 
@@ -376,6 +475,18 @@
           query: searchInput ? searchInput.value : null
         }),
         restoring: restoringNavigationContext
+      });
+    },
+    getDetailHistoryContext() {
+      const payload = history.state?.[VNEXT_HISTORY_KEY];
+      const ref = detailRefFromState(history.state);
+      const core = window.YT_MOBILE_VNEXT?.getState?.();
+      return Object.freeze({
+        history: ref ? Object.freeze({ ...ref }) : null,
+        detailKey: typeof payload?.detailKey === 'string' ? payload.detailKey : null,
+        pending: pendingDetailRef ? Object.freeze({ ...pendingDetailRef }) : null,
+        restoring: restoringDetailContext,
+        detailOpen: Boolean(core?.detailOpen)
       });
     }
   });
