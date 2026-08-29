@@ -387,6 +387,11 @@
     history.replaceState(next, document.title);
   }
 
+  function settleModuleAtTop() {
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, 0)));
+  }
+
   function setModule(module, { push = true } = {}) {
     if (!BUSINESS_MODULES.has(module)) return;
     state.module = module;
@@ -394,7 +399,7 @@
     if (push) history.pushState(next, document.title);
     else history.replaceState(next, document.title);
     applyEnhancements(true);
-    window.scrollTo(0, 0);
+    settleModuleAtTop();
   }
 
   function clearModule() {
