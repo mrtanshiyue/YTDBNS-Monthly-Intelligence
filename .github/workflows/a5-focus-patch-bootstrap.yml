@@ -1,0 +1,131 @@
+name: A5 Focus Patch Bootstrap
+
+on:
+  push:
+    branches:
+      - mobile-a5-period-sheet-focus-rerender
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Test: bootstrap A5 focus patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Apply narrow A5 focus lifecycle patch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('public/mobile/mobile-vnext.js')
+          text = p.read_text()
+
+          marker = "  runtime.subscribe(next => {\n"
+          helper = """  function focusPeriodSheetClose() {
+    const close = root.querySelector('.vnext-sheet [data-vnext-close-sheet]');
+    if (!close) return false;
+    try { close.focus({ preventScroll: true }); }
+    catch { close.focus(); }
+    return document.activeElement === close;
+  }
+
+"""
+          if text.count(marker) != 1:
+              raise SystemExit(f'runtime.subscribe marker count={text.count(marker)}')
+          text = text.replace(marker, helper + marker, 1)
+
+          old_sub = """  runtime.subscribe(next => {
+    const periodChanged = state.runtimeState?.from !== next.from || state.runtimeState?.to !== next.to;
+    state.runtimeState = next;
+"""
+          new_sub = """  runtime.subscribe(next => {
+    const preservePeriodSheetCloseFocus = state.sheet === 'period' &&
+      document.activeElement?.matches?.('.vnext-sheet [data-vnext-close-sheet]');
+    const periodChanged = state.runtimeState?.from !== next.from || state.runtimeState?.to !== next.to;
+    state.runtimeState = next;
+"""
+          if old_sub not in text:
+              raise SystemExit('runtime.subscribe contract changed')
+          text = text.replace(old_sub, new_sub, 1)
+
+          old_render = """    if (state.active && media.matches) {
+      render();
+      if (state.tab === 'trends') loadComparison();
+    }
+"""
+          new_render = """    if (state.active && media.matches) {
+      render();
+      if (preservePeriodSheetCloseFocus) requestAnimationFrame(focusPeriodSheetClose);
+      if (state.tab === 'trends') loadComparison();
+    }
+"""
+          if old_render not in text:
+              raise SystemExit('runtime render contract changed')
+          text = text.replace(old_render, new_render, 1)
+
+          old_activate = """    if (state.sheet === 'period') {
+      requestAnimationFrame(() => root.querySelector('.vnext-sheet [data-vnext-close-sheet]')?.focus());
+    }
+"""
+          new_activate = """    if (state.sheet === 'period') requestAnimationFrame(focusPeriodSheetClose);
+"""
+          if old_activate not in text:
+              raise SystemExit('activate focus contract changed')
+          text = text.replace(old_activate, new_activate, 1)
+          p.write_text(text)
+
+          p = Path('scripts/mobile-a5-period-sheet-reload-acceptance.mjs')
+          text = p.read_text()
+
+          storage_expect = """  expect(
+    !source.includes('localStorage.') && !source.includes('sessionStorage.'),
+    'A5 static contract: Reload continuity adds no browser-storage dependency'
+  );
+"""
+          focus_expect = """  expect(
+    source.includes('preservePeriodSheetCloseFocus') &&
+      source.includes('requestAnimationFrame(focusPeriodSheetClose)'),
+    'A5 static contract: runtime-driven rerenders preserve reconstructed period-sheet close focus'
+  );
+"""
+          if storage_expect not in text:
+              raise SystemExit('A5 static storage contract changed')
+          text = text.replace(storage_expect, focus_expect + storage_expect, 1)
+
+          old_reload = """    expect(evidence.afterReload.closeFocused, `${label}/reload: reconstructed dialog owns initial focus`, JSON.stringify(evidence.afterReload));
+
+    await page.goBack({ waitUntil: 'load' }).catch(() => null);
+"""
+          new_reload = """    expect(evidence.afterReload.closeFocused, `${label}/reload: reconstructed dialog owns initial focus`, JSON.stringify(evidence.afterReload));
+
+    await page.evaluate(() => window.YT_SHARED_RUNTIME?.refresh?.());
+    await waitReady(page);
+    await waitSheet(page);
+    evidence.afterRuntimeRefresh = await snapshot(page);
+    expectSheet(evidence.afterRuntimeRefresh, `${label}/runtime-refresh`, expected);
+    expect(evidence.afterRuntimeRefresh.closeFocused, `${label}/runtime-refresh: live-style runtime rerender preserves reconstructed dialog focus`, JSON.stringify(evidence.afterRuntimeRefresh));
+
+    await page.goBack({ waitUntil: 'load' }).catch(() => null);
+"""
+          if old_reload not in text:
+              raise SystemExit('A5 reload acceptance contract changed')
+          text = text.replace(old_reload, new_reload, 1)
+          p.write_text(text)
+          PY
+          node --check public/mobile/mobile-vnext.js
+          node --check scripts/mobile-a5-period-sheet-reload-acceptance.mjs
+          git diff --check
+          git diff -- public/mobile/mobile-vnext.js scripts/mobile-a5-period-sheet-reload-acceptance.mjs
+      - name: Commit product and permanent gate patch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/mobile/mobile-vnext.js scripts/mobile-a5-period-sheet-reload-acceptance.mjs
+          git commit -m 'Mobile A5: preserve period-sheet focus across runtime rerenders'
+          git push origin HEAD:mobile-a5-period-sheet-focus-rerender
