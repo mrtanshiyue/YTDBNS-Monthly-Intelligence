@@ -78,8 +78,23 @@ async function runQueuedRestoreRace() {
   page.on('pageerror', error => pageErrors.push(error.message || String(error)));
 
   try {
-    await page.setContent('<!doctype html><html><body><div id="mobileAppRoot"></div></body></html>');
+    await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="mobileAppRoot"></div></body></html>');
     await page.evaluate(() => {
+      const nativeMatchMedia = window.matchMedia.bind(window);
+      window.matchMedia = query => {
+        if (query !== '(max-width: 860px)') return nativeMatchMedia(query);
+        return {
+          matches: true,
+          media: query,
+          onchange: null,
+          addEventListener() {},
+          removeEventListener() {},
+          addListener() {},
+          removeListener() {},
+          dispatchEvent() { return true; }
+        };
+      };
+
       const listeners = new Set();
       const state = { mode: 'live', loading: false, error: null, from: '2026-01-01', to: '2026-01-31' };
       const snapshot = () => ({ ...state });
@@ -114,6 +129,9 @@ async function runQueuedRestoreRace() {
         ytdbnsMobileVnext: { tab: 'today', detailKey: null, sheet: null, from: '2026-01-01', to: '2026-01-31' }
       }, document.title);
     });
+
+    const harnessMobile = await page.evaluate(() => window.matchMedia('(max-width: 860px)').matches);
+    expect(harnessMobile === true, 'A3 queued restore harness: synthetic page explicitly satisfies the Mobile media contract');
 
     await page.addScriptTag({ content: bridge });
     await page.waitForTimeout(40);
