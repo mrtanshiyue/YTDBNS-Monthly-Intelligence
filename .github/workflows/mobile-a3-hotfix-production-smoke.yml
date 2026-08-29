@@ -1,0 +1,68 @@
+name: Mobile A3 Hotfix Production Smoke
+
+on:
+  push:
+    branches:
+      - acceptance/a3-hotfix-production-smoke
+
+permissions:
+  contents: read
+
+jobs:
+  production-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      A3_PRODUCTION_URL: https://ytdbns-monthly-intelligence.tanshiyuesir.workers.dev/
+    steps:
+      - name: Checkout exact acceptance head
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify Production serves exact-main hotfix bridge
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 8 --retry-delay 3 \
+            "${A3_PRODUCTION_URL}mobile/mobile-app-bridge.js" \
+            -o /tmp/production-mobile-app-bridge.js
+          cmp public/mobile/mobile-app-bridge.js /tmp/production-mobile-app-bridge.js
+          grep -q "explicitPeriodSelection" /tmp/production-mobile-app-bridge.js
+          grep -q "sameRange(existingRange, range)" /tmp/production-mobile-app-bridge.js
+          curl --fail --silent --show-error --retry 8 --retry-delay 3 \
+            "${A3_PRODUCTION_URL}api/health" \
+            -o /tmp/production-health.json
+          cat /tmp/production-health.json
+
+      - name: Install Playwright Chromium
+        run: npx playwright-core install chromium
+
+      - name: Run A3 Phase 2 Back Forward Reload against real Production
+        run: |
+          cp scripts/mobile-a3-period-history-acceptance.mjs scripts/.tmp-mobile-a3-hotfix-production-acceptance.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/.tmp-mobile-a3-hotfix-production-acceptance.mjs')
+          text = p.read_text()
+          old = "const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;"
+          new = "const entry = process.env.A3_PRODUCTION_URL;"
+          if old not in text:
+              raise SystemExit('acceptance entry contract changed')
+          p.write_text(text.replace(old, new, 1))
+          PY
+          node scripts/.tmp-mobile-a3-hotfix-production-acceptance.mjs
+
+      - name: Upload Production browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-a3-hotfix-production-${{ github.sha }}
+          path: artifacts/mobile-a3-period-history
+          if-no-files-found: ignore
+          retention-days: 7
