@@ -29,6 +29,10 @@ function staticContract() {
     bridge.includes('[data-vnext-month]') && bridge.includes('[data-density-month]'),
     'A3 period ownership static contract: direct user month selectors still create explicit period-write intent'
   );
+  expect(
+    bridge.includes('if (pendingRestore) requestAnimationFrame(() => restorePendingRange(runtime?.getState?.()));'),
+    'A3 period ownership static contract: an in-flight restore must resume the latest queued Back/Forward target'
+  );
 }
 
 async function ready(page) {
@@ -63,6 +67,128 @@ async function selectAlternateMonth(page) {
     return runtime?.from === from && runtime?.to === to && historyRange?.from === from && historyRange?.to === to;
   }, month, { timeout: 8_000 });
   return month;
+}
+
+async function runQueuedRestoreRace() {
+  const bridge = fs.readFileSync(path.join(root, 'public', 'mobile', 'mobile-app-bridge.js'), 'utf8');
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message || String(error)));
+
+  try {
+    await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="mobileAppRoot"></div></body></html>');
+    await page.evaluate(() => {
+      const nativeMatchMedia = window.matchMedia.bind(window);
+      window.matchMedia = query => {
+        if (query !== '(max-width: 860px)') return nativeMatchMedia(query);
+        return {
+          matches: true,
+          media: query,
+          onchange: null,
+          addEventListener() {},
+          removeEventListener() {},
+          addListener() {},
+          removeListener() {},
+          dispatchEvent() { return true; }
+        };
+      };
+
+      const listeners = new Set();
+      const state = { mode: 'live', loading: false, error: null, from: '2026-01-01', to: '2026-01-31' };
+      const snapshot = () => ({ ...state });
+      const publish = () => {
+        const next = snapshot();
+        for (const listener of listeners) listener(next);
+      };
+      window.__A3_RESTORE_CALLS = [];
+      window.YT_SHARED_RUNTIME = Object.freeze({
+        getState: snapshot,
+        subscribe(listener) {
+          listeners.add(listener);
+          listener(snapshot());
+          return () => listeners.delete(listener);
+        },
+        setRange(from, to) {
+          state.from = from;
+          state.to = to;
+          state.loading = true;
+          window.__A3_RESTORE_CALLS.push({ from, to, phase: 'start' });
+          publish();
+          return new Promise(resolve => setTimeout(() => {
+            state.loading = false;
+            publish();
+            window.__A3_RESTORE_CALLS.push({ from, to, phase: 'settled' });
+            resolve(snapshot());
+          }, 80));
+        }
+      });
+      document.documentElement.dataset.mobileVnextReady = 'true';
+      history.replaceState({
+        ytdbnsMobileVnext: { tab: 'today', detailKey: null, sheet: null, from: '2026-01-01', to: '2026-01-31' }
+      }, document.title);
+    });
+
+    const harnessMobile = await page.evaluate(() => window.matchMedia('(max-width: 860px)').matches);
+    expect(harnessMobile === true, 'A3 queued restore harness: synthetic page explicitly satisfies the Mobile media contract');
+
+    await page.addScriptTag({ content: bridge });
+    await page.waitForTimeout(40);
+
+    const result = await page.evaluate(async () => {
+      const makeState = (from, to) => ({
+        ytdbnsMobileVnext: { tab: 'today', detailKey: null, sheet: null, from, to }
+      });
+      const dispatchTarget = (from, to) => {
+        history.replaceState(makeState(from, to), document.title);
+        window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
+      };
+
+      dispatchTarget('2026-02-01', '2026-02-28');
+      await new Promise(resolve => setTimeout(resolve, 12));
+      dispatchTarget('2026-03-01', '2026-03-31');
+      await new Promise(resolve => setTimeout(resolve, 240));
+
+      const runtime = window.YT_SHARED_RUNTIME.getState();
+      return {
+        runtime: { from: runtime.from, to: runtime.to, loading: runtime.loading },
+        history: {
+          from: history.state?.ytdbnsMobileVnext?.from,
+          to: history.state?.ytdbnsMobileVnext?.to
+        },
+        period: window.YT_MOBILE_APP?.getPeriodContext?.(),
+        calls: [...window.__A3_RESTORE_CALLS]
+      };
+    });
+
+    const starts = result.calls.filter(call => call.phase === 'start');
+    expect(
+      starts.length >= 2 && starts[0].from === '2026-02-01' && starts.at(-1).from === '2026-03-01',
+      'A3 queued restore race: Forward target is resumed after the in-flight Back restore settles',
+      JSON.stringify(result)
+    );
+    expect(
+      result.history.from === '2026-03-01' && result.history.to === '2026-03-31',
+      'A3 queued restore race: Browser History keeps ownership of the latest Forward period',
+      JSON.stringify(result)
+    );
+    expect(
+      result.runtime.from === '2026-03-01' && result.runtime.to === '2026-03-31' && result.runtime.loading === false,
+      'A3 queued restore race: runtime converges to the latest Forward period instead of remaining stranded on Back',
+      JSON.stringify(result)
+    );
+    expect(
+      result.period?.history?.from === '2026-03-01' && result.period?.runtime?.from === '2026-03-01' && result.period?.restoring === false,
+      'A3 queued restore race: public period context converges with no restore left in flight',
+      JSON.stringify(result.period)
+    );
+    expect(pageErrors.length === 0, 'A3 queued restore race: zero page errors', JSON.stringify(pageErrors));
+  } catch (error) {
+    fail('A3 queued restore race acceptance completed', error.stack || error.message || String(error));
+  } finally {
+    await browser.close();
+  }
 }
 
 async function run(viewport) {
@@ -138,6 +264,7 @@ async function run(viewport) {
 }
 
 staticContract();
+await runQueuedRestoreRace();
 for (const viewport of [{ width: 393, height: 852 }, { width: 430, height: 932 }]) await run(viewport);
 
 if (failures.length) {

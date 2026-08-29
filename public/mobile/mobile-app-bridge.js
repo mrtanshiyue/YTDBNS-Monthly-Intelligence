@@ -114,7 +114,12 @@
     Promise.resolve(runtime.setRange(target.from, target.to))
       .catch(() => null)
       .finally(() => {
-        if (serial === restoreSerial) restoringPeriod = false;
+        if (serial !== restoreSerial) return;
+        restoringPeriod = false;
+        // A newer Back/Forward target can arrive while this restore is in flight.
+        // Resume the latest queued target immediately when the current range load
+        // settles so Browser Forward cannot strand history and runtime on different periods.
+        if (pendingRestore) requestAnimationFrame(() => restorePendingRange(runtime?.getState?.()));
       });
     return true;
   }
