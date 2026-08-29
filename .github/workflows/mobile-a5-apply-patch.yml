@@ -47,43 +47,15 @@ jobs:
               mobile.write_text(text.replace(old, new, 1))
           elif "state.sheet = payload.sheet === 'period' ? 'period' : null" not in text:
               raise SystemExit('Expected mobile-vnext activation block not found')
-
-          workflow = Path('.github/workflows/ui-integrity.yml')
-          text = workflow.read_text()
-          syntax_old = '          node --check scripts/mobile-a4-detail-history-acceptance.mjs\n'
-          syntax_new = syntax_old + '          node --check scripts/mobile-a5-period-sheet-reload-acceptance.mjs\n'
-          if 'node --check scripts/mobile-a5-period-sheet-reload-acceptance.mjs' not in text:
-              if syntax_old not in text:
-                  raise SystemExit('Expected A4 syntax gate not found')
-              text = text.replace(syntax_old, syntax_new, 1)
-
-          step_old = """      - name: Mobile A4 detail-history Chromium acceptance
-                  run: node scripts/mobile-a4-detail-history-acceptance.mjs
-          """.replace('          ', '')
-          step_new = step_old + """      - name: Mobile A5 period-sheet Reload Chromium acceptance
-                  run: node scripts/mobile-a5-period-sheet-reload-acceptance.mjs
-          """.replace('          ', '')
-          if 'Mobile A5 period-sheet Reload Chromium acceptance' not in text:
-              if step_old not in text:
-                  raise SystemExit('Expected A4 browser gate not found')
-              text = text.replace(step_old, step_new, 1)
-
-          artifact_old = '            artifacts/mobile-a4-detail-history\n'
-          artifact_new = artifact_old + '            artifacts/mobile-a5-period-sheet-reload\n'
-          if 'artifacts/mobile-a5-period-sheet-reload' not in text:
-              if artifact_old not in text:
-                  raise SystemExit('Expected A4 artifact path not found')
-              text = text.replace(artifact_old, artifact_new, 1)
-          workflow.write_text(text)
           PY
-      - name: Commit patch
+      - name: Commit product patch
         run: |
           if git diff --quiet; then
-            echo "A5 patch already applied"
+            echo "A5 product patch already applied"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/mobile/mobile-vnext.js .github/workflows/ui-integrity.yml
+          git add public/mobile/mobile-vnext.js
           git commit -m "Mobile A5: restore period sheet across Reload (#65)"
           git push origin HEAD:mobile-a5-period-sheet-reload
