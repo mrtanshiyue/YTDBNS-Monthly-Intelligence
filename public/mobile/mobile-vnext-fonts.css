@@ -1,5 +1,235 @@
 @media (max-width:860px){
+  :root{
+    --vx-bg:#F5F4F0;
+    --vx-surface:#FFFEFC;
+    --vx-ink:#1A1C19;
+    --vx-muted:#656A64;
+    --vx-faint:#858A84;
+    --vx-line:rgba(27,31,27,.11);
+    --vx-accent:#246B59;
+    --vx-accent-soft:#E9F1ED;
+    --vx-radius:18px;
+    --vx-shadow:0 8px 28px rgba(24,28,24,.055),0 1px 0 rgba(255,255,255,.82) inset;
+  }
+
   #mobileAppRoot.v5-mobile-root{
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",system-ui,"Helvetica Neue",Arial,sans-serif;
+    background:var(--vx-bg);
+  }
+
+  /* Phase 5A visual system: calmer chrome, stronger text contrast, one surface language. */
+  #mobileAppRoot .vnext-toolbar,
+  #mobileAppRoot .vnext-search-toolbar{
+    background:rgba(245,244,240,.90);
+  }
+  #mobileAppRoot .vnext-toolbar:after,
+  #mobileAppRoot .vnext-search-toolbar:after{
+    background:rgba(27,31,27,.055);
+  }
+  #mobileAppRoot .vnext-period,
+  #mobileAppRoot .vnext-period-icon,
+  #mobileAppRoot .vnext-search-field{
+    background:rgba(255,254,252,.88);
+    box-shadow:0 0 0 1px var(--vx-line) inset;
+  }
+
+  /* Secondary business rail is context, not a second primary navigation bar. */
+  #mobileAppRoot .vnext-module-rail{
+    background:rgba(245,244,240,.94);
+    border-bottom-color:rgba(27,31,27,.055);
+  }
+  #mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button{
+    border-radius:13px;
+    background:rgba(255,254,252,.62);
+    box-shadow:0 0 0 1px rgba(27,31,27,.08) inset;
+    color:var(--vx-muted);
+    font-weight:680;
+  }
+  #mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button b{
+    background:rgba(27,31,27,.055);
+    color:var(--vx-faint);
+  }
+  #mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active{
+    background:var(--vx-accent-soft)!important;
+    color:var(--vx-accent)!important;
+    box-shadow:0 0 0 1px rgba(36,107,89,.20) inset!important;
+  }
+  #mobileAppRoot .vnext-module-rail[data-vnext-ia="domain"] button.active b{
+    background:rgba(36,107,89,.10)!important;
+    color:var(--vx-accent)!important;
+  }
+
+  /* Cards share the same radius, border and restrained elevation. */
+  #mobileAppRoot .vnext-list,
+  #mobileAppRoot .vnext-module-hero,
+  #mobileAppRoot .vnext-dense-list,
+  #mobileAppRoot .vnext-history-dense,
+  #mobileAppRoot .vnext-import-dense,
+  #mobileAppRoot .vnext-compare-table,
+  #mobileAppRoot .vnext-bars{
+    border-radius:18px;
+    background:var(--vx-surface);
+    box-shadow:0 0 0 1px rgba(27,31,27,.085),0 5px 18px rgba(24,28,24,.028);
+  }
+  #mobileAppRoot .vnext-module-facts,
+  #mobileAppRoot .vnext-finance-grid{
+    border-radius:13px;
+    background:rgba(27,31,27,.09);
+  }
+  #mobileAppRoot .vnext-module-facts span,
+  #mobileAppRoot .vnext-finance-grid>div,
+  #mobileAppRoot .vnext-dense-record,
+  #mobileAppRoot .vnext-history-dense button{
+    background:var(--vx-surface);
+  }
+
+  /* Dense operating rows: readable metadata without competing with the decision value. */
+  #mobileAppRoot .vnext-dense-record{
+    min-height:70px;
+    padding:10px 12px 10px 14px;
+  }
+  #mobileAppRoot .vnext-dense-record-copy small{
+    font-size:9px;
+    line-height:1.15;
+    letter-spacing:.035em;
+    color:var(--vx-faint);
+  }
+  #mobileAppRoot .vnext-dense-record-copy strong{
+    margin-top:3px;
+    font-size:12.5px;
+    line-height:1.25;
+    font-weight:720;
+  }
+  #mobileAppRoot .vnext-dense-record-copy em{
+    margin-top:3px;
+    font-size:9.5px;
+    line-height:1.3;
+    color:var(--vx-muted);
+  }
+  #mobileAppRoot .vnext-dense-record-value{
+    gap:2px;
+  }
+  #mobileAppRoot .vnext-dense-record-value b{
+    font-size:13px;
+    font-weight:760;
+  }
+  #mobileAppRoot .vnext-dense-record-value small{
+    font-size:9px;
+    line-height:1.2;
+    color:var(--vx-muted);
+  }
+
+  /* Hero and section hierarchy: Chinese title first, English/business metadata clearly secondary. */
+  #mobileAppRoot .vnext-module-hero>div:first-child>span{
+    font-size:10px;
+    font-weight:680;
+    color:var(--vx-muted);
+  }
+  #mobileAppRoot .vnext-module-hero>div:first-child>strong{
+    font-weight:760;
+  }
+  #mobileAppRoot .vnext-module-facts small{
+    font-size:9px;
+    color:var(--vx-faint);
+  }
+  #mobileAppRoot .vnext-module-facts b{
+    font-size:11.5px;
+    font-weight:730;
+  }
+  #mobileAppRoot .vnext-module-section>header>span,
+  #mobileAppRoot .vnext-section-head>div>span{
+    letter-spacing:.055em;
+    color:var(--vx-faint);
+  }
+  #mobileAppRoot .vnext-module-section>header h2,
+  #mobileAppRoot .vnext-section-head h2{
+    color:var(--vx-ink);
+    font-weight:740;
+  }
+
+  /* Filter / sort controls keep selection visible without becoming another black navigation layer. */
+  #mobileAppRoot .vnext-operational-control{
+    grid-template-columns:40px minmax(0,1fr);
+    gap:8px;
+  }
+  #mobileAppRoot .vnext-operational-control>span{
+    font-size:10px;
+    letter-spacing:.035em;
+    color:var(--vx-faint);
+  }
+  #mobileAppRoot .vnext-filter-tags button,
+  #mobileAppRoot .vnext-sort-tags button,
+  #mobileAppRoot .vnext-quick-search button{
+    border-radius:13px;
+    background:rgba(255,254,252,.84);
+    box-shadow:0 0 0 1px rgba(27,31,27,.09) inset;
+  }
+  #mobileAppRoot .vnext-filter-tags button.active,
+  #mobileAppRoot .vnext-sort-tags button.active{
+    background:var(--vx-accent-soft);
+    box-shadow:0 0 0 1px rgba(36,107,89,.18) inset;
+  }
+
+  /* Workspace cards should read as four related destinations, not four separate visual systems. */
+  #mobileAppRoot .vnext-workspace-grid{
+    gap:9px;
+  }
+  #mobileAppRoot .vnext-workspace-card{
+    border-radius:16px;
+    background:var(--vx-surface);
+    box-shadow:0 0 0 1px rgba(27,31,27,.085),0 4px 14px rgba(24,28,24,.022);
+  }
+  #mobileAppRoot .vnext-workspace-card-copy small{
+    font-size:9px;
+    letter-spacing:.04em;
+    color:var(--vx-faint);
+  }
+  #mobileAppRoot .vnext-workspace-card-copy strong{
+    color:var(--vx-ink);
+  }
+  #mobileAppRoot .vnext-workspace-card-value b{
+    color:var(--vx-ink);
+  }
+  #mobileAppRoot .vnext-workspace-back{
+    border-radius:13px;
+    background:var(--vx-accent-soft);
+    box-shadow:0 0 0 1px rgba(36,107,89,.16) inset;
+  }
+
+  /* Alerts / search rows use the same typographic contrast as operating tables. */
+  #mobileAppRoot .vnext-signal-copy strong,
+  #mobileAppRoot .vnext-result-copy strong{
+    color:var(--vx-ink);
+    font-weight:710;
+  }
+  #mobileAppRoot .vnext-signal-copy small,
+  #mobileAppRoot .vnext-result-copy small{
+    color:var(--vx-muted);
+  }
+  #mobileAppRoot .vnext-signal-meta,
+  #mobileAppRoot .vnext-result-domain{
+    letter-spacing:.04em;
+  }
+
+  /* Bottom navigation remains persistent but visually recedes behind page content. */
+  #mobileAppRoot .vnext-tabbar{
+    height:66px;
+    border-radius:22px;
+    background:rgba(253,252,249,.92);
+    box-shadow:0 10px 30px rgba(20,24,20,.11),0 0 0 1px rgba(27,31,27,.09);
+  }
+  #mobileAppRoot .vnext-tabbar button{
+    min-height:54px;
+    border-radius:17px;
+    color:#737871;
+    font-size:9.5px;
+    font-weight:630;
+  }
+  #mobileAppRoot .vnext-tabbar button.active{
+    background:rgba(36,107,89,.075);
+    color:var(--vx-accent);
+  }
+  #mobileAppRoot .vnext-tabbar button.active span{
+    font-weight:740;
   }
 }
