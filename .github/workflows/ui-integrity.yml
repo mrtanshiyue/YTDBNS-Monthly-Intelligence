@@ -1,58 +1,150 @@
 name: UI Integrity
 
 on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
-      - mobile-a5-period-sheet-focus-rerender
+      - main
+      - 'mobile-*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   static-ui-integrity:
     runs-on: ubuntu-latest
-    if: ${{ github.event.head_commit.message == 'Test run A5 focus patch' }}
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
-      - name: Apply and commit narrow A5 focus patch
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
         run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(text, old, new, label):
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected 1 match, got {count}')
-              return text.replace(old, new, 1)
-
-          p = Path('public/mobile/mobile-vnext.js')
-          text = p.read_text()
-          old = "    const previousFocus = document.activeElement;\n    const searchFocused = previousFocus?.matches?.('[data-vnext-search-input]');"
-          new = "    const previousFocus = document.activeElement;\n    const searchFocused = previousFocus?.matches?.('[data-vnext-search-input]');\n    const periodSheetCloseFocused = previousFocus?.matches?.('.vnext-sheet [data-vnext-close-sheet]');"
-          text = replace_once(text, old, new, 'render focus capture')
-          old = "    requestAnimationFrame(() => {\n      if (searchFocused || state.tab === 'search' && document.documentElement.dataset.vnextAutofocus === 'true') {"
-          new = "    requestAnimationFrame(() => {\n      if (periodSheetCloseFocused && state.sheet === 'period') {\n        root.querySelector('.vnext-sheet [data-vnext-close-sheet]')?.focus({ preventScroll: true });\n      }\n      if (searchFocused || state.tab === 'search' && document.documentElement.dataset.vnextAutofocus === 'true') {"
-          text = replace_once(text, old, new, 'render focus restore')
-          p.write_text(text)
-
-          p = Path('scripts/mobile-a5-period-sheet-reload-acceptance.mjs')
-          text = p.read_text()
-          anchor = "  expect(\n    !source.includes('localStorage.') && !source.includes('sessionStorage.'),\n    'A5 static contract: Reload continuity adds no browser-storage dependency'\n  );"
-          added = "  expect(\n    source.includes('periodSheetCloseFocused') &&\n      source.includes(\"root.querySelector('.vnext-sheet [data-vnext-close-sheet]')?.focus({ preventScroll: true })\"),\n    'A5 static contract: rerenders preserve focus only when the reconstructed period-sheet close control owned focus'\n  );\n" + anchor
-          text = replace_once(text, anchor, added, 'A5 static focus contract')
-          anchor = "    expect(evidence.afterReload.closeFocused, `${label}/reload: reconstructed dialog owns initial focus`, JSON.stringify(evidence.afterReload));\n\n    await page.goBack({ waitUntil: 'load' }).catch(() => null);"
-          added = "    expect(evidence.afterReload.closeFocused, `${label}/reload: reconstructed dialog owns initial focus`, JSON.stringify(evidence.afterReload));\n\n    await page.evaluate(() => window.YT_SHARED_RUNTIME?.refresh?.());\n    await waitReady(page);\n    await waitSheet(page);\n    evidence.afterRuntimeRefresh = await snapshot(page);\n    expectSheet(evidence.afterRuntimeRefresh, `${label}/runtime-refresh`, expected);\n    expect(evidence.afterRuntimeRefresh.closeFocused, `${label}/runtime-refresh: live-style runtime rerender preserves reconstructed dialog focus`, JSON.stringify(evidence.afterRuntimeRefresh));\n\n    await page.goBack({ waitUntil: 'load' }).catch(() => null);"
-          text = replace_once(text, anchor, added, 'A5 runtime refresh acceptance')
-          p.write_text(text)
-          PY
-          node --check public/mobile/mobile-vnext.js
+          node --check public/current-ui.js
+          node --check public/shared/runtime.js
+          node --check public/shared/selectors.js
+          node --check public/shared/secondary-selectors.js
+          node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-app-bridge.js
+          node --check public/mobile/mobile-vnext-density.js
+          node --check public/mobile/mobile-vnext-ia.js
+          node --check public/mobile/mobile-compare.js
+          node --check public/mobile/mobile-interactions.js
+          node --check public/mobile/views/overview.js
+          node --check public/mobile/views/ads.js
+          node --check public/mobile/views/products.js
+          node --check public/mobile/views/inventory.js
+          node --check public/mobile/views/finance.js
+          node --check public/mobile/views/charges.js
+          node --check public/mobile/views/returns.js
+          node --check public/mobile/views/history.js
+          node --check public/mobile/views/data.js
+          node --check scripts/postinstall-gate.mjs
+          node --check scripts/ui-integrity-static-check.mjs
+          node --check scripts/v5-native-mobile-static-check.mjs
+          node --check scripts/mobile-vnext-ia-static-check.mjs
+          node --check scripts/mobile-vnext-ia-acceptance.mjs
+          node --check scripts/mobile-first-screen-static-check.mjs
+          node --check scripts/mobile-first-screen-acceptance.mjs
+          node --check scripts/mobile-a1-narrow-acceptance.mjs
+          node --check scripts/mobile-a1-active-rail-acceptance.mjs
+          node --check scripts/mobile-a1-three-fact-acceptance.mjs
+          node --check scripts/mobile-a1-fact-label-acceptance.mjs
+          node --check scripts/mobile-a1-active-filter-acceptance.mjs
+          node --check scripts/mobile-a1-primary-tab-focus-acceptance.mjs
+          node --check scripts/mobile-a1-alert-severity-acceptance.mjs
+          node --check scripts/mobile-a1-period-sheet-focus-acceptance.mjs
+          node --check scripts/mobile-a1-period-selection-focus-acceptance.mjs
+          node --check scripts/mobile-a2-operational-sort-acceptance.mjs
+          node --check scripts/mobile-a2-workspace-acceptance.mjs
+          node --check scripts/mobile-a2-visual-polish-acceptance.mjs
+          node --check scripts/mobile-a3-operator-context-acceptance.mjs
+          node --check scripts/mobile-a3-period-history-acceptance.mjs
+          node --check scripts/mobile-a3-period-ownership-acceptance.mjs
+          node --check scripts/mobile-a3-navigation-context-acceptance.mjs
+          node --check scripts/mobile-a4-detail-history-acceptance.mjs
           node --check scripts/mobile-a5-period-sheet-reload-acceptance.mjs
-          git diff --check
-          git diff -- public/mobile/mobile-vnext.js scripts/mobile-a5-period-sheet-reload-acceptance.mjs
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add public/mobile/mobile-vnext.js scripts/mobile-a5-period-sheet-reload-acceptance.mjs
-          git commit -m 'Mobile A5: preserve period-sheet focus across rerenders'
-          git push origin HEAD:mobile-a5-period-sheet-focus-rerender
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+      - name: Desktop + Native Mobile static release gate
+        run: npm run check:release:static
+      - name: Install CJK screenshot fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          fc-match "Noto Sans CJK SC" | grep -qi "NotoSansCJK"
+      - name: Install Playwright Chromium
+        run: npx playwright-core install chromium
+      - name: Mobile A1 period-sheet focus Chromium acceptance
+        run: node scripts/mobile-a1-period-sheet-focus-acceptance.mjs
+      - name: Mobile A1 period-selection focus Chromium acceptance
+        run: node scripts/mobile-a1-period-selection-focus-acceptance.mjs
+      - name: Current vNext Mobile IA Chromium acceptance
+        run: npm run check:v5:mobile:ia:browser
+      - name: Mobile first-screen Chromium acceptance
+        run: npm run check:v5:mobile:first-screen:browser
+      - name: Mobile A1 narrow-screen Chromium acceptance
+        run: node scripts/mobile-a1-narrow-acceptance.mjs
+      - name: Mobile A1 active-rail Chromium acceptance
+        run: node scripts/mobile-a1-active-rail-acceptance.mjs
+      - name: Mobile A1 three-fact Chromium acceptance
+        run: node scripts/mobile-a1-three-fact-acceptance.mjs
+      - name: Mobile A1 fact-label Chromium acceptance
+        run: node scripts/mobile-a1-fact-label-acceptance.mjs
+      - name: Mobile A1 active-filter Chromium acceptance
+        run: node scripts/mobile-a1-active-filter-acceptance.mjs
+      - name: Mobile A1 primary-tab focus Chromium acceptance
+        run: node scripts/mobile-a1-primary-tab-focus-acceptance.mjs
+      - name: Mobile A1 Alerts severity Chromium acceptance
+        run: node scripts/mobile-a1-alert-severity-acceptance.mjs
+      - name: Mobile A2 operational-sort Chromium acceptance
+        run: node scripts/mobile-a2-operational-sort-acceptance.mjs
+      - name: Mobile A2 Workspace Chromium acceptance
+        run: node scripts/mobile-a2-workspace-acceptance.mjs
+      - name: Mobile A2 visual polish Chromium acceptance
+        run: node scripts/mobile-a2-visual-polish-acceptance.mjs
+      - name: Mobile A3 operator-context Chromium acceptance
+        run: node scripts/mobile-a3-operator-context-acceptance.mjs
+      - name: Mobile A3 period-history Chromium acceptance
+        run: node scripts/mobile-a3-period-history-acceptance.mjs
+      - name: Mobile A3 immutable period-ownership Chromium acceptance
+        run: node scripts/mobile-a3-period-ownership-acceptance.mjs
+      - name: Mobile A3 navigation-context Chromium acceptance
+        run: node scripts/mobile-a3-navigation-context-acceptance.mjs
+      - name: Mobile A4 detail-history Chromium acceptance
+        run: node scripts/mobile-a4-detail-history-acceptance.mjs
+      - name: Mobile A5 period-sheet Reload Chromium acceptance
+        run: node scripts/mobile-a5-period-sheet-reload-acceptance.mjs
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5-mobile-acceptance-${{ github.sha }}
+          path: |
+            artifacts/mobile-vnext-ia
+            artifacts/mobile-first-screen
+            artifacts/mobile-a1-narrow
+            artifacts/mobile-a1-active-rail
+            artifacts/mobile-a1-three-fact
+            artifacts/mobile-a1-fact-label
+            artifacts/mobile-a1-active-filter
+            artifacts/mobile-a1-primary-tab-focus
+            artifacts/mobile-a1-alert-severity
+            artifacts/mobile-a1-period-sheet-focus
+            artifacts/mobile-a1-period-selection-focus
+            artifacts/mobile-a2-operational-sort
+            artifacts/mobile-a2-workspace
+            artifacts/mobile-a2-visual-polish
+            artifacts/mobile-a3-operator-context
+            artifacts/mobile-a3-period-history
+            artifacts/mobile-a3-period-ownership
+            artifacts/mobile-a3-navigation-context
+            artifacts/mobile-a4-detail-history
+            artifacts/mobile-a5-period-sheet-reload
+          if-no-files-found: ignore
+          retention-days: 7
