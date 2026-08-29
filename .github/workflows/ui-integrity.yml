@@ -63,6 +63,36 @@ jobs:
           node --check scripts/mobile-a2-workspace-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
+      - name: Diagnostic — v5 structure
+        continue-on-error: true
+        run: npm run check:v5:structure
+      - name: Diagnostic — Native Mobile static
+        continue-on-error: true
+        run: npm run check:v5:mobile:static
+      - name: Diagnostic — Mobile IA static
+        continue-on-error: true
+        run: npm run check:v5:mobile:ia
+      - name: Diagnostic — Mobile first-screen static
+        continue-on-error: true
+        run: npm run check:v5:mobile:first-screen
+      - name: Diagnostic — Desktop UI static
+        continue-on-error: true
+        run: npm run check:ui:static
+      - name: Diagnostic — benchmark opslog
+        continue-on-error: true
+        run: npm run check:benchmark:opslog
+      - name: Diagnostic — shared module ownership
+        continue-on-error: true
+        run: npm run check:shared:module-ownership
+      - name: Diagnostic — shared selector parity
+        continue-on-error: true
+        run: npm run check:shared:selector-parity
+      - name: Diagnostic — shared selector consistency
+        continue-on-error: true
+        run: npm run check:shared:selector-consistency
+      - name: Diagnostic — shared smoke
+        continue-on-error: true
+        run: npm run check:shared:smoke
       - name: Desktop + Native Mobile static release gate
         run: npm run check:release:static
       - name: Install CJK screenshot fonts
