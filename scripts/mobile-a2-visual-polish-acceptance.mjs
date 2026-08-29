@@ -118,7 +118,21 @@ async function openAds(page) {
   await page.evaluate(() => window.YT_MOBILE_VNEXT_DENSITY?.openModule?.('ads'));
   await page.waitForSelector('.vnext-density-module-page[data-density-module="ads"]', { state: 'visible', timeout: 4_000 });
   await page.waitForFunction(() => window.YT_MOBILE_VNEXT_DENSITY?.getState?.().module === 'ads', null, { timeout: 4_000 });
-  await page.waitForTimeout(80);
+  await page.waitForFunction(() => {
+    const button = document.querySelector('.vnext-module-rail[data-vnext-ia="domain"] [data-vnext-module="ads"]');
+    if (!button?.classList.contains('active') || button.getAttribute('aria-current') !== 'page') return false;
+    const badge = button.querySelector('b');
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:fixed;left:-9999px;color:var(--vx-accent);background:var(--vx-accent-soft)';
+    document.body.appendChild(probe);
+    const expected = getComputedStyle(probe);
+    const accent = expected.color;
+    const accentSoft = expected.backgroundColor;
+    probe.remove();
+    const current = getComputedStyle(button);
+    const badgeStyle = badge ? getComputedStyle(badge) : null;
+    return current.color === accent && current.backgroundColor === accentSoft && (!badgeStyle || badgeStyle.color === accent);
+  }, null, { timeout: 2_000 });
 }
 
 async function railState(page) {
