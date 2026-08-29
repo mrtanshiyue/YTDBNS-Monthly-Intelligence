@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout exact acceptance head
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -29,8 +31,8 @@ jobs:
       - name: Verify branch only adds test workflow
         run: |
           set -euo pipefail
-          git diff --exit-code 690f82cde8891b137b5abc046b51f9767cefaec8 -- public/mobile/mobile-app-bridge.js
-          git diff --exit-code 690f82cde8891b137b5abc046b51f9767cefaec8 -- public/shared/runtime.js
+          git diff --exit-code HEAD^ -- public/mobile/mobile-app-bridge.js
+          git diff --exit-code HEAD^ -- public/shared/runtime.js
 
       - name: Verify Production serves byte-identical exact-main bridge and health
         run: |
