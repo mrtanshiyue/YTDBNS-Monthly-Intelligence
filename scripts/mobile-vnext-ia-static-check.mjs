@@ -61,7 +61,7 @@ expect(expectedInternalModules.every(domain => businessDomains.includes(domain))
 expect(!businessDomains.includes('today') && !businessDomains.includes('alerts'), 'primary task destinations remain outside business-module routing');
 expect(density.includes("const RAIL_MODULES = new Set(['today', 'alerts', 'ads', 'products', 'inventory', 'finance'])"), 'secondary rail renders only primary duplicates plus four grouped business domains');
 expect(density.includes("const WORKSPACE_CHILD_MODULES = new Set(['charges', 'returns', 'history', 'data'])"), 'density runtime preserves Workspace child route identity');
-expect(density.includes("if (WORKSPACE_CHILD_MODULES.has(module)) return 'finance'"), 'density rail selection maps Workspace children back to the Workspace parent');
+expect(density.includes("return WORKSPACE_CHILD_MODULES.has(module) ? 'finance' : module;"), 'density rail selection maps Workspace children back to the Workspace parent');
 expect(density.includes("['finance', '工作台']"), 'finance stable route is presented to operators as 工作台');
 expect(density.includes('data-workspace-module=') && density.includes('data-workspace-back'), 'Workspace exposes explicit child navigation and return controls');
 for (const domain of ['ads', 'products', 'inventory']) {
