@@ -11,6 +11,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
 
 const failures = [];
 const report = [];
+const WORKSPACE_CHILDREN = new Set(['charges', 'returns', 'history', 'data']);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const pass = message => console.log(`PASS  ${message}`);
 const fail = (message, detail = '') => {
@@ -73,6 +74,17 @@ async function waitForTop(page) {
   return page.evaluate(() => scrollY);
 }
 
+async function openBusinessModule(page, module) {
+  if (WORKSPACE_CHILDREN.has(module)) {
+    await page.click('.vnext-module-rail [data-vnext-module="finance"]');
+    await page.waitForSelector('.vnext-density-module-page[data-density-module="finance"] .vnext-workspace-grid', { state: 'visible', timeout: 4_000 });
+    await page.click(`.vnext-density-module-page[data-density-module="finance"] [data-workspace-module="${module}"]`);
+  } else {
+    await page.click(`.vnext-module-rail [data-vnext-module="${module}"]`);
+  }
+  await page.waitForSelector(`.vnext-density-module-page[data-density-module="${module}"]`, { state: 'visible', timeout: 4_000 });
+}
+
 async function toolbarLayout(page) {
   return page.evaluate(() => {
     const toolbar = document.querySelector('#mobileAppRoot .vnext-toolbar');
@@ -115,6 +127,8 @@ async function toolbarLayout(page) {
 
 async function moduleLayout(page, module) {
   return page.evaluate(moduleId => {
+    const workspaceChildren = new Set(['charges', 'returns', 'history', 'data']);
+    const railId = workspaceChildren.has(moduleId) ? 'finance' : moduleId;
     const pageRoot = document.querySelector(`.vnext-density-module-page[data-density-module="${moduleId}"]`);
     const hero = pageRoot?.querySelector('.vnext-module-hero');
     const facts = pageRoot?.querySelector('.vnext-module-facts');
@@ -124,7 +138,9 @@ async function moduleLayout(page, module) {
       const rect = item.getBoundingClientRect();
       return { top: rect.top, left: rect.left, width: rect.width, height: rect.height, text: item.textContent.trim() };
     }) : [];
-    const railButton = document.querySelector(`.vnext-module-rail [data-vnext-module="${moduleId}"]`);
+    const railButton = document.querySelector(`.vnext-module-rail [data-vnext-module="${railId}"]`);
+    const density = window.YT_MOBILE_VNEXT_DENSITY?.getState?.();
+    const ia = window.YT_MOBILE_VNEXT_IA?.getState?.();
     return {
       exists: Boolean(pageRoot && hero && facts),
       heroColumns: heroStyle?.gridTemplateColumns || '',
@@ -132,6 +148,8 @@ async function moduleLayout(page, module) {
       factCount: factRects.length,
       factRects,
       selected: Boolean(railButton?.classList.contains('active') && railButton?.getAttribute('aria-current') === 'page'),
+      routeIdentity: density?.module || null,
+      railIdentity: ia?.railModule || density?.railModule || null,
       scrollY,
       viewport: innerWidth,
       overflow: Math.max(
@@ -215,13 +233,14 @@ async function runViewport(viewport) {
       const before = await scrollDown(page);
       expect(before.max > 40 && before.y > 20, `${label}/${module}: source route is genuinely scrolled before navigation`, JSON.stringify(before));
 
-      await page.click(`.vnext-module-rail [data-vnext-module="${module}"]`);
-      await page.waitForSelector(`.vnext-density-module-page[data-density-module="${module}"]`, { state: 'visible' });
+      await openBusinessModule(page, module);
       const settledScroll = await waitForTop(page);
 
       const state = await moduleLayout(page, module);
       evidence.modules[module] = state;
-      expect(state.exists && state.selected, `${label}/${module}: module renders and selected-domain semantics are intact`, JSON.stringify(state));
+      expect(state.exists && state.selected, `${label}/${module}: module renders and grouped selected-domain semantics are intact`, JSON.stringify(state));
+      expect(state.routeIdentity === module, `${label}/${module}: internal route identity remains explicit after grouped navigation`, JSON.stringify(state));
+      expect(state.railIdentity === (WORKSPACE_CHILDREN.has(module) ? 'finance' : module), `${label}/${module}: visible rail identity matches the grouped business domain`, JSON.stringify(state));
       expect(settledScroll <= 2 && state.scrollY <= 2, `${label}/${module}: business-route navigation resets scroll to the top`, `settled=${settledScroll} state=${state.scrollY}`);
       expect(columnCount(state.heroColumns) === 1, `${label}/${module}: <=390px module hero is one column`, state.heroColumns);
       expect(columnCount(state.factColumns) === 2, `${label}/${module}: <=390px module facts render exactly two columns`, state.factColumns);
