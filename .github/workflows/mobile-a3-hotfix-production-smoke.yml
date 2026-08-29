@@ -33,8 +33,8 @@ jobs:
             "${A3_PRODUCTION_URL}mobile/mobile-app-bridge.js" \
             -o /tmp/production-mobile-app-bridge.js
           cmp public/mobile/mobile-app-bridge.js /tmp/production-mobile-app-bridge.js
-          grep -q "explicitPeriodSelection" /tmp/production-mobile-app-bridge.js
-          grep -q "sameRange(existingRange, range)" /tmp/production-mobile-app-bridge.js
+          grep -q "storedRange && !pendingPeriodSelection" /tmp/production-mobile-app-bridge.js
+          grep -q "\[data-vnext-month\], \[data-density-month\]" /tmp/production-mobile-app-bridge.js
           curl --fail --silent --show-error --retry 8 --retry-delay 3 \
             "${A3_PRODUCTION_URL}api/health" \
             -o /tmp/production-health.json
