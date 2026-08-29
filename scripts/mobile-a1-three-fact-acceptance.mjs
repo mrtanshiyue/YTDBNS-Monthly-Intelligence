@@ -11,6 +11,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
 
 const THREE_FACT_MODULES = ['charges', 'returns', 'history', 'data'];
 const FOUR_FACT_CONTROLS = ['ads', 'finance'];
+const WORKSPACE_CHILDREN = new Set(THREE_FACT_MODULES);
 const failures = [];
 const report = [];
 const pass = message => console.log(`PASS  ${message}`);
@@ -38,11 +39,13 @@ async function ready(page) {
 }
 
 async function openModule(page, module) {
-  await page.evaluate(id => {
-    const button = document.querySelector(`.vnext-module-rail [data-vnext-module="${id}"]`);
-    if (!button) throw new Error(`Missing module button: ${id}`);
-    button.click();
-  }, module);
+  if (WORKSPACE_CHILDREN.has(module)) {
+    await page.click('.vnext-module-rail [data-vnext-module="finance"]');
+    await page.waitForSelector('.vnext-density-module-page[data-density-module="finance"] .vnext-workspace-grid', { state: 'visible', timeout: 4_000 });
+    await page.click(`.vnext-density-module-page[data-density-module="finance"] [data-workspace-module="${module}"]`);
+  } else {
+    await page.click(`.vnext-module-rail [data-vnext-module="${module}"]`);
+  }
   await page.waitForSelector(`.vnext-density-module-page[data-density-module="${module}"]`, { state: 'visible', timeout: 4_000 });
 }
 
@@ -55,12 +58,16 @@ async function factState(page, module) {
     };
     const hostRect = host ? rect(host) : null;
     const children = host ? [...host.children].map(child => ({ ...rect(child), text: child.textContent.trim(), gridColumn: getComputedStyle(child).gridColumn })) : [];
+    const density = window.YT_MOBILE_VNEXT_DENSITY?.getState?.();
+    const ia = window.YT_MOBILE_VNEXT_IA?.getState?.();
     return {
       module: id,
       host: hostRect,
       children,
       childCount: children.length,
       columns: host ? getComputedStyle(host).gridTemplateColumns : '',
+      routeIdentity: density?.module || null,
+      railIdentity: ia?.railModule || density?.railModule || null,
       documentOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
       viewport: innerWidth
     };
@@ -106,6 +113,7 @@ async function runViewport(viewport) {
       await openModule(page, module);
       const state = await factState(page, module);
       evidence.threeFact[module] = state;
+      expect(state.routeIdentity === module && state.railIdentity === 'finance', `${label}/${module}: Workspace child keeps route identity under the grouped Workspace rail`, JSON.stringify(state));
       expect(state.childCount === 3, `${label}/${module}: module keeps exactly three source facts`, JSON.stringify(state));
       expect(threeFactBalanced(state), `${label}/${module}: third fact fills the second row with no fake fourth quadrant`, JSON.stringify(state));
       expect(state.documentOverflow <= 1, `${label}/${module}: balanced fact grid creates no document overflow`, `overflow=${state.documentOverflow}`);
@@ -118,6 +126,7 @@ async function runViewport(viewport) {
       await openModule(page, module);
       const state = await factState(page, module);
       evidence.fourFact[module] = state;
+      expect(state.routeIdentity === module && state.railIdentity === module, `${label}/${module}: first-class domain keeps matching route and rail identity`, JSON.stringify(state));
       expect(state.childCount === 4, `${label}/${module}: four-fact control preserves all facts`, JSON.stringify(state));
       expect(fourFactPreserved(state), `${label}/${module}: four-fact control remains a true 2x2 grid`, JSON.stringify(state));
       expect(state.documentOverflow <= 1, `${label}/${module}: four-fact control creates no document overflow`, `overflow=${state.documentOverflow}`);

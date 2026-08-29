@@ -12,6 +12,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
 const failures = [];
 const report = [];
 const expectedFirstSix = ['销售额', '贡献利润', 'ACOS', '广告花费', '退款销售', '库存资金'];
+const expectedRailDomains = ['ads', 'products', 'inventory', 'finance'];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const pass = message => console.log(`PASS  ${message}`);
 const fail = (message, detail = '') => {
@@ -60,6 +61,7 @@ async function snapshot(page) {
     }).sort((a, b) => Math.abs(a.top - b.top) > 1 ? a.top - b.top : a.left - b.left);
     const railStyle = rail ? getComputedStyle(rail) : null;
     const railButtons = rail ? [...rail.querySelectorAll('button:not([hidden])')].map(button => ({
+      id: button.dataset.vnextModule || '',
       text: button.textContent.trim(),
       height: button.getBoundingClientRect().height,
       font: px(getComputedStyle(button).fontSize)
@@ -132,9 +134,9 @@ async function runMobile(viewport) {
     expect(s.metrics.every(item => item.height >= 57.5), `${label}: KPI touch targets stay >=58px`, JSON.stringify(s.metrics.map(item => [item.label, item.height])));
     expect(s.metrics.every(item => item.labelFont >= 9.9 && (item.smallFont == null || item.smallFont >= 9.4)), `${label}: KPI labels/supporting text meet the readability floor`, JSON.stringify(s.metrics.map(item => [item.label, item.labelFont, item.smallFont])));
 
-    expect(s.rail.scrollWidth > s.rail.clientWidth + 20, `${label}: business rail remains horizontally scrollable`, `${s.rail.scrollWidth}/${s.rail.clientWidth}`);
-    expect(s.rail.mask && s.rail.mask !== 'none', `${label}: business rail exposes a visual overflow affordance`, s.rail.mask);
-    expect(s.rail.buttons.length === 8, `${label}: business rail still contains eight domains`, `count=${s.rail.buttons.length}`);
+    expect(JSON.stringify(s.rail.buttons.map(item => item.id)) === JSON.stringify(expectedRailDomains), `${label}: grouped business rail contains exactly Ads / Products / Inventory / Workspace`, JSON.stringify(s.rail.buttons.map(item => item.id)));
+    expect(s.rail.scrollWidth <= s.rail.clientWidth + 1, `${label}: four grouped business domains fit without mandatory horizontal scrolling`, `${s.rail.scrollWidth}/${s.rail.clientWidth}`);
+    expect(s.rail.mask && s.rail.mask !== 'none', `${label}: business rail retains its edge treatment without clipping content`, s.rail.mask);
     expect(s.rail.buttons.every(item => item.height >= 43.5 && item.font >= 11.4), `${label}: rail touch targets and text remain comfortable`, JSON.stringify(s.rail.buttons));
 
     const minMicro = s.micro.length ? Math.min(...s.micro.map(item => item.font)) : 9;

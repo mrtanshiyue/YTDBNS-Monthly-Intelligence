@@ -10,6 +10,7 @@ const artifactDir = path.join(root, 'artifacts', 'mobile-a1-fact-label');
 fs.mkdirSync(artifactDir, { recursive: true });
 
 const MODULES = ['products', 'inventory', 'charges', 'returns', 'history', 'data'];
+const WORKSPACE_CHILDREN = new Set(['charges', 'returns', 'history', 'data']);
 const failures = [];
 const report = [];
 const pass = message => console.log(`PASS  ${message}`);
@@ -39,41 +40,49 @@ async function ready(page) {
 }
 
 async function openModule(page, module) {
-  await page.evaluate(id => {
-    const button = document.querySelector(`.vnext-module-rail [data-vnext-module="${id}"]`);
-    if (!button) throw new Error(`Missing module button: ${id}`);
-    button.click();
-  }, module);
+  if (WORKSPACE_CHILDREN.has(module)) {
+    await page.click('.vnext-module-rail [data-vnext-module="finance"]');
+    await page.waitForSelector('.vnext-density-module-page[data-density-module="finance"] .vnext-workspace-grid', { state: 'visible', timeout: 4_000 });
+    await page.click(`.vnext-density-module-page[data-density-module="finance"] [data-workspace-module="${module}"]`);
+  } else {
+    await page.click(`.vnext-module-rail [data-vnext-module="${module}"]`);
+  }
   await page.waitForSelector(`.vnext-density-module-page[data-density-module="${module}"]`, { state: 'visible', timeout: 4_000 });
 }
 
 async function labelState(page, module) {
   return page.evaluate(id => {
     const labels = [...document.querySelectorAll(`.vnext-density-module-page[data-density-module="${id}"] .vnext-module-facts small`)];
-    return labels.map(label => {
-      const box = label.getBoundingClientRect();
-      const range = document.createRange();
-      range.selectNodeContents(label);
-      const rects = [...range.getClientRects()].filter(rect => rect.width > .1 && rect.height > .1);
-      const uniqueRows = [...new Set(rects.map(rect => Math.round(rect.top * 2) / 2))];
-      const contentBottom = rects.length ? Math.max(...rects.map(rect => rect.bottom)) : box.bottom;
-      const style = getComputedStyle(label);
-      return {
-        text: label.textContent.trim(),
-        width: box.width,
-        height: box.height,
-        clientWidth: label.clientWidth,
-        scrollWidth: label.scrollWidth,
-        clientHeight: label.clientHeight,
-        scrollHeight: label.scrollHeight,
-        rows: uniqueRows.length,
-        contentBottom,
-        boxBottom: box.bottom,
-        whiteSpace: style.whiteSpace,
-        overflow: style.overflow,
-        lineClamp: style.webkitLineClamp
-      };
-    });
+    const density = window.YT_MOBILE_VNEXT_DENSITY?.getState?.();
+    const ia = window.YT_MOBILE_VNEXT_IA?.getState?.();
+    return {
+      routeIdentity: density?.module || null,
+      railIdentity: ia?.railModule || density?.railModule || null,
+      labels: labels.map(label => {
+        const box = label.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        const rects = [...range.getClientRects()].filter(rect => rect.width > .1 && rect.height > .1);
+        const uniqueRows = [...new Set(rects.map(rect => Math.round(rect.top * 2) / 2))];
+        const contentBottom = rects.length ? Math.max(...rects.map(rect => rect.bottom)) : box.bottom;
+        const style = getComputedStyle(label);
+        return {
+          text: label.textContent.trim(),
+          width: box.width,
+          height: box.height,
+          clientWidth: label.clientWidth,
+          scrollWidth: label.scrollWidth,
+          clientHeight: label.clientHeight,
+          scrollHeight: label.scrollHeight,
+          rows: uniqueRows.length,
+          contentBottom,
+          boxBottom: box.bottom,
+          whiteSpace: style.whiteSpace,
+          overflow: style.overflow,
+          lineClamp: style.webkitLineClamp
+        };
+      })
+    };
   }, module);
 }
 
@@ -102,8 +111,14 @@ async function runViewport(viewport) {
     await ready(page);
     for (const module of MODULES) {
       await openModule(page, module);
-      const labels = await labelState(page, module);
-      evidence.modules[module] = labels;
+      const state = await labelState(page, module);
+      const labels = state.labels;
+      evidence.modules[module] = state;
+      expect(
+        state.routeIdentity === module && state.railIdentity === (WORKSPACE_CHILDREN.has(module) ? 'finance' : module),
+        `${label}/${module}: hero labels are measured in the correct internal route and grouped rail context`,
+        JSON.stringify(state)
+      );
       expect(labels.length >= 3, `${label}/${module}: hero fact labels are present`, JSON.stringify(labels));
       const clipped = labels.filter(item => !fullyVisible(item));
       expect(clipped.length === 0, `${label}/${module}: every hero fact label is fully readable within two lines`, JSON.stringify(clipped));
@@ -112,9 +127,9 @@ async function runViewport(viewport) {
       }
     }
 
-    const buyBox = evidence.modules.products?.find(item => item.text === 'Buy Box风险');
+    const buyBox = evidence.modules.products?.labels?.find(item => item.text === 'Buy Box风险');
     expect(Boolean(buyBox) && fullyVisible(buyBox), `${label}/products: Buy Box风险 is not ellipsized`, JSON.stringify(buyBox));
-    const lowStock = evidence.modules.inventory?.find(item => item.text === '低库存SKU');
+    const lowStock = evidence.modules.inventory?.labels?.find(item => item.text === '低库存SKU');
     expect(Boolean(lowStock) && fullyVisible(lowStock), `${label}/inventory: 低库存SKU is not ellipsized`, JSON.stringify(lowStock));
 
     const methods = [...new Set(requests.map(request => request.method))];

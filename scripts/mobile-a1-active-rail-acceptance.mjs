@@ -9,7 +9,7 @@ const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;
 const artifactDir = path.join(root, 'artifacts', 'mobile-a1-active-rail');
 fs.mkdirSync(artifactDir, { recursive: true });
 
-const MODULES = ['ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data'];
+const MODULES = ['ads', 'products', 'inventory', 'finance'];
 const failures = [];
 const report = [];
 const pass = message => console.log(`PASS  ${message}`);
@@ -25,10 +25,11 @@ function staticContract() {
   expect(
     source.includes('function revealControl(scroller, control, edge = 4)') &&
       source.includes('function revealActiveDomain(rail, module)') &&
-      source.includes('lastRevealedRail') &&
-      source.includes('revealControl(rail, button)') &&
+      source.includes('function activeRailModule()') &&
+      source.includes("if (WORKSPACE_CHILD_SET.has(module)) return 'finance'") &&
+      source.includes('revealActiveDomain(rail, railModule)') &&
       source.includes('scroller.scrollLeft = Math.max(0, Math.min(maxScroll'),
-    'A1 static contract: IA owns deterministic active-domain rail reveal through bounded shared scroller geometry'
+    'A1 static contract: IA owns deterministic grouped-domain rail selection and bounded reveal geometry'
   );
   expect(
     source.includes('function rerenderFocusTarget(event)') &&
@@ -71,11 +72,17 @@ async function railState(page, module) {
     const button = rail?.querySelector(`[data-vnext-module="${id}"]`);
     const railRect = rail?.getBoundingClientRect();
     const buttonRect = button?.getBoundingClientRect();
+    const visibleButtons = [...(rail?.querySelectorAll('[data-vnext-module]') || [])].filter(candidate => {
+      const style = getComputedStyle(candidate);
+      const rect = candidate.getBoundingClientRect();
+      return !candidate.hidden && style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    });
     return {
       module: id,
       exists: Boolean(rail && button && railRect && buttonRect),
       selected: Boolean(button?.classList.contains('active') && button?.getAttribute('aria-current') === 'page'),
       visible: Boolean(railRect && buttonRect && buttonRect.left >= railRect.left + 3 && buttonRect.right <= railRect.right - 3),
+      visibleIds: visibleButtons.map(candidate => candidate.dataset.vnextModule),
       railLeft: railRect?.left ?? null,
       railRight: railRect?.right ?? null,
       buttonLeft: buttonRect?.left ?? null,
@@ -84,7 +91,8 @@ async function railState(page, module) {
       scrollWidth: rail?.scrollWidth ?? null,
       clientWidth: rail?.clientWidth ?? null,
       documentOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
-      scrollY
+      scrollY,
+      ia: window.YT_MOBILE_VNEXT_IA?.getState?.() || null
     };
   }, module);
 }
@@ -146,34 +154,34 @@ async function runViewport(viewport) {
       await openModule(page, module);
       const state = await railState(page, module);
       evidence.modules[module] = state;
-      expect(state.exists && state.selected, `${label}/${module}: active business-module semantics remain correct`, JSON.stringify(state));
-      expect(state.visible, `${label}/${module}: active business-module control is visible after rail rerender`, JSON.stringify(state));
-      expect(state.scrollWidth > state.clientWidth, `${label}/${module}: business rail remains horizontally browseable`, JSON.stringify(state));
+      expect(state.exists && state.selected, `${label}/${module}: active grouped business-domain semantics remain correct`, JSON.stringify(state));
+      expect(state.visible, `${label}/${module}: active grouped business-domain control is visible after rail rerender`, JSON.stringify(state));
+      expect(JSON.stringify(state.visibleIds) === JSON.stringify(MODULES), `${label}/${module}: rail exposes exactly four grouped business domains`, JSON.stringify(state.visibleIds));
       expect(state.documentOverflow <= 1, `${label}/${module}: active-rail reveal does not create document overflow`, JSON.stringify(state));
       expect(state.scrollY <= 2, `${label}/${module}: module navigation remains settled at page top`, `scrollY=${state.scrollY}`);
-      if (module === 'history' || module === 'data') {
-        await page.screenshot({ path: path.join(artifactDir, `mobile-${label}-${module}.png`), fullPage: false });
+      if (module === 'finance') {
+        await page.screenshot({ path: path.join(artifactDir, `mobile-${label}-workspace.png`), fullPage: false });
       }
     }
 
     await page.goBack({ waitUntil: 'load' }).catch(() => null);
-    await page.waitForSelector('.vnext-density-module-page[data-density-module="history"]', { state: 'visible', timeout: 4_000 });
+    await page.waitForSelector('.vnext-density-module-page[data-density-module="inventory"]', { state: 'visible', timeout: 4_000 });
     await page.waitForFunction(() => {
       const rail = document.querySelector('.vnext-module-rail[data-vnext-ia="domain"]');
-      const button = rail?.querySelector('[data-vnext-module="history"]');
+      const button = rail?.querySelector('[data-vnext-module="inventory"]');
       if (!rail || !button) return false;
       const rr = rail.getBoundingClientRect();
       const br = button.getBoundingClientRect();
       return button.classList.contains('active') && br.left >= rr.left + 3 && br.right <= rr.right - 3;
     }, null, { timeout: 4_000 });
-    const backState = await railState(page, 'history');
-    evidence.popstateHistory = backState;
-    expect(backState.selected && backState.visible, `${label}/history: browser Back restores visible active-domain context`, JSON.stringify(backState));
+    const backState = await railState(page, 'inventory');
+    evidence.popstateInventory = backState;
+    expect(backState.selected && backState.visible, `${label}/inventory: browser Back restores visible grouped-domain context`, JSON.stringify(backState));
 
     await openModule(page, 'ads');
     const returnLeft = await railState(page, 'ads');
     evidence.returnLeft = returnLeft;
-    expect(returnLeft.visible && returnLeft.scrollLeft <= 4, `${label}/ads: returning to first domain restores the rail to its left edge`, JSON.stringify(returnLeft));
+    expect(returnLeft.visible && returnLeft.scrollLeft <= 4, `${label}/ads: returning to first grouped domain restores the rail to its left edge`, JSON.stringify(returnLeft));
 
     const methods = [...new Set(requests.map(request => request.method))];
     expect(methods.every(method => method === 'GET'), `${label}: active-rail acceptance remains GET-only`, JSON.stringify(methods));

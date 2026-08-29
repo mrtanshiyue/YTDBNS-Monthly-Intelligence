@@ -16,13 +16,15 @@
     ['ads', '广告'],
     ['products', '商品'],
     ['inventory', '库存'],
-    ['finance', '利润'],
+    ['finance', '工作台'],
     ['charges', '扣费'],
     ['returns', '退货'],
     ['history', '历史'],
     ['data', '数据']
   ];
+  const RAIL_MODULES = new Set(['today', 'alerts', 'ads', 'products', 'inventory', 'finance']);
   const BUSINESS_MODULES = new Set(['ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data']);
+  const WORKSPACE_CHILD_MODULES = new Set(['charges', 'returns', 'history', 'data']);
   const FILTERS = {
     ads: [
       ['all', '全部'], ['acos45', 'ACOS >45%'], ['acos60', 'ACOS >60%'], ['zeroOrders', '无订单'], ['highSpend', '高花费']
@@ -50,6 +52,7 @@
     module: null,
     filters: { ads: 'all', products: 'all', inventory: 'all' },
     sorts: { ads: 'spendDesc', products: 'salesDesc', inventory: 'capitalDesc' },
+    workspaceFocus: null,
     applying: false
   };
 
@@ -60,6 +63,10 @@
     const known = values.map(number).filter(value => value != null);
     return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
   };
+
+  function railModuleFor(module) {
+    return WORKSPACE_CHILD_MODULES.has(module) ? 'finance' : module;
+  }
 
   function models() {
     const s = runtime.getState();
@@ -99,8 +106,8 @@
   }
 
   function railMarkup(m) {
-    const current = state.module || root.querySelector('.vnext-app')?.dataset.tab || 'today';
-    return `<nav class="vnext-module-rail" aria-label="完整业务标签">${MODULES.map(([id, label]) => {
+    const current = railModuleFor(state.module || root.querySelector('.vnext-app')?.dataset.tab || 'today');
+    return `<nav class="vnext-module-rail" aria-label="完整业务标签">${MODULES.filter(([id]) => RAIL_MODULES.has(id)).map(([id, label]) => {
       const count = moduleCount(id, m);
       return `<button type="button" data-vnext-module="${id}" class="${current === id ? 'active' : ''}"${current === id ? ' aria-current="page"' : ''}><span>${label}</span>${count != null ? `<b>${esc(count)}</b>` : ''}</button>`;
     }).join('')}</nav>`;
@@ -262,14 +269,29 @@
       <section class="vnext-module-section"><header><span>Inventory</span><h2>库存记录 <b>${rows.length}/${model.inventory.length}</b></h2></header><div class="vnext-dense-list">${rows.length ? rows.map(row => denseRecord({ type: 'inventory', id: row.id, kicker: row.model || row.asin || 'SKU', title: row.sku === '—' ? row.asin : row.sku, subtitle: `${fmt.number(row.total)} 总库存 · ${fmt.number(row.inbound)} 在途`, value: `${fmt.number(row.fulfillable)} 可售`, metrics: [['不可售', fmt.number(row.unsellable)], ['资金', fmt.compactMoney(row.inventoryValue)]], risk: row.unsellable != null && Number(row.unsellable) > 0 ? 'warning' : row.fulfillable != null && Number(row.fulfillable) <= 10 ? 'critical' : row.fulfillable != null && Number(row.fulfillable) <= 20 ? 'warning' : '' })).join('') : '<div class="vnext-density-empty">当前筛选没有库存记录</div>'}</div></section>`;
   }
 
-  function financeMarkup(m) {
+  function workspaceCard(module, kicker, title, value, note) {
+    return `<button type="button" class="vnext-workspace-card" data-workspace-module="${esc(module)}"><span class="vnext-workspace-card-copy"><small>${esc(kicker)}</small><strong>${esc(title)}</strong><em>${esc(note)}</em></span><span class="vnext-workspace-card-value"><b>${esc(value)}</b><span aria-hidden="true">›</span></span></button>`;
+  }
+
+  function workspaceMarkup(m) {
     const f = m.finance;
+    const dataIssues = issueCounts(m).data;
+    const latest = m.history.rows[0] || null;
     const costs = [
       ['广告花费', f.adSpend], ['COGS', f.cogs], ['退款销售', f.refundSales], ['仓储估算', f.storageEstimate], ['Settlement', f.settlement]
     ];
-    return `${moduleHero('贡献利润', fmt.money(f.profit, 0), [['利润率', fmt.percent(f.profitMargin)], ['销售额', fmt.compactMoney(f.sales)], ['广告花费', fmt.compactMoney(f.adSpend)], ['退款', fmt.compactMoney(f.refundSales)]])}
-      <section class="vnext-module-section"><header><span>Cost stack</span><h2>利润与成本结构</h2></header><div class="vnext-finance-grid">${costs.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${fmt.compactMoney(value)}</strong><small>${f.sales ? fmt.percent(Math.abs(Number(value || 0)) / Math.abs(Number(f.sales || 1))) : '—'} / Sales</small></div>`).join('')}</div></section>
-      <section class="vnext-module-section"><button class="vnext-module-jump" type="button" data-vnext-module="charges"><span><small>AMAZON FEES</small><strong>查看完整扣费明细</strong></span><b>${fmt.compactMoney(m.charges.total)} ›</b></button></section>`;
+    return `${moduleHero('经营工作台', fmt.money(f.profit, 0), [['利润率', fmt.percent(f.profitMargin)], ['Amazon扣费', fmt.compactMoney(m.charges.total)], ['退货', fmt.number(m.returns.total)], ['数据异常', fmt.number(dataIssues)]])}
+      <section class="vnext-module-section vnext-workspace-section"><header><span>Workspace</span><h2>经营支持</h2></header><div class="vnext-workspace-grid">
+        ${workspaceCard('charges', 'AMAZON FEES', '扣费', fmt.compactMoney(m.charges.total), `${fmt.number(m.charges.rows.length)} 个费用项目`)}
+        ${workspaceCard('returns', 'RETURNS', '退货与退款', `${fmt.number(m.returns.total)} 次`, `退款销售 ${fmt.compactMoney(m.returns.refundSales)}`)}
+        ${workspaceCard('history', 'HISTORY', '月度历史', latest?.month || '—', latest ? `销售 ${fmt.compactMoney(latest.sales)} · 利润 ${fmt.compactMoney(latest.profit)}` : '暂无历史月份')}
+        ${workspaceCard('data', 'DATA QUALITY', '数据质量', `${fmt.number(dataIssues)} 项需看`, `${fmt.number(m.data.quality.length)} 项检查 · ${fmt.number(m.data.imports.length)} 个批次`)}
+      </div></section>
+      <section class="vnext-module-section"><header><span>Finance</span><h2>利润与成本结构</h2></header><div class="vnext-finance-grid">${costs.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${fmt.compactMoney(value)}</strong><small>${f.sales ? fmt.percent(Math.abs(Number(value || 0)) / Math.abs(Number(f.sales || 1))) : '—'} / Sales</small></div>`).join('')}</div></section>`;
+  }
+
+  function workspaceChildBackMarkup() {
+    return `<button type="button" class="vnext-workspace-back" data-workspace-back><span aria-hidden="true">‹</span><strong>返回工作台</strong></button>`;
   }
 
   function chargesMarkup(m) {
@@ -311,11 +333,11 @@
     if (module === 'ads') return adsMarkup(m);
     if (module === 'products') return productsMarkup(m);
     if (module === 'inventory') return inventoryMarkup(m);
-    if (module === 'finance') return financeMarkup(m);
-    if (module === 'charges') return chargesMarkup(m);
-    if (module === 'returns') return returnsMarkup(m);
-    if (module === 'history') return historyMarkup(m);
-    if (module === 'data') return dataMarkup(m);
+    if (module === 'finance') return workspaceMarkup(m);
+    if (module === 'charges') return `${workspaceChildBackMarkup()}${chargesMarkup(m)}`;
+    if (module === 'returns') return `${workspaceChildBackMarkup()}${returnsMarkup(m)}`;
+    if (module === 'history') return `${workspaceChildBackMarkup()}${historyMarkup(m)}`;
+    if (module === 'data') return `${workspaceChildBackMarkup()}${dataMarkup(m)}`;
     return '';
   }
 
@@ -365,6 +387,11 @@
     history.replaceState(next, document.title);
   }
 
+  function settleModuleAtTop() {
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, 0)));
+  }
+
   function setModule(module, { push = true } = {}) {
     if (!BUSINESS_MODULES.has(module)) return;
     state.module = module;
@@ -372,12 +399,13 @@
     if (push) history.pushState(next, document.title);
     else history.replaceState(next, document.title);
     applyEnhancements(true);
-    window.scrollTo(0, 0);
+    settleModuleAtTop();
   }
 
   function clearModule() {
     if (!state.module) return;
     state.module = null;
+    state.workspaceFocus = null;
     removeDensityHistoryKey();
   }
 
@@ -388,6 +416,22 @@
       try { replacement.focus({ preventScroll: true }); }
       catch { replacement.focus(); }
     });
+  }
+
+  function restoreWorkspaceFocus(module = state.workspaceFocus) {
+    if (!module) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const replacement = root.querySelector(`.vnext-density-module-page[data-density-module="finance"] [data-workspace-module="${module}"]`);
+      if (!replacement?.isConnected) return;
+      try { replacement.focus({ preventScroll: true }); }
+      catch { replacement.focus(); }
+    }));
+  }
+
+  function returnToWorkspace() {
+    const origin = state.workspaceFocus;
+    setModule('finance', { push: false });
+    if (origin) restoreWorkspaceFocus(origin);
   }
 
   function applyEnhancements(force = false) {
@@ -436,7 +480,23 @@
     const bottomTab = event.target.closest('[data-vnext-tab]');
     if (bottomTab && state.module) {
       state.module = null;
+      state.workspaceFocus = null;
       removeDensityHistoryKey();
+      return;
+    }
+
+    const workspaceBack = event.target.closest('[data-workspace-back]');
+    if (workspaceBack) {
+      event.preventDefault();
+      returnToWorkspace();
+      return;
+    }
+
+    const workspaceModule = event.target.closest('[data-workspace-module]')?.dataset.workspaceModule;
+    if (WORKSPACE_CHILD_MODULES.has(workspaceModule)) {
+      event.preventDefault();
+      state.workspaceFocus = workspaceModule;
+      setModule(workspaceModule);
       return;
     }
 
@@ -448,7 +508,10 @@
         clearModule();
         window.YT_MOBILE_VNEXT?.navigate?.(module);
         applyEnhancements(true);
-      } else setModule(module);
+      } else {
+        if (module !== 'finance') state.workspaceFocus = null;
+        setModule(module);
+      }
       return;
     }
 
@@ -495,6 +558,7 @@
       const to = runtime.helpers.monthEnd(month);
       runtime.setRange(from, to).then(() => {
         state.module = null;
+        state.workspaceFocus = null;
         removeDensityHistoryKey();
         window.YT_MOBILE_VNEXT?.navigate?.('today');
         applyEnhancements(true);
@@ -503,9 +567,13 @@
   }, true);
 
   window.addEventListener('popstate', event => {
+    const previous = state.module;
     const module = event.state?.[HISTORY_KEY];
     state.module = BUSINESS_MODULES.has(module) ? module : null;
-    requestAnimationFrame(() => applyEnhancements(true));
+    requestAnimationFrame(() => {
+      applyEnhancements(true);
+      if (state.module === 'finance' && WORKSPACE_CHILD_MODULES.has(previous) && state.workspaceFocus === previous) restoreWorkspaceFocus(previous);
+    });
   });
 
   const observer = new MutationObserver(() => {
@@ -523,6 +591,6 @@
 
   window.YT_MOBILE_VNEXT_DENSITY = Object.freeze({
     openModule: module => setModule(module),
-    getState: () => Object.freeze({ module: state.module, filters: { ...state.filters }, sorts: { ...state.sorts } })
+    getState: () => Object.freeze({ module: state.module, railModule: railModuleFor(state.module), filters: { ...state.filters }, sorts: { ...state.sorts } })
   });
 })();
