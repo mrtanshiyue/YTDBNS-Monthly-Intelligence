@@ -107,13 +107,13 @@
     });
   }
 
-  history.pushState = function mobileContextPushState(state, title, url) {
+  history.pushState = function mobilePeriodPushState(state, title, url) {
     const result = nativePushState(enrichVnextHistoryState(state), title, url);
     queueNavigationRestore();
     return result;
   };
 
-  history.replaceState = function mobileContextReplaceState(state, title, url) {
+  history.replaceState = function mobilePeriodReplaceState(state, title, url) {
     const result = nativeReplaceState(enrichVnextHistoryState(state), title, url);
     queueNavigationRestore();
     return result;
