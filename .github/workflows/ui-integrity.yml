@@ -30,6 +30,7 @@ jobs:
           node --check public/shared/selectors.js
           node --check public/shared/secondary-selectors.js
           node --check public/mobile/mobile-shell.js
+          node --check public/mobile/mobile-vnext-density.js
           node --check public/mobile/mobile-vnext-ia.js
           node --check public/mobile/mobile-compare.js
           node --check public/mobile/mobile-interactions.js
@@ -58,6 +59,7 @@ jobs:
           node --check scripts/mobile-a1-alert-severity-acceptance.mjs
           node --check scripts/mobile-a1-period-sheet-focus-acceptance.mjs
           node --check scripts/mobile-a1-period-selection-focus-acceptance.mjs
+          node --check scripts/mobile-a2-operational-sort-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
@@ -91,6 +93,8 @@ jobs:
         run: node scripts/mobile-a1-primary-tab-focus-acceptance.mjs
       - name: Mobile A1 Alerts severity Chromium acceptance
         run: node scripts/mobile-a1-alert-severity-acceptance.mjs
+      - name: Mobile A2 operational-sort Chromium acceptance
+        run: node scripts/mobile-a2-operational-sort-acceptance.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -108,5 +112,6 @@ jobs:
             artifacts/mobile-a1-alert-severity
             artifacts/mobile-a1-period-sheet-focus
             artifacts/mobile-a1-period-selection-focus
+            artifacts/mobile-a2-operational-sort
           if-no-files-found: ignore
           retention-days: 7

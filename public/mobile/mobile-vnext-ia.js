@@ -17,6 +17,7 @@
   ]);
   const DOMAIN_SET = new Set(DOMAIN_IDS);
   const FILTER_MODULE_SET = new Set(['ads', 'products', 'inventory']);
+  const SORT_MODULE_SET = new Set(['ads', 'products', 'inventory']);
   const PRIMARY_FOCUS_TAB_SET = new Set(['today', 'alerts', 'trends', 'search']);
   const ALERT_SEVERITY_SET = new Set(['all', 'critical', 'warning']);
   const DUPLICATE_PRIMARY_IDS = new Set(['today', 'alerts']);
@@ -25,6 +26,8 @@
   let lastRevealedRail = null;
   let lastRevealedFilter = null;
   let lastRevealedFilterRail = null;
+  let lastRevealedSort = null;
+  let lastRevealedSortRail = null;
   let periodFocusOrigin = null;
   let periodSheetObservedOpen = false;
   let periodRestoreScheduled = false;
@@ -46,6 +49,11 @@
     if (!FILTER_MODULE_SET.has(module)) return null;
     const value = densityState()?.filters?.[module];
     return value || 'all';
+  }
+
+  function activeSort(module) {
+    if (!SORT_MODULE_SET.has(module)) return null;
+    return densityState()?.sorts?.[module] || null;
   }
 
   function activeSeverity() {
@@ -103,6 +111,11 @@
     return root.querySelector(`.vnext-density-module-page[data-density-module="${module}"] .vnext-filter-tags`);
   }
 
+  function sortRailFor(module) {
+    if (!SORT_MODULE_SET.has(module)) return null;
+    return root.querySelector(`.vnext-density-module-page[data-density-module="${module}"] .vnext-sort-tags`);
+  }
+
   function syncFilterSemantics(module) {
     const filterRail = filterRailFor(module);
     const filter = activeFilter(module);
@@ -110,6 +123,16 @@
 
     for (const button of filterRail.querySelectorAll('[data-density-filter]')) {
       button.setAttribute('aria-pressed', button.dataset.densityFilter === filter ? 'true' : 'false');
+    }
+  }
+
+  function syncSortSemantics(module) {
+    const sortRail = sortRailFor(module);
+    const sort = activeSort(module);
+    if (!sortRail || !sort) return;
+
+    for (const button of sortRail.querySelectorAll('[data-density-sort]')) {
+      button.setAttribute('aria-pressed', button.dataset.densitySort === sort ? 'true' : 'false');
     }
   }
 
@@ -140,6 +163,26 @@
 
     lastRevealedFilter = filter;
     lastRevealedFilterRail = filterRail;
+  }
+
+  function revealActiveSort(module) {
+    if (!SORT_MODULE_SET.has(module)) {
+      lastRevealedSort = null;
+      lastRevealedSortRail = null;
+      return;
+    }
+
+    const sortRail = sortRailFor(module);
+    const sort = activeSort(module);
+    if (!sortRail || !sort) return;
+    if (sortRail === lastRevealedSortRail && sort === lastRevealedSort) return;
+
+    const button = sortRail.querySelector(`[data-density-sort="${sort}"]`);
+    if (!button) return;
+    revealControl(sortRail, button, 1);
+
+    lastRevealedSort = sort;
+    lastRevealedSortRail = sortRail;
   }
 
   function capturePeriodFocusOrigin(event) {
@@ -237,6 +280,8 @@
       else revealActiveDomain(rail, null);
       syncFilterSemantics(module);
       revealActiveFilter(module);
+      syncSortSemantics(module);
+      revealActiveSort(module);
     } finally {
       syncing = false;
     }
@@ -260,6 +305,13 @@
       if (FILTER_MODULE_SET.has(module) && filter) return { kind: 'filter', module, filter };
     }
 
+    const sortButton = event.target.closest('[data-density-sort]');
+    if (sortButton) {
+      const module = sortButton.dataset.densitySortModule;
+      const sort = sortButton.dataset.densitySort;
+      if (SORT_MODULE_SET.has(module) && sort) return { kind: 'sort', module, sort };
+    }
+
     const moduleButton = event.target.closest('.vnext-module-rail [data-vnext-module]');
     const module = moduleButton?.dataset.vnextModule;
     if (moduleButton && DOMAIN_SET.has(module)) return { kind: 'module', module };
@@ -275,6 +327,8 @@
       replacement = root.querySelector(`[data-vnext-severity="${target.severity}"]`);
     } else if (target.kind === 'filter') {
       replacement = filterRailFor(target.module)?.querySelector(`[data-density-filter="${target.filter}"]`) || null;
+    } else if (target.kind === 'sort') {
+      replacement = sortRailFor(target.module)?.querySelector(`[data-density-sort="${target.sort}"]`) || null;
     } else if (target.kind === 'module') {
       replacement = root.querySelector(`.vnext-module-rail [data-vnext-module="${target.module}"]`);
     }
@@ -296,7 +350,7 @@
   root.addEventListener('click', event => {
     capturePeriodFocusOrigin(event);
     const focusTarget = rerenderFocusTarget(event);
-    if (event.target.closest('[data-vnext-tab], [data-vnext-module], [data-density-filter], [data-vnext-severity]')) requestAnimationFrame(syncRail);
+    if (event.target.closest('[data-vnext-tab], [data-vnext-module], [data-density-filter], [data-density-sort], [data-vnext-severity]')) requestAnimationFrame(syncRail);
     if (focusTarget) requestAnimationFrame(() => restoreRerenderedFocus(focusTarget));
   }, true);
   root.addEventListener('click', settlePrimaryRouteAtTop);
@@ -312,6 +366,7 @@
       primaryTab: activePrimaryTab(),
       module: activeModule(),
       filter: activeFilter(activeModule()),
+      sort: activeSort(activeModule()),
       severity: activeSeverity(),
       railVisible: shouldShowRail()
     })

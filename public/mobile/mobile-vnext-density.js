@@ -34,10 +34,22 @@
       ['all', '全部'], ['lowStock', '低库存'], ['unsellable', '不可售'], ['inbound', '有在途'], ['highCapital', '高资金']
     ]
   };
+  const SORTS = {
+    ads: [
+      ['spendDesc', '花费最高'], ['acosDesc', 'ACOS最高'], ['salesDesc', '销售最高'], ['ordersAsc', '订单最少']
+    ],
+    products: [
+      ['salesDesc', '销售最高'], ['sessionsDesc', '流量最高'], ['cvrAsc', 'CVR最低'], ['buyBoxAsc', 'Buy Box最低']
+    ],
+    inventory: [
+      ['capitalDesc', '资金最高'], ['fulfillableAsc', '可售最少'], ['unsellableDesc', '不可售最多'], ['inboundDesc', '在途最多']
+    ]
+  };
 
   const state = {
     module: null,
     filters: { ads: 'all', products: 'all', inventory: 'all' },
+    sorts: { ads: 'spendDesc', products: 'salesDesc', inventory: 'capitalDesc' },
     applying: false
   };
 
@@ -128,6 +140,23 @@
     }).join('')}</div>`;
   }
 
+  function sortMarkup(module) {
+    if (!SORTS[module]) return '';
+    return `<div class="vnext-sort-tags" role="group" aria-label="${esc(MODULES.find(row => row[0] === module)?.[1] || module)}排序">${SORTS[module].map(([id, label]) => {
+      const selected = state.sorts[module] === id;
+      return `<button type="button" data-density-sort="${id}" data-density-sort-module="${module}" class="${selected ? 'active' : ''}" aria-pressed="${selected ? 'true' : 'false'}">${esc(label)}</button>`;
+    }).join('')}</div>`;
+  }
+
+  function operationalControlsMarkup(module, rows, m) {
+    if (!FILTERS[module] || !SORTS[module]) return '';
+    const moduleLabel = MODULES.find(row => row[0] === module)?.[1] || module;
+    return `<section class="vnext-operational-controls" aria-label="${esc(moduleLabel)}操作控制">
+      <div class="vnext-operational-control"><span>筛选</span>${filterMarkup(module, rows, m)}</div>
+      <div class="vnext-operational-control"><span>排序</span>${sortMarkup(module)}</div>
+    </section>`;
+  }
+
   function filteredRows(module, rows, filter = state.filters[module] || 'all', m = models()) {
     if (filter === 'all') return [...rows];
     if (module === 'ads') {
@@ -165,36 +194,71 @@
     return [...rows];
   }
 
+  function compareMetric(a, b, key, direction) {
+    const av = number(a?.[key]);
+    const bv = number(b?.[key]);
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return direction === 'asc' ? av - bv : bv - av;
+  }
+
+  function sortRows(module, rows, sort = state.sorts[module]) {
+    const configs = {
+      ads: {
+        spendDesc: ['spend', 'desc'],
+        acosDesc: ['acos', 'desc'],
+        salesDesc: ['sales', 'desc'],
+        ordersAsc: ['orders', 'asc']
+      },
+      products: {
+        salesDesc: ['sales', 'desc'],
+        sessionsDesc: ['sessions', 'desc'],
+        cvrAsc: ['cvr', 'asc'],
+        buyBoxAsc: ['buyBox', 'asc']
+      },
+      inventory: {
+        capitalDesc: ['inventoryValue', 'desc'],
+        fulfillableAsc: ['fulfillable', 'asc'],
+        unsellableDesc: ['unsellable', 'desc'],
+        inboundDesc: ['inbound', 'desc']
+      }
+    };
+    const [key, direction] = configs[module]?.[sort] || configs[module]?.[SORTS[module]?.[0]?.[0]] || [];
+    if (!key) return [...rows];
+    return [...rows].sort((a, b) => compareMetric(a, b, key, direction) || String(a?.id ?? '').localeCompare(String(b?.id ?? '')));
+  }
+
   function denseRecord({ type, id, kicker, title, subtitle, value, metrics = [], risk = '' }) {
     return `<button type="button" class="vnext-dense-record ${risk ? `risk-${risk}` : ''}" data-density-detail-type="${esc(type)}" data-density-detail-id="${esc(id)}"><span class="vnext-dense-record-copy"><small>${esc(kicker)}</small><strong>${esc(title)}</strong>${subtitle ? `<em>${esc(subtitle)}</em>` : ''}</span><span class="vnext-dense-record-value"><b>${esc(value)}</b>${metrics.map(([label, val]) => `<small>${esc(label)} ${esc(val)}</small>`).join('')}</span></button>`;
   }
 
   function adsMarkup(m) {
     const model = m.ads;
-    const rows = filteredRows('ads', model.campaigns, state.filters.ads, m).sort((a, b) => Number(b.spend || 0) - Number(a.spend || 0)).slice(0, 40);
+    const rows = sortRows('ads', filteredRows('ads', model.campaigns, state.filters.ads, m)).slice(0, 40);
     const risk = model.campaigns.filter(row => row.acos != null && Number(row.acos) > .45).length;
     const zero = model.campaigns.filter(row => Number(row.orders) === 0 && Number(row.spend || 0) > 0).length;
     return `${moduleHero('广告花费', fmt.compactMoney(model.totals.spend), [['广告销售', fmt.compactMoney(model.totals.sales)], ['ACOS', fmt.percent(model.totals.acos)], ['风险', fmt.number(risk)], ['无订单', fmt.number(zero)]])}
-      ${filterMarkup('ads', model.campaigns, m)}
+      ${operationalControlsMarkup('ads', model.campaigns, m)}
       <section class="vnext-module-section"><header><span>Campaign</span><h2>广告活动 <b>${rows.length}/${model.campaigns.length}</b></h2></header><div class="vnext-dense-list">${rows.length ? rows.map(row => denseRecord({ type: 'campaign', id: row.id, kicker: row.portfolio || 'Campaign', title: row.campaign, subtitle: `订单 ${fmt.number(row.orders)} · CVR ${fmt.percent(row.cvr)}`, value: fmt.money(row.spend, 0), metrics: [['ACOS', fmt.percent(row.acos)], ['销售', fmt.compactMoney(row.sales)]], risk: row.acos != null && Number(row.acos) > .60 ? 'critical' : row.acos != null && Number(row.acos) > .45 ? 'warning' : '' })).join('') : '<div class="vnext-density-empty">当前筛选没有 Campaign</div>'}</div></section>`;
   }
 
   function productsMarkup(m) {
     const model = m.products;
-    const rows = filteredRows('products', model.products, state.filters.products, m).sort((a, b) => Number(b.sales || 0) - Number(a.sales || 0)).slice(0, 40);
+    const rows = sortRows('products', filteredRows('products', model.products, state.filters.products, m)).slice(0, 40);
     const buyBoxRisk = model.products.filter(row => row.buyBox != null && Number(row.buyBox) < .90).length;
     return `${moduleHero('商品销售', fmt.compactMoney(model.totals.sales), [['销量', fmt.number(model.totals.units)], ['Sessions', fmt.number(model.totals.sessions)], ['CVR', fmt.percent(model.totals.cvr)], ['Buy Box风险', fmt.number(buyBoxRisk)]])}
-      ${filterMarkup('products', model.products, m)}
+      ${operationalControlsMarkup('products', model.products, m)}
       <section class="vnext-module-section"><header><span>SKU</span><h2>商品表现 <b>${rows.length}/${model.products.length}</b></h2></header><div class="vnext-dense-list">${rows.length ? rows.map(row => denseRecord({ type: 'product', id: row.id, kicker: row.model || row.asin || 'SKU', title: row.sku === '—' ? row.asin : row.sku, subtitle: `${row.asin || ''} · ${fmt.number(row.sessions)} Sessions`, value: fmt.compactMoney(row.sales), metrics: [['CVR', fmt.percent(row.cvr)], ['Buy Box', fmt.percent(row.buyBox)]], risk: row.buyBox != null && Number(row.buyBox) < .9 ? 'warning' : '' })).join('') : '<div class="vnext-density-empty">当前筛选没有 SKU</div>'}</div></section>`;
   }
 
   function inventoryMarkup(m) {
     const model = m.inventory;
-    const rows = filteredRows('inventory', model.inventory, state.filters.inventory, m).sort((a, b) => Number(b.inventoryValue || 0) - Number(a.inventoryValue || 0)).slice(0, 40);
+    const rows = sortRows('inventory', filteredRows('inventory', model.inventory, state.filters.inventory, m)).slice(0, 40);
     const low = model.inventory.filter(row => row.fulfillable != null && Number(row.fulfillable) <= 20).length;
     const unsellable = model.inventory.filter(row => row.unsellable != null && Number(row.unsellable) > 0).length;
     return `${moduleHero('库存资金', fmt.compactMoney(model.totals.inventoryValue), [['可售', fmt.number(model.totals.fulfillable)], ['在途', fmt.number(model.totals.inbound)], ['不可售', fmt.number(model.totals.unsellable)], ['低库存SKU', fmt.number(low)]])}
-      ${filterMarkup('inventory', model.inventory, m)}
+      ${operationalControlsMarkup('inventory', model.inventory, m)}
       <section class="vnext-module-section"><header><span>Inventory</span><h2>库存记录 <b>${rows.length}/${model.inventory.length}</b></h2></header><div class="vnext-dense-list">${rows.length ? rows.map(row => denseRecord({ type: 'inventory', id: row.id, kicker: row.model || row.asin || 'SKU', title: row.sku === '—' ? row.asin : row.sku, subtitle: `${fmt.number(row.total)} 总库存 · ${fmt.number(row.inbound)} 在途`, value: `${fmt.number(row.fulfillable)} 可售`, metrics: [['不可售', fmt.number(row.unsellable)], ['资金', fmt.compactMoney(row.inventoryValue)]], risk: row.unsellable != null && Number(row.unsellable) > 0 ? 'warning' : row.fulfillable != null && Number(row.fulfillable) <= 10 ? 'critical' : row.fulfillable != null && Number(row.fulfillable) <= 20 ? 'warning' : '' })).join('') : '<div class="vnext-density-empty">当前筛选没有库存记录</div>'}</div></section>`;
   }
 
@@ -317,6 +381,15 @@
     removeDensityHistoryKey();
   }
 
+  function restoreSortFocus(module, sort) {
+    requestAnimationFrame(() => {
+      const replacement = root.querySelector(`.vnext-density-module-page[data-density-module="${module}"] [data-density-sort-module="${module}"][data-density-sort="${sort}"]`);
+      if (!replacement?.isConnected) return;
+      try { replacement.focus({ preventScroll: true }); }
+      catch { replacement.focus(); }
+    });
+  }
+
   function applyEnhancements(force = false) {
     if (state.applying || !media.matches || !document.body.classList.contains('mobile-vnext-active')) return;
     const app = root.querySelector('.vnext-app');
@@ -389,6 +462,19 @@
       return;
     }
 
+    const sortButton = event.target.closest('[data-density-sort]');
+    if (sortButton) {
+      const module = sortButton.dataset.densitySortModule;
+      const sort = sortButton.dataset.densitySort;
+      if (SORTS[module]?.some(([id]) => id === sort)) {
+        const restoreFocus = event.detail === 0;
+        state.sorts[module] = sort;
+        applyEnhancements(true);
+        if (restoreFocus) restoreSortFocus(module, sort);
+      }
+      return;
+    }
+
     const record = event.target.closest('[data-density-detail-type]');
     if (record) {
       const detail = detailFromRecord(record.dataset.densityDetailType, record.dataset.densityDetailId, models());
@@ -437,6 +523,6 @@
 
   window.YT_MOBILE_VNEXT_DENSITY = Object.freeze({
     openModule: module => setModule(module),
-    getState: () => Object.freeze({ module: state.module, filters: { ...state.filters } })
+    getState: () => Object.freeze({ module: state.module, filters: { ...state.filters }, sorts: { ...state.sorts } })
   });
 })();

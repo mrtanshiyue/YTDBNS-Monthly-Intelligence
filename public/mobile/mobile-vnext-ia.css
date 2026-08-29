@@ -26,6 +26,66 @@
     color:#fff!important;
   }
 
+  /* A2 operational controls keep filtering and prioritization separate instead of hiding sort order in code. */
+  #mobileAppRoot .vnext-operational-controls{
+    display:grid;
+    gap:7px;
+    margin:0 0 13px;
+  }
+  #mobileAppRoot .vnext-operational-control{
+    display:grid;
+    grid-template-columns:36px minmax(0,1fr);
+    gap:7px;
+    align-items:center;
+    min-width:0;
+  }
+  #mobileAppRoot .vnext-operational-control>span{
+    font-size:9px;
+    line-height:1;
+    font-weight:760;
+    letter-spacing:.05em;
+    color:var(--vx-faint);
+    white-space:nowrap;
+  }
+  #mobileAppRoot .vnext-operational-controls .vnext-filter-tags,
+  #mobileAppRoot .vnext-operational-controls .vnext-sort-tags{
+    min-width:0;
+    margin:0;
+  }
+  #mobileAppRoot .vnext-sort-tags{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    padding:1px 26px 1px 0;
+    scroll-padding-inline:1px 26px;
+    scroll-snap-type:x proximity;
+    -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
+    mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
+  }
+  #mobileAppRoot .vnext-sort-tags::-webkit-scrollbar{
+    display:none;
+  }
+  #mobileAppRoot .vnext-sort-tags button{
+    min-height:44px;
+    flex:0 0 auto;
+    border:0;
+    border-radius:14px;
+    padding:0 11px;
+    scroll-snap-align:start;
+    background:rgba(255,255,255,.72);
+    box-shadow:0 0 0 1px var(--vx-line) inset;
+    color:var(--vx-muted);
+    font-size:11px;
+    font-weight:690;
+  }
+  #mobileAppRoot .vnext-sort-tags button.active{
+    background:var(--vx-accent-soft);
+    color:var(--vx-accent);
+    box-shadow:0 0 0 1px rgba(30,111,92,.14) inset;
+  }
+
   /* Ads / Products / Inventory filters are horizontally scrollable; expose overflow and make stops predictable. */
   #mobileAppRoot .vnext-density-module-page .vnext-filter-tags{
     scroll-padding-inline:1px 26px;
