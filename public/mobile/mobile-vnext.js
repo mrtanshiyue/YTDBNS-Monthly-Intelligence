@@ -943,9 +943,17 @@
     root.setAttribute('aria-hidden', 'false');
     document.body.classList.add('mobile-vnext-active');
     const payload = history.state?.[HISTORY_KEY];
-    if (payload?.tab && TABS.some(([id]) => id === payload.tab)) state.tab = payload.tab;
-    else replaceHistory({ tab: state.tab, detailKey: null, sheet: null });
+    if (payload?.tab && TABS.some(([id]) => id === payload.tab)) {
+      state.tab = payload.tab;
+      state.sheet = payload.sheet === 'period' ? 'period' : null;
+    } else {
+      state.sheet = null;
+      replaceHistory({ tab: state.tab, detailKey: null, sheet: null });
+    }
     render();
+    if (state.sheet === 'period') {
+      requestAnimationFrame(() => root.querySelector('.vnext-sheet [data-vnext-close-sheet]')?.focus());
+    }
     runtime.start();
     if (state.tab === 'trends') loadComparison();
   }
