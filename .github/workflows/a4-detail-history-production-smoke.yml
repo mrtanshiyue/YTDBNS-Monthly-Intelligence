@@ -75,6 +75,30 @@ jobs:
           # Search index always contains the canonical metric-sales item, so use
           # its stable title while preserving every Reload/Back/Forward assertion.
           text = text.replace("'SKU'", "'销售额'")
+
+          marker = "async function snapshot(page) {"
+          helper = """async function waitPeriodAligned(page) {
+  await page.waitForFunction(() => {
+    const period = window.YT_MOBILE_APP?.getPeriodContext?.();
+    return Boolean(
+      period?.history?.from && period?.history?.to &&
+      period?.runtime?.from && period?.runtime?.to
+    ) &&
+      period.history.from === period.runtime.from &&
+      period.history.to === period.runtime.to &&
+      period.restoring === false;
+  }, null, { timeout: 15_000 });
+}
+
+"""
+          if marker not in text:
+              raise SystemExit('A4 snapshot contract changed')
+          text = text.replace(marker, helper + marker, 1)
+
+          wait_detail = "    await waitDetail(page, ref, title);"
+          if text.count(wait_detail) != 3:
+              raise SystemExit(f'A4 waitDetail contract changed: expected 3, got {text.count(wait_detail)}')
+          text = text.replace(wait_detail, wait_detail + "\n    await waitPeriodAligned(page);")
           p.write_text(text)
           PY
           node --check scripts/.tmp-a4-detail-history-production-acceptance.mjs
