@@ -70,7 +70,12 @@ jobs:
           new = "const entry = process.env.A4_PRODUCTION_URL;"
           if old not in text:
               raise SystemExit('A4 detail-history acceptance entry contract changed')
-          p.write_text(text.replace(old, new, 1))
+          text = text.replace(old, new, 1)
+          # Production data does not guarantee a literal SKU token. The vNext
+          # Search index always contains the canonical metric-sales item, so use
+          # its stable title while preserving every Reload/Back/Forward assertion.
+          text = text.replace("'SKU'", "'销售额'")
+          p.write_text(text)
           PY
           node --check scripts/.tmp-a4-detail-history-production-acceptance.mjs
 
