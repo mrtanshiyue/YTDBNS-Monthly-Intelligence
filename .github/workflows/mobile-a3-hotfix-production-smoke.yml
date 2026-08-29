@@ -50,11 +50,16 @@ jobs:
           from pathlib import Path
           p = Path('scripts/.tmp-mobile-a3-hotfix-production-acceptance.mjs')
           text = p.read_text()
-          old = "const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;"
-          new = "const entry = process.env.A3_PRODUCTION_URL;"
-          if old not in text:
+          old_entry = "const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;"
+          new_entry = "const entry = process.env.A3_PRODUCTION_URL;"
+          if old_entry not in text:
               raise SystemExit('acceptance entry contract changed')
-          p.write_text(text.replace(old, new, 1))
+          text = text.replace(old_entry, new_entry, 1)
+          old_forward = """    await page.goForward({ waitUntil: 'load' }).catch(() => null);\n    await waitCombined(page, inventoryExpected);\n    evidence.afterForward = await snapshot(page, 'inventory');"""
+          new_forward = """    await page.goForward({ waitUntil: 'load' }).catch(() => null);\n    try {\n      await waitCombined(page, inventoryExpected);\n    } catch (error) {\n      const diagnostic = await snapshot(page, 'inventory');\n      const browserDiagnostic = await page.evaluate(() => {\n        const runtime = window.YT_SHARED_RUNTIME?.getState?.();\n        return {\n          historyLength: history.length,\n          historyState: history.state,\n          location: location.href,\n          ready: document.documentElement.dataset.mobileVnextReady || null,\n          appTab: document.querySelector('.vnext-app')?.dataset?.tab || null,\n          density: window.YT_MOBILE_VNEXT_DENSITY?.getState?.() || null,\n          ia: window.YT_MOBILE_VNEXT_IA?.getState?.() || null,\n          runtime: runtime ? { from: runtime.from, to: runtime.to, loading: runtime.loading, mode: runtime.mode, error: runtime.error } : null,\n          period: window.YT_MOBILE_APP?.getPeriodContext?.() || null\n        };\n      });\n      console.error(`FORWARD_DIAGNOSTIC_V2 ${label} ${JSON.stringify({ expected: inventoryExpected, diagnostic, browserDiagnostic })}`);\n      throw error;\n    }\n    evidence.afterForward = await snapshot(page, 'inventory');"""
+          if old_forward not in text:
+              raise SystemExit('forward acceptance contract changed')
+          p.write_text(text.replace(old_forward, new_forward, 1))
           PY
           node scripts/.tmp-mobile-a3-hotfix-production-acceptance.mjs
 
