@@ -65,6 +65,7 @@ jobs:
           node --check scripts/mobile-a2-visual-polish-acceptance.mjs
           node --check scripts/mobile-a3-operator-context-acceptance.mjs
           node --check scripts/mobile-a3-period-history-acceptance.mjs
+          node --check scripts/mobile-a3-period-ownership-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
@@ -108,6 +109,8 @@ jobs:
         run: node scripts/mobile-a3-operator-context-acceptance.mjs
       - name: Mobile A3 period-history Chromium acceptance
         run: node scripts/mobile-a3-period-history-acceptance.mjs
+      - name: Mobile A3 immutable period-ownership Chromium acceptance
+        run: node scripts/mobile-a3-period-ownership-acceptance.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -130,5 +133,6 @@ jobs:
             artifacts/mobile-a2-visual-polish
             artifacts/mobile-a3-operator-context
             artifacts/mobile-a3-period-history
+            artifacts/mobile-a3-period-ownership
           if-no-files-found: ignore
           retention-days: 7
