@@ -108,15 +108,11 @@
   }
 
   history.pushState = function mobilePeriodPushState(state, title, url) {
-    const result = nativePushState(enrichVnextHistoryState(state), title, url);
-    queueNavigationRestore();
-    return result;
+    return nativePushState(enrichVnextHistoryState(state), title, url);
   };
 
   history.replaceState = function mobilePeriodReplaceState(state, title, url) {
-    const result = nativeReplaceState(enrichVnextHistoryState(state), title, url);
-    queueNavigationRestore();
-    return result;
+    return nativeReplaceState(enrichVnextHistoryState(state), title, url);
   };
 
   function persistRuntimeRange(next = runtime?.getState?.()) {
