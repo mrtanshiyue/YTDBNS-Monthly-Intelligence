@@ -11,7 +11,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
 
 const failures = [];
 const report = [];
-const expectedDomains = ['ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data'];
+const expectedDomains = ['ads', 'products', 'inventory', 'finance'];
 const expectedPrimary = ['today', 'alerts', 'trends', 'search'];
 const moduleTargets = ['ads', 'products', 'inventory'];
 const detailExitMode = { ads: 'button', products: 'browser-back', inventory: 'escape' };
@@ -65,6 +65,7 @@ async function railState(page) {
       const buttonRect = button.getBoundingClientRect();
       return {
         id: button.dataset.vnextModule,
+        text: button.textContent.trim(),
         visible: !button.hidden && buttonStyle.display !== 'none' && buttonStyle.visibility !== 'hidden' && buttonRect.width > 0 && buttonRect.height > 0,
         active: button.classList.contains('active'),
         current: button.getAttribute('aria-current'),
@@ -219,7 +220,8 @@ async function runMobile(viewport) {
     let rail = await railState(page);
     const todayVisible = rail.buttons.filter(row => row.visible).map(row => row.id);
     expect(rail.visible && rail.label === '业务模块', `${label}: Today exposes one secondary business-domain rail`, JSON.stringify(rail));
-    expect(JSON.stringify(todayVisible) === JSON.stringify(expectedDomains), `${label}: Today rail contains exactly eight business domains`, JSON.stringify(todayVisible));
+    expect(JSON.stringify(todayVisible) === JSON.stringify(expectedDomains), `${label}: Today rail contains exactly four grouped business domains`, JSON.stringify(todayVisible));
+    expect(rail.buttons.find(row => row.id === 'finance')?.text.includes('工作台'), `${label}: finance stable route is presented as Workspace`, JSON.stringify(rail.buttons));
     expect(!rail.buttons.find(row => row.id === 'today')?.visible && !rail.buttons.find(row => row.id === 'alerts')?.visible, `${label}: duplicate Today/Alerts controls are removed from secondary navigation`, JSON.stringify(rail.buttons));
 
     for (const tab of ['alerts', 'trends', 'search']) {
@@ -241,8 +243,8 @@ async function runMobile(viewport) {
 
       rail = await railState(page);
       const active = rail.buttons.filter(row => row.visible && row.active).map(row => row.id);
-      expect(rail.visible && rail.ia?.module === module, `${label}/${module}: business rail persists inside the domain module`, JSON.stringify(rail));
-      expect(JSON.stringify(active) === JSON.stringify([module]), `${label}/${module}: exactly one domain is selected`, JSON.stringify(active));
+      expect(rail.visible && rail.ia?.module === module && rail.ia?.railModule === module, `${label}/${module}: business rail persists inside the domain module`, JSON.stringify(rail));
+      expect(JSON.stringify(active) === JSON.stringify([module]), `${label}/${module}: exactly one grouped domain is selected`, JSON.stringify(active));
 
       const state = await moduleState(page, module);
       evidence.modules[module] = state;
@@ -274,7 +276,7 @@ async function runMobile(viewport) {
     await page.waitForSelector('[data-vnext-page="today"]', { state: 'visible' });
     await sleep(100);
     rail = await railState(page);
-    expect(rail.visible && !rail.ia?.module && rail.ia?.primaryTab === 'today', `${label}: Browser Back traverses module history and restores Today`, JSON.stringify(rail));
+    expect(rail.visible && !rail.ia?.module && !rail.ia?.railModule && rail.ia?.primaryTab === 'today', `${label}: Browser Back traverses module history and restores Today`, JSON.stringify(rail));
     await page.screenshot({ path: path.join(artifactDir, `mobile-${label}-today.png`), fullPage: false });
 
     expect(pageErrors.length === 0, `${label}: page errors=0`, JSON.stringify(pageErrors));
