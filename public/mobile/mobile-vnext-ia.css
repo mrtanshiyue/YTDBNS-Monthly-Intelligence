@@ -135,6 +135,106 @@
     grid-column:1/-1;
   }
 
+  /* A2 Workspace groups support domains under one stable rail context without reducing information density. */
+  #mobileAppRoot .vnext-workspace-section{
+    margin-top:2px;
+  }
+  #mobileAppRoot .vnext-workspace-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    min-width:0;
+  }
+  #mobileAppRoot .vnext-workspace-card{
+    min-width:0;
+    min-height:112px;
+    border:0;
+    border-radius:16px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:space-between;
+    gap:10px;
+    text-align:left;
+    background:rgba(255,255,255,.78);
+    box-shadow:0 0 0 1px var(--vx-line) inset;
+    color:var(--vx-text);
+  }
+  #mobileAppRoot .vnext-workspace-card-copy{
+    display:grid;
+    gap:3px;
+    min-width:0;
+  }
+  #mobileAppRoot .vnext-workspace-card-copy small{
+    font-size:9px;
+    line-height:1.15;
+    font-weight:760;
+    letter-spacing:.055em;
+    color:var(--vx-faint);
+    overflow-wrap:anywhere;
+  }
+  #mobileAppRoot .vnext-workspace-card-copy strong{
+    font-size:14px;
+    line-height:1.25;
+    font-weight:760;
+    color:var(--vx-text);
+    overflow-wrap:anywhere;
+  }
+  #mobileAppRoot .vnext-workspace-card-copy em{
+    font-style:normal;
+    font-size:11px;
+    line-height:1.35;
+    font-weight:560;
+    color:var(--vx-muted);
+    overflow-wrap:anywhere;
+  }
+  #mobileAppRoot .vnext-workspace-card-value{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:6px;
+    min-width:0;
+  }
+  #mobileAppRoot .vnext-workspace-card-value b{
+    min-width:0;
+    font-size:16px;
+    line-height:1.15;
+    font-weight:790;
+    color:var(--vx-text);
+    overflow-wrap:anywhere;
+  }
+  #mobileAppRoot .vnext-workspace-card-value span{
+    flex:0 0 auto;
+    font-size:20px;
+    line-height:1;
+    color:var(--vx-accent);
+  }
+  #mobileAppRoot .vnext-workspace-back{
+    min-height:44px;
+    width:max-content;
+    max-width:100%;
+    border:0;
+    border-radius:14px;
+    padding:0 11px;
+    margin:0 0 10px;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    background:var(--vx-accent-soft);
+    color:var(--vx-accent);
+    box-shadow:0 0 0 1px rgba(30,111,92,.12) inset;
+  }
+  #mobileAppRoot .vnext-workspace-back>span{
+    font-size:20px;
+    line-height:1;
+  }
+  #mobileAppRoot .vnext-workspace-back>strong{
+    font-size:12px;
+    line-height:1.2;
+    font-weight:730;
+  }
+
   @media (max-width:390px){
     .vnext-module-rail[data-vnext-ia="domain"]{
       padding-left:15px;
@@ -147,6 +247,12 @@
     }
     #mobileAppRoot .vnext-density-module-page .vnext-module-facts{
       grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    #mobileAppRoot .vnext-workspace-grid{
+      grid-template-columns:minmax(0,1fr);
+    }
+    #mobileAppRoot .vnext-workspace-card{
+      min-height:92px;
     }
   }
 
