@@ -19,6 +19,7 @@
   const PRIMARY_FOCUS_TAB_SET = new Set(['today', 'alerts', 'trends', 'search']);
   const ALERT_SEVERITY_SET = new Set(['all', 'critical', 'warning']);
   const DUPLICATE_PRIMARY_IDS = new Set(['today', 'alerts']);
+  const OPERATOR_CONTEXT_KEY = 'ytdbnsMobileOperatorContextV1';
   let syncing = false;
   let lastRevealedModule = null;
   let lastRevealedRail = null;
@@ -121,6 +122,67 @@
   function sortRailFor(module) {
     if (!SORT_MODULE_SET.has(module)) return null;
     return root.querySelector(`.vnext-density-module-page[data-density-module="${module}"] .vnext-sort-tags`);
+  }
+
+  function historyOperatorContext() {
+    const context = history.state?.[OPERATOR_CONTEXT_KEY];
+    return context && typeof context === 'object' ? context : null;
+  }
+
+  function persistOperatorContext(event) {
+    if (!media.matches) return;
+    const filterButton = event.target.closest('[data-density-filter]');
+    const sortButton = event.target.closest('[data-density-sort]');
+    if (!filterButton && !sortButton) return;
+
+    const current = historyOperatorContext() || {};
+    const nextContext = {
+      filters: { ...(current.filters || {}) },
+      sorts: { ...(current.sorts || {}) }
+    };
+
+    if (filterButton) {
+      const module = filterButton.dataset.densityFilterModule;
+      const filter = filterButton.dataset.densityFilter;
+      if (FILTER_MODULE_SET.has(module) && filter) nextContext.filters[module] = filter;
+    }
+    if (sortButton) {
+      const module = sortButton.dataset.densitySortModule;
+      const sort = sortButton.dataset.densitySort;
+      if (SORT_MODULE_SET.has(module) && sort) nextContext.sorts[module] = sort;
+    }
+
+    const nextState = { ...(history.state || {}), [OPERATOR_CONTEXT_KEY]: nextContext };
+    history.replaceState(nextState, document.title);
+  }
+
+  function restoreOperatorContext(module) {
+    if (!FILTER_MODULE_SET.has(module) && !SORT_MODULE_SET.has(module)) return false;
+    const context = historyOperatorContext();
+    if (!context) return false;
+
+    if (FILTER_MODULE_SET.has(module)) {
+      const filter = context.filters?.[module];
+      if (filter && activeFilter(module) !== filter) {
+        const button = filterRailFor(module)?.querySelector(`[data-density-filter="${filter}"]`);
+        if (button) {
+          button.click();
+          return true;
+        }
+      }
+    }
+
+    if (SORT_MODULE_SET.has(module)) {
+      const sort = context.sorts?.[module];
+      if (sort && activeSort(module) !== sort) {
+        const button = sortRailFor(module)?.querySelector(`[data-density-sort="${sort}"]`);
+        if (button) {
+          button.click();
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   function syncFilterSemantics(module) {
@@ -258,6 +320,7 @@
 
       const module = activeModule();
       const railModule = activeRailModule();
+      if (restoreOperatorContext(module)) return;
       for (const button of rail.querySelectorAll('[data-vnext-module]')) {
         const id = button.dataset.vnextModule;
         if (DUPLICATE_PRIMARY_IDS.has(id)) {
@@ -355,6 +418,7 @@
 
   root.addEventListener('click', event => {
     capturePeriodFocusOrigin(event);
+    persistOperatorContext(event);
     const focusTarget = rerenderFocusTarget(event);
     if (event.target.closest('[data-vnext-tab], [data-vnext-module], [data-density-filter], [data-density-sort], [data-vnext-severity]')) requestAnimationFrame(syncRail);
     if (focusTarget) requestAnimationFrame(() => restoreRerenderedFocus(focusTarget));
