@@ -62,6 +62,7 @@ jobs:
           node --check scripts/mobile-a2-operational-sort-acceptance.mjs
           node --check scripts/mobile-a2-workspace-acceptance.mjs
           node --check scripts/mobile-a2-visual-polish-acceptance.mjs
+          node --check scripts/mobile-a3-operator-context-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
@@ -101,6 +102,8 @@ jobs:
         run: node scripts/mobile-a2-workspace-acceptance.mjs
       - name: Mobile A2 visual polish Chromium acceptance
         run: node scripts/mobile-a2-visual-polish-acceptance.mjs
+      - name: Mobile A3 operator-context Chromium acceptance
+        run: node scripts/mobile-a3-operator-context-acceptance.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -121,5 +124,6 @@ jobs:
             artifacts/mobile-a2-operational-sort
             artifacts/mobile-a2-workspace
             artifacts/mobile-a2-visual-polish
+            artifacts/mobile-a3-operator-context
           if-no-files-found: ignore
           retention-days: 7
