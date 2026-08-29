@@ -77,20 +77,20 @@ jobs:
           text = text.replace("'SKU'", "'销售额'")
 
           marker = "async function snapshot(page) {"
-          helper = """async function waitPeriodAligned(page) {
-  await page.waitForFunction(() => {
-    const period = window.YT_MOBILE_APP?.getPeriodContext?.();
-    return Boolean(
-      period?.history?.from && period?.history?.to &&
-      period?.runtime?.from && period?.runtime?.to
-    ) &&
-      period.history.from === period.runtime.from &&
-      period.history.to === period.runtime.to &&
-      period.restoring === false;
-  }, null, { timeout: 15_000 });
-}
-
-"""
+          helper = (
+              "async function waitPeriodAligned(page) {\n"
+              "  await page.waitForFunction(() => {\n"
+              "    const period = window.YT_MOBILE_APP?.getPeriodContext?.();\n"
+              "    return Boolean(\n"
+              "      period?.history?.from && period?.history?.to &&\n"
+              "      period?.runtime?.from && period?.runtime?.to\n"
+              "    ) &&\n"
+              "      period.history.from === period.runtime.from &&\n"
+              "      period.history.to === period.runtime.to &&\n"
+              "      period.restoring === false;\n"
+              "  }, null, { timeout: 15_000 });\n"
+              "}\n\n"
+          )
           if marker not in text:
               raise SystemExit('A4 snapshot contract changed')
           text = text.replace(marker, helper + marker, 1)
