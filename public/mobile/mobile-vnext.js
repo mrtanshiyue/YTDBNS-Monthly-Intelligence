@@ -620,6 +620,7 @@
     if (!media.matches || !state.active) return;
     const previousFocus = document.activeElement;
     const searchFocused = previousFocus?.matches?.('[data-vnext-search-input]');
+    const periodSheetCloseFocused = previousFocus?.matches?.('.vnext-sheet [data-vnext-close-sheet]');
     const scrollY = window.scrollY;
 
     const page = state.tab === 'alerts' ? alertsMarkup() : state.tab === 'trends' ? trendsMarkup() : state.tab === 'search' ? searchMarkup() : todayMarkup();
@@ -633,6 +634,9 @@
       </div>`;
 
     requestAnimationFrame(() => {
+      if (periodSheetCloseFocused && state.sheet === 'period') {
+        root.querySelector('.vnext-sheet [data-vnext-close-sheet]')?.focus({ preventScroll: true });
+      }
       if (searchFocused || state.tab === 'search' && document.documentElement.dataset.vnextAutofocus === 'true') {
         const input = root.querySelector('[data-vnext-search-input]');
         if (input) {

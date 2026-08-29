@@ -28,6 +28,11 @@ function staticContract() {
     'A5 static contract: startup hydrates the period sheet from Browser History and restores dialog focus'
   );
   expect(
+    source.includes('periodSheetCloseFocused') &&
+      source.includes("root.querySelector('.vnext-sheet [data-vnext-close-sheet]')?.focus({ preventScroll: true })"),
+    'A5 static contract: rerenders preserve focus only when the reconstructed period-sheet close control owned focus'
+  );
+  expect(
     !source.includes('localStorage.') && !source.includes('sessionStorage.'),
     'A5 static contract: Reload continuity adds no browser-storage dependency'
   );
@@ -165,6 +170,13 @@ async function runViewport(viewport) {
     evidence.afterReload = await snapshot(page);
     expectSheet(evidence.afterReload, `${label}/reload`, expected);
     expect(evidence.afterReload.closeFocused, `${label}/reload: reconstructed dialog owns initial focus`, JSON.stringify(evidence.afterReload));
+
+    await page.evaluate(() => window.YT_SHARED_RUNTIME?.refresh?.());
+    await waitReady(page);
+    await waitSheet(page);
+    evidence.afterRuntimeRefresh = await snapshot(page);
+    expectSheet(evidence.afterRuntimeRefresh, `${label}/runtime-refresh`, expected);
+    expect(evidence.afterRuntimeRefresh.closeFocused, `${label}/runtime-refresh: live-style runtime rerender preserves reconstructed dialog focus`, JSON.stringify(evidence.afterRuntimeRefresh));
 
     await page.goBack({ waitUntil: 'load' }).catch(() => null);
     await waitNoSheet(page);
