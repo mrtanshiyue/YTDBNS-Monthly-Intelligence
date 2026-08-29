@@ -8,12 +8,18 @@
   const mobile = window.matchMedia('(max-width: 860px)');
   const VNEXT_HISTORY_KEY = 'ytdbnsMobileVnext';
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const NAVIGATION_SEVERITIES = new Set(['all', 'critical', 'warning']);
+  const QUERY_LIMIT = 256;
   const nativePushState = history.pushState.bind(history);
   const nativeReplaceState = history.replaceState.bind(history);
   let pendingPeriodSelection = false;
   let pendingRestore = null;
   let restoringPeriod = false;
   let restoreSerial = 0;
+  let navigationContext = Object.freeze({ severity: 'all', query: '' });
+  let restoringNavigationContext = false;
+  let navigationPersistFrame = 0;
+  let navigationRestoreFrame = 0;
 
   const syncRuntimeMode = next => {
     const mode = next?.mode || runtime?.getState?.()?.mode || '';
@@ -44,24 +50,86 @@
     return Boolean(a && b && a.from === b.from && a.to === b.to);
   }
 
-  function enrichVnextHistoryState(candidate) {
-    if (!mobile.matches || !candidate || typeof candidate !== 'object') return candidate;
-    const payload = candidate[VNEXT_HISTORY_KEY];
-    if (!payload || typeof payload !== 'object' || rangeFromState(candidate)) return candidate;
-    const range = rangeFromState(history.state) || runtimeRange();
-    if (!range) return candidate;
+  function normalizeSeverity(value, fallback = 'all') {
+    const candidate = String(value || '');
+    return NAVIGATION_SEVERITIES.has(candidate) ? candidate : fallback;
+  }
+
+  function normalizeQuery(value, fallback = '') {
+    if (typeof value !== 'string') return fallback;
+    return value.slice(0, QUERY_LIMIT);
+  }
+
+  function navigationContextFromState(source = history.state, fallback = { severity: 'all', query: '' }) {
+    const payload = source?.[VNEXT_HISTORY_KEY];
+    if (!payload || typeof payload !== 'object') {
+      return {
+        severity: normalizeSeverity(fallback?.severity),
+        query: normalizeQuery(fallback?.query)
+      };
+    }
     return {
-      ...candidate,
-      [VNEXT_HISTORY_KEY]: { ...payload, ...range }
+      severity: normalizeSeverity(payload.severity, normalizeSeverity(fallback?.severity)),
+      query: normalizeQuery(payload.query, normalizeQuery(fallback?.query))
     };
   }
 
+  function setNavigationContext(next) {
+    navigationContext = Object.freeze({
+      severity: normalizeSeverity(next?.severity, navigationContext.severity),
+      query: normalizeQuery(next?.query, navigationContext.query)
+    });
+    return navigationContext;
+  }
+
+  function enrichVnextHistoryState(candidate) {
+    if (!mobile.matches || !candidate || typeof candidate !== 'object') return candidate;
+    const payload = candidate[VNEXT_HISTORY_KEY];
+    if (!payload || typeof payload !== 'object') return candidate;
+    const range = rangeFromState(candidate) || rangeFromState(history.state) || runtimeRange();
+    const context = navigationContextFromState(candidate, navigationContext);
+    return {
+      ...candidate,
+      [VNEXT_HISTORY_KEY]: {
+        ...payload,
+        ...context,
+        ...(range || {})
+      }
+    };
+  }
+
+  function queueNavigationRestore() {
+    if (!mobile.matches) return;
+    if (navigationRestoreFrame) cancelAnimationFrame(navigationRestoreFrame);
+    navigationRestoreFrame = requestAnimationFrame(() => {
+      navigationRestoreFrame = 0;
+      restoreNavigationContext();
+    });
+  }
+
+  function navigationDestinationNeedsRestore(candidate) {
+    if (!mobile.matches || !candidate || typeof candidate !== 'object') return false;
+    const payload = candidate[VNEXT_HISTORY_KEY];
+    const core = window.YT_MOBILE_VNEXT?.getState?.();
+    if (!payload || typeof payload !== 'object' || !core) return false;
+    const context = navigationContextFromState(candidate, navigationContext);
+    if (payload.tab === 'alerts' && core.tab === 'alerts') return core.severity !== context.severity;
+    if (payload.tab === 'search' && core.tab === 'search') return core.query !== context.query;
+    return false;
+  }
+
   history.pushState = function mobilePeriodPushState(state, title, url) {
-    return nativePushState(enrichVnextHistoryState(state), title, url);
+    const enriched = enrichVnextHistoryState(state);
+    const result = nativePushState(enriched, title, url);
+    if (navigationDestinationNeedsRestore(enriched)) queueNavigationRestore();
+    return result;
   };
 
   history.replaceState = function mobilePeriodReplaceState(state, title, url) {
-    return nativeReplaceState(enrichVnextHistoryState(state), title, url);
+    const enriched = enrichVnextHistoryState(state);
+    const result = nativeReplaceState(enriched, title, url);
+    if (navigationDestinationNeedsRestore(enriched)) queueNavigationRestore();
+    return result;
   };
 
   function persistRuntimeRange(next = runtime?.getState?.()) {
@@ -89,6 +157,62 @@
       [VNEXT_HISTORY_KEY]: { ...payload, ...range }
     }, document.title);
     pendingPeriodSelection = false;
+    return true;
+  }
+
+  function persistNavigationContext() {
+    if (!mobile.matches || restoringNavigationContext) return false;
+    const current = history.state || {};
+    const payload = current[VNEXT_HISTORY_KEY];
+    if (!payload || typeof payload !== 'object') return false;
+    const stored = navigationContextFromState(current);
+    if (stored.severity === navigationContext.severity && stored.query === navigationContext.query) return true;
+    nativeReplaceState({
+      ...current,
+      [VNEXT_HISTORY_KEY]: {
+        ...payload,
+        severity: navigationContext.severity,
+        query: navigationContext.query
+      }
+    }, document.title);
+    return true;
+  }
+
+  function queueNavigationPersist() {
+    if (!mobile.matches || restoringNavigationContext) return;
+    if (navigationPersistFrame) cancelAnimationFrame(navigationPersistFrame);
+    navigationPersistFrame = requestAnimationFrame(() => {
+      navigationPersistFrame = 0;
+      persistNavigationContext();
+    });
+  }
+
+  function restoreNavigationContext() {
+    if (!mobile.matches || document.documentElement.dataset.mobileVnextReady !== 'true') return false;
+    const core = window.YT_MOBILE_VNEXT?.getState?.();
+    if (!core) return false;
+
+    if (core.tab === 'alerts' && core.severity !== navigationContext.severity) {
+      const button = root.querySelector(`[data-vnext-page="alerts"] [data-vnext-severity="${navigationContext.severity}"]`);
+      if (button) {
+        restoringNavigationContext = true;
+        try { button.click(); } finally { restoringNavigationContext = false; }
+      }
+    }
+
+    const refreshed = window.YT_MOBILE_VNEXT?.getState?.();
+    if (refreshed?.tab === 'search' && refreshed.query !== navigationContext.query) {
+      const input = root.querySelector('[data-vnext-search-input]');
+      if (input) {
+        restoringNavigationContext = true;
+        try {
+          input.value = navigationContext.query;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        } finally {
+          restoringNavigationContext = false;
+        }
+      }
+    }
     return true;
   }
 
@@ -134,10 +258,39 @@
     if (event.target.closest('[data-vnext-quick], [data-vnext-period-month], [data-vnext-month], [data-density-month]')) {
       pendingPeriodSelection = true;
     }
+    if (restoringNavigationContext) return;
+
+    const severity = event.target.closest('[data-vnext-severity]')?.dataset.vnextSeverity;
+    if (NAVIGATION_SEVERITIES.has(String(severity || ''))) {
+      setNavigationContext({ severity });
+      queueNavigationPersist();
+    }
+
+    const query = event.target.closest('[data-vnext-query]')?.dataset.vnextQuery;
+    if (typeof query === 'string') {
+      setNavigationContext({ query });
+      queueNavigationPersist();
+    } else if (event.target.closest('[data-vnext-clear-search]')) {
+      setNavigationContext({ query: '' });
+      queueNavigationPersist();
+    }
+  }, true);
+
+  root.addEventListener('input', event => {
+    if (restoringNavigationContext || !event.target.matches('[data-vnext-search-input]')) return;
+    setNavigationContext({ query: event.target.value });
+    queueNavigationPersist();
+  }, true);
+
+  root.addEventListener('vnext:search', event => {
+    if (restoringNavigationContext) return;
+    setNavigationContext({ query: normalizeQuery(event.detail?.query) });
   }, true);
 
   window.addEventListener('popstate', event => {
     if (!mobile.matches) return;
+    setNavigationContext(navigationContextFromState(event.state));
+    queueNavigationRestore();
     if (pendingPeriodSelection) {
       pendingRestore = null;
       requestAnimationFrame(() => persistRuntimeRange(runtime?.getState?.()));
@@ -149,13 +302,19 @@
 
   const readyObserver = new MutationObserver(() => {
     if (document.documentElement.dataset.mobileVnextReady !== 'true') return;
-    requestAnimationFrame(() => syncPeriodHistory(runtime?.getState?.()));
+    setNavigationContext(navigationContextFromState(history.state, navigationContext));
+    requestAnimationFrame(() => {
+      persistNavigationContext();
+      restoreNavigationContext();
+      syncPeriodHistory(runtime?.getState?.());
+    });
   });
   readyObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['data-mobile-vnext-ready']
   });
 
+  navigationContext = Object.freeze(navigationContextFromState(history.state));
   pendingRestore = rangeFromState(history.state);
   syncRuntimeMode(runtime?.getState?.());
   runtime?.subscribe?.(next => {
@@ -164,8 +323,13 @@
   });
   mobile.addEventListener?.('change', event => {
     if (!event.matches) return;
+    setNavigationContext(navigationContextFromState(history.state));
     pendingRestore = rangeFromState(history.state);
-    requestAnimationFrame(() => syncPeriodHistory(runtime?.getState?.()));
+    requestAnimationFrame(() => {
+      persistNavigationContext();
+      restoreNavigationContext();
+      syncPeriodHistory(runtime?.getState?.());
+    });
   });
 
   window.YT_MOBILE_APP = Object.freeze({
@@ -177,9 +341,11 @@
       }));
     },
     openSearch(query = '') {
+      const normalizedQuery = normalizeQuery(query);
+      setNavigationContext({ query: normalizedQuery });
       root.dispatchEvent(new CustomEvent('vnext:search', {
         bubbles: true,
-        detail: { query }
+        detail: { query: normalizedQuery }
       }));
     },
     getPeriodContext() {
@@ -190,6 +356,26 @@
         runtime: currentRange ? { ...currentRange } : null,
         pendingSelection: pendingPeriodSelection,
         restoring: restoringPeriod
+      });
+    },
+    getNavigationContext() {
+      const core = window.YT_MOBILE_VNEXT?.getState?.() || null;
+      const historyContext = navigationContextFromState(history.state);
+      const activeSeverity = root.querySelector('[data-vnext-page="alerts"] [data-vnext-severity][aria-pressed="true"]')?.dataset.vnextSeverity || null;
+      const searchInput = root.querySelector('[data-vnext-search-input]');
+      return Object.freeze({
+        history: Object.freeze({ ...historyContext }),
+        memory: Object.freeze({ ...navigationContext }),
+        core: core ? Object.freeze({
+          tab: core.tab,
+          severity: core.severity,
+          query: core.query
+        }) : null,
+        view: Object.freeze({
+          severity: activeSeverity,
+          query: searchInput ? searchInput.value : null
+        }),
+        restoring: restoringNavigationContext
       });
     }
   });
