@@ -68,6 +68,7 @@ jobs:
           node --check scripts/mobile-a3-period-ownership-acceptance.mjs
           node --check scripts/mobile-a3-navigation-context-acceptance.mjs
           node --check scripts/mobile-a4-detail-history-acceptance.mjs
+          node --check scripts/mobile-a5-period-sheet-reload-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
@@ -117,6 +118,8 @@ jobs:
         run: node scripts/mobile-a3-navigation-context-acceptance.mjs
       - name: Mobile A4 detail-history Chromium acceptance
         run: node scripts/mobile-a4-detail-history-acceptance.mjs
+      - name: Mobile A5 period-sheet Reload Chromium acceptance
+        run: node scripts/mobile-a5-period-sheet-reload-acceptance.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -142,5 +145,6 @@ jobs:
             artifacts/mobile-a3-period-ownership
             artifacts/mobile-a3-navigation-context
             artifacts/mobile-a4-detail-history
+            artifacts/mobile-a5-period-sheet-reload
           if-no-files-found: ignore
           retention-days: 7
