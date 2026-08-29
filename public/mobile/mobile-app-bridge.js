@@ -107,12 +107,29 @@
     });
   }
 
+  function navigationDestinationNeedsRestore(candidate) {
+    if (!mobile.matches || !candidate || typeof candidate !== 'object') return false;
+    const payload = candidate[VNEXT_HISTORY_KEY];
+    const core = window.YT_MOBILE_VNEXT?.getState?.();
+    if (!payload || typeof payload !== 'object' || !core) return false;
+    const context = navigationContextFromState(candidate, navigationContext);
+    if (payload.tab === 'alerts' && core.tab === 'alerts') return core.severity !== context.severity;
+    if (payload.tab === 'search' && core.tab === 'search') return core.query !== context.query;
+    return false;
+  }
+
   history.pushState = function mobilePeriodPushState(state, title, url) {
-    return nativePushState(enrichVnextHistoryState(state), title, url);
+    const enriched = enrichVnextHistoryState(state);
+    const result = nativePushState(enriched, title, url);
+    if (navigationDestinationNeedsRestore(enriched)) queueNavigationRestore();
+    return result;
   };
 
   history.replaceState = function mobilePeriodReplaceState(state, title, url) {
-    return nativeReplaceState(enrichVnextHistoryState(state), title, url);
+    const enriched = enrichVnextHistoryState(state);
+    const result = nativeReplaceState(enriched, title, url);
+    if (navigationDestinationNeedsRestore(enriched)) queueNavigationRestore();
+    return result;
   };
 
   function persistRuntimeRange(next = runtime?.getState?.()) {
