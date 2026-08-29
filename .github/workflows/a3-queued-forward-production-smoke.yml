@@ -1,0 +1,98 @@
+name: A3 Queued Forward Production Smoke
+
+on:
+  push:
+    branches:
+      - acceptance/a3-queued-forward-production-smoke
+
+permissions:
+  contents: read
+
+jobs:
+  production-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      A3_PRODUCTION_URL: https://ytdbns-monthly-intelligence.tanshiyuesir.workers.dev/
+    steps:
+      - name: Checkout exact acceptance head
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify branch only adds test workflow
+        run: |
+          set -euo pipefail
+          git diff --exit-code 690f82cde8891b137b5abc046b51f9767cefaec8 -- public/mobile/mobile-app-bridge.js
+          git diff --exit-code 690f82cde8891b137b5abc046b51f9767cefaec8 -- public/shared/runtime.js
+
+      - name: Verify Production serves byte-identical exact-main bridge and health
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 8 --retry-delay 3 \
+            "${A3_PRODUCTION_URL}mobile/mobile-app-bridge.js" \
+            -o /tmp/production-mobile-app-bridge.js
+          cmp public/mobile/mobile-app-bridge.js /tmp/production-mobile-app-bridge.js
+          sha256sum public/mobile/mobile-app-bridge.js /tmp/production-mobile-app-bridge.js
+          curl --fail --silent --show-error --retry 8 --retry-delay 3 \
+            "${A3_PRODUCTION_URL}api/health" \
+            -o /tmp/production-health.json
+          cat /tmp/production-health.json
+
+      - name: Install Playwright Chromium
+        run: npx playwright-core install chromium
+
+      - name: Prepare real Production A3 acceptance harness
+        run: |
+          cp scripts/mobile-a3-period-history-acceptance.mjs scripts/.tmp-a3-queued-forward-production-acceptance.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/.tmp-a3-queued-forward-production-acceptance.mjs')
+          text = p.read_text()
+          old_entry = "const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;"
+          new_entry = "const entry = process.env.A3_PRODUCTION_URL;"
+          if old_entry not in text:
+              raise SystemExit('acceptance entry contract changed')
+          text = text.replace(old_entry, new_entry, 1)
+
+          old_forward = """    await page.goForward({ waitUntil: 'load' }).catch(() => null);\n    await waitCombined(page, inventoryExpected);\n    evidence.afterForward = await snapshot(page, 'inventory');"""
+          new_forward = """    await page.goForward({ waitUntil: 'load' }).catch(() => null);\n    try {\n      await waitCombined(page, inventoryExpected);\n    } catch (error) {\n      const diagnostic = await snapshot(page, 'inventory');\n      const browserDiagnostic = await page.evaluate(() => {\n        const runtime = window.YT_SHARED_RUNTIME?.getState?.();\n        const period = window.YT_MOBILE_APP?.getPeriodContext?.();\n        return {\n          historyLength: history.length,\n          historyState: history.state,\n          location: location.href,\n          ready: document.documentElement.dataset.mobileVnextReady || null,\n          appTab: document.querySelector('.vnext-app')?.dataset?.tab || null,\n          density: window.YT_MOBILE_VNEXT_DENSITY?.getState?.() || null,\n          ia: window.YT_MOBILE_VNEXT_IA?.getState?.() || null,\n          runtime: runtime ? { from: runtime.from, to: runtime.to, loading: runtime.loading, mode: runtime.mode, error: runtime.error } : null,\n          period\n        };\n      });\n      console.error(`FORWARD_DIAGNOSTIC_V3 ${label} ${JSON.stringify({ expected: inventoryExpected, diagnostic, browserDiagnostic })}`);\n      throw error;\n    }\n    evidence.afterForward = await snapshot(page, 'inventory');"""
+          if old_forward not in text:
+              raise SystemExit('forward acceptance contract changed')
+          p.write_text(text.replace(old_forward, new_forward, 1))
+          PY
+
+      - name: Run three consecutive full Production Browser History rounds
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/mobile-a3-production-round-* artifacts/mobile-a3-period-history
+          for round in 1 2 3; do
+            echo "===== PRODUCTION A3 ROUND ${round}/3 ====="
+            rm -rf artifacts/mobile-a3-period-history
+            if node scripts/.tmp-a3-queued-forward-production-acceptance.mjs; then
+              mv artifacts/mobile-a3-period-history "artifacts/mobile-a3-production-round-${round}"
+              echo "PRODUCTION_A3_ROUND_${round}=PASS"
+            else
+              if [ -d artifacts/mobile-a3-period-history ]; then
+                mv artifacts/mobile-a3-period-history "artifacts/mobile-a3-production-round-${round}-FAILED"
+              fi
+              echo "PRODUCTION_A3_ROUND_${round}=FAIL"
+              exit 1
+            fi
+          done
+          echo "PRODUCTION_A3_CONSECUTIVE_3_ROUNDS=PASS"
+
+      - name: Upload Production browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-queued-forward-production-${{ github.sha }}
+          path: artifacts/mobile-a3-production-round-*
+          if-no-files-found: ignore
+          retention-days: 7
