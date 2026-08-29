@@ -150,7 +150,13 @@ async function railState(page) {
 }
 
 async function openSearchEmpty(page) {
-  await page.evaluate(() => window.YT_MOBILE_VNEXT?.navigate?.('search'));
+  await page.evaluate(() => {
+    const button = document.querySelector('.vnext-tabbar [data-vnext-tab="search"]');
+    if (!button) throw new Error('Missing Search primary tab');
+    button.click();
+  });
+  await page.waitForSelector('.vnext-search-page', { state: 'visible', timeout: 4_000 });
+  await page.waitForFunction(() => !window.YT_MOBILE_VNEXT_DENSITY?.getState?.().module, null, { timeout: 4_000 });
   await page.waitForSelector('[data-vnext-search-input]', { state: 'visible', timeout: 4_000 });
   await page.fill('[data-vnext-search-input]', '__PHASE5_NO_MATCH__');
   await page.waitForSelector('.vnext-search-results .vnext-empty', { state: 'visible', timeout: 4_000 });
