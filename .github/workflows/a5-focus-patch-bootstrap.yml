@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'Test: bootstrap A5 focus patch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +23,8 @@ jobs:
 
           p = Path('public/mobile/mobile-vnext.js')
           text = p.read_text()
+          if 'function focusPeriodSheetClose()' in text:
+              raise SystemExit(0)
 
           marker = "  runtime.subscribe(next => {\n"
           helper = """  function focusPeriodSheetClose() {
@@ -124,6 +125,10 @@ jobs:
       - name: Commit product and permanent gate patch
         run: |
           set -euo pipefail
+          if git diff --quiet; then
+            echo 'A5 patch already present; no commit needed.'
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add public/mobile/mobile-vnext.js scripts/mobile-a5-period-sheet-reload-acceptance.mjs
