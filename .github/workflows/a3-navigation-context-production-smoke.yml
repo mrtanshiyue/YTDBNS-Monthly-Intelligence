@@ -1,0 +1,105 @@
+name: A3 Navigation Context Production Smoke
+
+on:
+  push:
+    branches:
+      - acceptance/a3-navigation-context-production-smoke
+
+permissions:
+  contents: read
+
+jobs:
+  production-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      A3_PRODUCTION_URL: https://ytdbns-monthly-intelligence.tanshiyuesir.workers.dev/
+    steps:
+      - name: Checkout exact acceptance head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify acceptance branch is test-only
+        run: |
+          set -euo pipefail
+          EXPECTED='.github/workflows/a3-navigation-context-production-smoke.yml'
+          ACTUAL="$(git diff --name-only HEAD^ HEAD)"
+          printf 'Acceptance branch diff:\n%s\n' "$ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+          git diff --exit-code HEAD^ -- public/mobile/mobile-app-bridge.js
+          git diff --exit-code HEAD^ -- public/shared/runtime.js
+          git diff --exit-code HEAD^ -- public/mobile/mobile-vnext.js
+          git diff --exit-code HEAD^ -- src/worker.js
+
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify Production exact-main bridge and health
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+            "${A3_PRODUCTION_URL}mobile/mobile-app-bridge.js" \
+            -o /tmp/production-mobile-app-bridge.js
+          cmp public/mobile/mobile-app-bridge.js /tmp/production-mobile-app-bridge.js
+          echo 'Exact-main / Production bridge SHA256:'
+          sha256sum public/mobile/mobile-app-bridge.js /tmp/production-mobile-app-bridge.js
+
+          curl --fail --silent --show-error --retry 10 --retry-delay 3 \
+            "${A3_PRODUCTION_URL}api/health" \
+            -o /tmp/production-health.json
+          cat /tmp/production-health.json
+          node -e "const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/production-health.json','utf8'));if(h.ok!==true)process.exit(1)"
+
+      - name: Install Playwright Chromium
+        run: npx playwright-core install chromium
+
+      - name: Prepare exact Phase 3 Production harness
+        run: |
+          set -euo pipefail
+          cp scripts/mobile-a3-navigation-context-acceptance.mjs scripts/.tmp-a3-navigation-context-production-acceptance.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/.tmp-a3-navigation-context-production-acceptance.mjs')
+          text = p.read_text()
+          old = "const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;"
+          new = "const entry = process.env.A3_PRODUCTION_URL;"
+          if old not in text:
+              raise SystemExit('navigation-context acceptance entry contract changed')
+          p.write_text(text.replace(old, new, 1))
+          PY
+          node --check scripts/.tmp-a3-navigation-context-production-acceptance.mjs
+
+      - name: Run three consecutive Production navigation-context rounds
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/mobile-a3-navigation-context-production-round-* artifacts/mobile-a3-navigation-context
+          for round in 1 2 3; do
+            echo "===== PRODUCTION A3 NAVIGATION ROUND ${round}/3 ====="
+            rm -rf artifacts/mobile-a3-navigation-context
+            if node scripts/.tmp-a3-navigation-context-production-acceptance.mjs; then
+              mv artifacts/mobile-a3-navigation-context "artifacts/mobile-a3-navigation-context-production-round-${round}"
+              echo "PRODUCTION_A3_NAVIGATION_ROUND_${round}=PASS"
+            else
+              if [ -d artifacts/mobile-a3-navigation-context ]; then
+                mv artifacts/mobile-a3-navigation-context "artifacts/mobile-a3-navigation-context-production-round-${round}-FAILED"
+              fi
+              echo "PRODUCTION_A3_NAVIGATION_ROUND_${round}=FAIL"
+              exit 1
+            fi
+          done
+          echo "PRODUCTION_A3_NAVIGATION_CONSECUTIVE_3_ROUNDS=PASS"
+
+      - name: Upload Production browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-navigation-context-production-${{ github.sha }}
+          path: artifacts/mobile-a3-navigation-context-production-round-*
+          if-no-files-found: ignore
+          retention-days: 7
