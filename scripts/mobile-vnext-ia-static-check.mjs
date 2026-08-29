@@ -13,10 +13,13 @@ const css = read('public/mobile/mobile-vnext-ia.css');
 const density = read('public/mobile/mobile-vnext-density.js');
 const pkg = JSON.parse(read('package.json'));
 
-const expectedDomains = ['ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data'];
+const expectedDomains = ['ads', 'products', 'inventory', 'finance'];
+const expectedInternalModules = ['ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data'];
 const domainBlock = ia.match(/const DOMAIN_IDS = Object\.freeze\(\[([\s\S]*?)\]\);/)?.[1] || '';
 const domains = [...domainBlock.matchAll(/'([^']+)'/g)].map(match => match[1]);
-expect(JSON.stringify(domains) === JSON.stringify(expectedDomains), `IA exposes exactly eight business domains (${domains.join(', ')})`);
+expect(JSON.stringify(domains) === JSON.stringify(expectedDomains), `IA exposes exactly four grouped business domains (${domains.join(', ')})`);
+expect(ia.includes("const WORKSPACE_CHILD_SET = new Set(['charges', 'returns', 'history', 'data'])"), 'Workspace child domains are explicitly grouped under the finance/workspace parent');
+expect(ia.includes("if (WORKSPACE_CHILD_SET.has(module)) return 'finance'"), 'Workspace child routes resolve to one stable selected rail domain');
 expect(ia.includes("const DUPLICATE_PRIMARY_IDS = new Set(['today', 'alerts'])"), 'Today and Alerts are explicitly removed from the secondary business rail');
 expect(ia.includes("return activePrimaryTab() === 'today' || Boolean(activeModule())"), 'business rail is visible only on Today or an active business module');
 expect(ia.includes("rail.setAttribute('aria-label', '业务模块')"), 'secondary rail has a domain-specific accessible label');
@@ -50,11 +53,17 @@ expect(css.includes('#mobileAppRoot .vnext-density-module-page .vnext-filter-tag
 expect(css.includes('scroll-snap-type:x proximity') && css.includes('scroll-snap-align:start'), 'module filters use predictable horizontal snap behavior');
 expect(css.includes('#mobileAppRoot .vnext-density-module-page .vnext-filter-tags button.active') && css.includes('color:var(--vx-accent)'), 'active module filters override root button inheritance with explicit selected-state color');
 expect(css.includes('#mobileAppRoot .vnext-density-module-page .vnext-module-section>header') && css.includes('flex-direction:column') && css.includes('align-items:flex-start'), 'module section headers stack label above title/count on Mobile');
+expect(css.includes('.vnext-workspace-grid') && css.includes('.vnext-workspace-card') && css.includes('.vnext-workspace-back'), 'Workspace and child-return controls are first-class Mobile IA surfaces');
 
 const businessBlock = density.match(/const BUSINESS_MODULES = new Set\(\[([\s\S]*?)\]\);/)?.[1] || '';
 const businessDomains = [...businessBlock.matchAll(/'([^']+)'/g)].map(match => match[1]);
-expect(expectedDomains.every(domain => businessDomains.includes(domain)), 'existing business-module routes remain intact underneath the IA overlay');
+expect(expectedInternalModules.every(domain => businessDomains.includes(domain)), 'all eight internal business-module routes remain intact underneath grouped Workspace IA');
 expect(!businessDomains.includes('today') && !businessDomains.includes('alerts'), 'primary task destinations remain outside business-module routing');
+expect(density.includes("const RAIL_MODULES = new Set(['today', 'alerts', 'ads', 'products', 'inventory', 'finance'])"), 'secondary rail renders only primary duplicates plus four grouped business domains');
+expect(density.includes("const WORKSPACE_CHILD_MODULES = new Set(['charges', 'returns', 'history', 'data'])"), 'density runtime preserves Workspace child route identity');
+expect(density.includes("if (WORKSPACE_CHILD_MODULES.has(module)) return 'finance'"), 'density rail selection maps Workspace children back to the Workspace parent');
+expect(density.includes("['finance', '工作台']"), 'finance stable route is presented to operators as 工作台');
+expect(density.includes('data-workspace-module=') && density.includes('data-workspace-back'), 'Workspace exposes explicit child navigation and return controls');
 for (const domain of ['ads', 'products', 'inventory']) {
   expect(density.includes(`${domain}: [`), `${domain} retains a first-class filter definition`);
 }
@@ -66,4 +75,4 @@ if (failures.length) {
   console.error(`\nMobile vNext IA static gate failed: ${failures.length} issue(s).`);
   process.exit(1);
 }
-console.log('\nMobile vNext IA static gate passed: task IA, module interaction states, and detail focus-return are release-gated.');
+console.log('\nMobile vNext IA static gate passed: grouped Workspace IA, operational controls, and detail focus-return are release-gated.');
