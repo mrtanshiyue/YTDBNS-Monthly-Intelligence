@@ -60,6 +60,7 @@ jobs:
           node --check scripts/mobile-a1-period-sheet-focus-acceptance.mjs
           node --check scripts/mobile-a1-period-selection-focus-acceptance.mjs
           node --check scripts/mobile-a2-operational-sort-acceptance.mjs
+          node --check scripts/mobile-a2-workspace-acceptance.mjs
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
       - name: Desktop + Native Mobile static release gate
@@ -95,6 +96,8 @@ jobs:
         run: node scripts/mobile-a1-alert-severity-acceptance.mjs
       - name: Mobile A2 operational-sort Chromium acceptance
         run: node scripts/mobile-a2-operational-sort-acceptance.mjs
+      - name: Mobile A2 Workspace Chromium acceptance
+        run: node scripts/mobile-a2-workspace-acceptance.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -113,5 +116,6 @@ jobs:
             artifacts/mobile-a1-period-sheet-focus
             artifacts/mobile-a1-period-selection-focus
             artifacts/mobile-a2-operational-sort
+            artifacts/mobile-a2-workspace
           if-no-files-found: ignore
           retention-days: 7
