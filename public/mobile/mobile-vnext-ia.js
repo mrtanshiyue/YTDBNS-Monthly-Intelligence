@@ -9,13 +9,11 @@
     'ads',
     'products',
     'inventory',
-    'finance',
-    'charges',
-    'returns',
-    'history',
-    'data'
+    'finance'
   ]);
   const DOMAIN_SET = new Set(DOMAIN_IDS);
+  const INTERNAL_MODULE_SET = new Set(['ads', 'products', 'inventory', 'finance', 'charges', 'returns', 'history', 'data']);
+  const WORKSPACE_CHILD_SET = new Set(['charges', 'returns', 'history', 'data']);
   const FILTER_MODULE_SET = new Set(['ads', 'products', 'inventory']);
   const SORT_MODULE_SET = new Set(['ads', 'products', 'inventory']);
   const PRIMARY_FOCUS_TAB_SET = new Set(['today', 'alerts', 'trends', 'search']);
@@ -42,7 +40,16 @@
 
   function activeModule() {
     const module = densityState()?.module;
+    return INTERNAL_MODULE_SET.has(module) ? module : null;
+  }
+
+  function railModuleFor(module) {
+    if (WORKSPACE_CHILD_SET.has(module)) return 'finance';
     return DOMAIN_SET.has(module) ? module : null;
+  }
+
+  function activeRailModule() {
+    return railModuleFor(activeModule());
   }
 
   function activeFilter(module) {
@@ -223,7 +230,6 @@
         return;
       }
 
-      /* Keep the logical origin alive for one more frame so a queued history render cannot silently detach the focused replacement. */
       requestAnimationFrame(() => {
         if (!periodFocusOrigin || root.querySelector('.vnext-sheet[role="dialog"]')) return;
         const settledReplacement = replacementPeriodTrigger(periodFocusOrigin);
@@ -251,6 +257,7 @@
       rail.setAttribute('aria-label', '业务模块');
 
       const module = activeModule();
+      const railModule = activeRailModule();
       for (const button of rail.querySelectorAll('[data-vnext-module]')) {
         const id = button.dataset.vnextModule;
         if (DUPLICATE_PRIMARY_IDS.has(id)) {
@@ -266,7 +273,7 @@
         button.hidden = false;
         button.removeAttribute('aria-hidden');
         button.tabIndex = 0;
-        const selected = module === id;
+        const selected = railModule === id;
         button.classList.toggle('active', selected);
         if (selected) button.setAttribute('aria-current', 'page');
         else button.removeAttribute('aria-current');
@@ -276,7 +283,7 @@
       rail.hidden = !visible;
       rail.classList.toggle('vnext-domain-rail-visible', visible);
       rail.classList.toggle('vnext-domain-rail-hidden', !visible);
-      if (visible) revealActiveDomain(rail, module);
+      if (visible) revealActiveDomain(rail, railModule);
       else revealActiveDomain(rail, null);
       syncFilterSemantics(module);
       revealActiveFilter(module);
@@ -337,7 +344,6 @@
 
   function settlePrimaryRouteAtTop(event) {
     if (!media.matches || !event.target.closest('.vnext-tabbar [data-vnext-tab]')) return;
-    /* Core render preserves scroll on rerender. Run after its queued frame so real route changes finish at the top. */
     requestAnimationFrame(() => window.scrollTo(0, 0));
   }
 
@@ -365,6 +371,7 @@
     getState: () => Object.freeze({
       primaryTab: activePrimaryTab(),
       module: activeModule(),
+      railModule: activeRailModule(),
       filter: activeFilter(activeModule()),
       sort: activeSort(activeModule()),
       severity: activeSeverity(),
