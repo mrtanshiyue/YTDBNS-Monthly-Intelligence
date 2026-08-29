@@ -72,10 +72,17 @@
     if (!range || !payload || typeof payload !== 'object') return false;
     if (pendingPeriodSelection && payload.sheet === 'period') return false;
 
-    if (payload.from === range.from && payload.to === range.to) {
+    const storedRange = rangeFromState(current);
+    if (sameRange(storedRange, range)) {
       pendingPeriodSelection = false;
       return true;
     }
+
+    // Once a Browser History entry owns a valid range, generic runtime publishes
+    // must never rewrite it. This protects a Forward target from a late response
+    // belonging to the Back entry. Only an explicit user period selection may
+    // intentionally change the range owned by the current working entry.
+    if (storedRange && !pendingPeriodSelection) return false;
 
     nativeReplaceState({
       ...current,
@@ -119,7 +126,7 @@
   }
 
   root.addEventListener('click', event => {
-    if (event.target.closest('[data-vnext-quick], [data-vnext-period-month]')) {
+    if (event.target.closest('[data-vnext-quick], [data-vnext-period-month], [data-vnext-month], [data-density-month]')) {
       pendingPeriodSelection = true;
     }
   }, true);
