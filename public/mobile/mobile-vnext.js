@@ -670,6 +670,12 @@
     history.replaceState(historyPayload(overrides), document.title);
   }
 
+  function resetRouteScroll() {
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, 0)));
+    setTimeout(() => window.scrollTo(0, 0), 80);
+  }
+
   function changeTab(tab, { historyMode = 'push' } = {}) {
     if (!TABS.some(([id]) => id === tab)) return;
     const changed = state.tab !== tab || state.detail || state.sheet;
@@ -678,7 +684,7 @@
     state.sheet = null;
     if (tab === 'search') document.documentElement.dataset.vnextAutofocus = 'true';
     render();
-    window.scrollTo(0, 0);
+    resetRouteScroll();
     if (changed) {
       if (historyMode === 'replace') replaceHistory({ tab, detailKey: null, sheet: null });
       else if (historyMode === 'push') pushHistory({ tab, detailKey: null, sheet: null });
@@ -921,12 +927,14 @@
 
   window.addEventListener('popstate', event => {
     if (!media.matches) return;
+    const wasDetailOpen = Boolean(state.detail);
     const payload = event.state?.[HISTORY_KEY];
     if (!payload) {
       state.detail = null;
       state.sheet = null;
       state.tab = 'today';
       render();
+      if (!wasDetailOpen) resetRouteScroll();
       return;
     }
     state.tab = TABS.some(([id]) => id === payload.tab) ? payload.tab : 'today';
@@ -935,6 +943,7 @@
       ? { ...detailRegistry.get(payload.detailKey), _historyKey: payload.detailKey }
       : null;
     render();
+    if (!wasDetailOpen && !state.detail && !state.sheet) resetRouteScroll();
     if (state.tab === 'trends') loadComparison();
   });
 
@@ -954,6 +963,7 @@
     root.hidden = false;
     root.setAttribute('aria-hidden', 'false');
     document.body.classList.add('mobile-vnext-active');
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     const payload = history.state?.[HISTORY_KEY];
     if (payload?.tab && TABS.some(([id]) => id === payload.tab)) {
       state.tab = payload.tab;
@@ -963,6 +973,7 @@
       replaceHistory({ tab: state.tab, detailKey: null, sheet: null });
     }
     render();
+    if (!state.detail && !state.sheet) resetRouteScroll();
     if (state.sheet === 'period') {
       requestAnimationFrame(() => root.querySelector('.vnext-sheet [data-vnext-close-sheet]')?.focus());
     }
