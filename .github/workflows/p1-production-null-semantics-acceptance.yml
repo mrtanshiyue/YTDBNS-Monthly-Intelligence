@@ -1,0 +1,42 @@
+name: P1 Production Null Semantics Acceptance
+
+on:
+  push:
+    branches:
+      - acceptance/p1-production-null-semantics
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Production July semantics
+        env:
+          BASE_URL: https://ytdbns-monthly-intelligence.tanshiyuesir.workers.dev
+          EXPECTED_MAIN: b58bcefe85236ad9e5122172994bde97fffe63e3
+        run: |
+          set -euo pipefail
+          curl -fsS "$BASE_URL/api/dashboard?store=yt-us&from=2026-07-01&to=2026-07-31" -o /tmp/dashboard.json
+          curl -fsS "$BASE_URL/api/month?store=yt-us&month=2026-07" -o /tmp/month.json
+          echo '=== PRODUCTION JULY SUMMARY ==='
+          jq '.summary | {sales,businessSales,businessUnits,units,sessions,adSpend,adSales,acos,tacos,refund_sales,contribution_profit,returns,profitMargin,trafficGrain}' /tmp/dashboard.json
+          echo '=== PRODUCTION JULY DETAIL COUNTS ==='
+          jq '{products:(.products|length),parents:(.parents|length),campaigns:(.campaigns|length),inventory:(.inventory|length),returns:(.returns|length),charges:(.charges|length)}' /tmp/month.json
+          jq -e '
+            .summary.sales > 62000 and .summary.sales < 63000 and
+            .summary.businessSales == null and
+            .summary.businessUnits == null and
+            .summary.sessions == null and
+            .summary.adSpend == null and
+            .summary.adSales == null and
+            .summary.acos == null and
+            .summary.tacos == null and
+            .summary.contribution_profit > 35000 and
+            .summary.refund_sales > 4000
+          ' /tmp/dashboard.json >/dev/null
+          jq -e '(.products|length)==0 and (.campaigns|length)==0 and (.inventory|length)==0' /tmp/month.json >/dev/null
+          echo "AUTHORITATIVE_MAIN=$EXPECTED_MAIN"
+          echo 'PRODUCTION_P1_FALSE_ZERO_FIXED=PASS'
+          echo 'PRODUCTION_P1_MISSING_SOURCE_DATA_REMAINS=CONFIRMED'
