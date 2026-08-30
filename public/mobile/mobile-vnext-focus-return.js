@@ -57,13 +57,20 @@
     const descriptor = returnStack[returnStack.length - 1];
     const selector = selectorFor(descriptor);
     if (!selector) returnStack.pop();
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    const focusResolvedTarget = () => {
+      if (root.querySelector('.vnext-detail-screen')) return false;
       const target = selector ? root.querySelector(selector) : null;
-      if (!target) return;
-      returnStack.pop();
-      target.focus({ preventScroll: true });
+      if (!target) return false;
+      try { target.focus({ preventScroll: true }); }
+      catch { target.focus(); }
       target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-    }));
+      return document.activeElement === target;
+    };
+    returnStack.pop();
+    focusResolvedTarget();
+    requestAnimationFrame(() => requestAnimationFrame(focusResolvedTarget));
+    setTimeout(focusResolvedTarget, 80);
+    setTimeout(focusResolvedTarget, 240);
   }
 
   root.addEventListener('click', event => {

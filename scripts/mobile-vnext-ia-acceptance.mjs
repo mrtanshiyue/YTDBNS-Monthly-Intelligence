@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 
@@ -8,6 +9,16 @@ const root = path.resolve(here, '..');
 const entry = pathToFileURL(path.join(root, 'public', 'index.html')).href;
 const artifactDir = path.join(root, 'artifacts', 'mobile-vnext-ia');
 fs.mkdirSync(artifactDir, { recursive: true });
+
+const executablePath = [
+  process.env.CHROMIUM_PATH,
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  chromium.executablePath(),
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  '/usr/bin/chromium',
+  '/usr/bin/google-chrome'
+].filter(Boolean).find(candidate => fs.existsSync(candidate));
 
 const failures = [];
 const report = [];
@@ -199,7 +210,7 @@ async function exerciseDetailFocusReturn(page, module, label) {
 }
 
 async function runMobile(viewport) {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, executablePath });
   const context = await browser.newContext({ viewport, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
   const page = await context.newPage();
   const label = `${viewport.width}x${viewport.height}`;
@@ -295,7 +306,7 @@ async function runMobile(viewport) {
 }
 
 async function runDesktop() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, executablePath });
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   try {

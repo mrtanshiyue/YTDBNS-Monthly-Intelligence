@@ -700,7 +700,15 @@
     state.sheet = null;
     render();
     pushHistory({ tab: state.tab, detailKey: key, sheet: null });
-    requestAnimationFrame(() => root.querySelector('[data-vnext-close-detail]')?.focus());
+    const focusClose = () => {
+      const close = root.querySelector('[data-vnext-close-detail]');
+      if (!close || !state.detail) return;
+      try { close.focus({ preventScroll: true }); }
+      catch { close.focus(); }
+    };
+    focusClose();
+    requestAnimationFrame(() => requestAnimationFrame(focusClose));
+    setTimeout(focusClose, 80);
   }
 
   function closeDetail({ historyBack = true } = {}) {
