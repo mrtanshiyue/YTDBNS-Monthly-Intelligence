@@ -1,0 +1,50 @@
+name: Production Data Completeness Diagnostic
+
+on:
+  push:
+    branches:
+      - 'diagnostic/data-completeness-production'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect July 2026 Production payloads
+        env:
+          BASE_URL: https://ytdbns-monthly-intelligence.tanshiyuesir.workers.dev
+        run: |
+          set -euo pipefail
+          curl -fsS "$BASE_URL/api/health" -o /tmp/health.json
+          curl -fsS "$BASE_URL/api/periods?store=yt-us" -o /tmp/periods.json
+          curl -fsS "$BASE_URL/api/dashboard?store=yt-us&from=2026-07-01&to=2026-07-31" -o /tmp/dashboard.json
+          curl -fsS "$BASE_URL/api/month?store=yt-us&month=2026-07" -o /tmp/month.json
+          curl -fsS "$BASE_URL/api/imports?store=yt-us" -o /tmp/imports.json
+
+          echo '=== HEALTH ==='
+          jq '{ok,version}' /tmp/health.json
+
+          echo '=== JULY PERIOD ROW ==='
+          jq '.periods[] | select(.month=="2026-07")' /tmp/periods.json
+
+          echo '=== JULY DASHBOARD SUMMARY ==='
+          jq '.summary | {sales,businessSales,businessUnits,units,sessions,page_views,orders,adSpend,adSales,ad_orders,impressions,clicks,refund_sales,refund_qty,contribution_profit,returns,profitMargin,trafficGrain}' /tmp/dashboard.json
+
+          echo '=== JULY DASHBOARD SERIES COUNTS ==='
+          jq '{seriesCount:(.series|length), monthlyCount:(.monthly|length)}' /tmp/dashboard.json
+
+          echo '=== JULY MONTH METRICS ==='
+          jq '.metrics' /tmp/month.json
+
+          echo '=== JULY DETAIL COUNTS ==='
+          jq '{products:(.products|length),parents:(.parents|length),campaigns:(.campaigns|length),returns:(.returns|length),quality:(.quality|length),charges:(.charges|length),inventory:(.inventory|length),inventorySnapshotDate}' /tmp/month.json
+
+          echo '=== JULY QUALITY ==='
+          jq '.quality' /tmp/month.json
+
+          echo '=== JULY IMPORT BATCHES ==='
+          jq '[.batches[] | select(.report_month=="2026-07") | {id,status,report_month,range_start,range_end,file_count,source_count,stored_files,created_at,committed_at}]' /tmp/imports.json
+
+          echo 'PRODUCTION_DATA_COMPLETENESS_DIAGNOSTIC=PASS'
