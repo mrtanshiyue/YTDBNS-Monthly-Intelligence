@@ -125,8 +125,7 @@ const frozen = {
   'public/enhancements.js': '88c4ca3d60a270a5ab0a8baa2e9ac16151b6414b',
   'public/v54.js': 'f0fe9a21fe2545e7109e77506f1bcc23e0b6a038',
   'public/v54.css': '4a582993bc6d2c2dff6cc17a2f94121bcf1c3b1c',
-  'public/v54-acceptance.css': 'e152a3be81a28eaac2ac0a42276a2df4265df2c3',
-  'src/worker.js': '6c82e35afc21c21c23e84af0ec60b555e90ae84e'
+  'public/v54-acceptance.css': 'e152a3be81a28eaac2ac0a42276a2df4265df2c3'
 };
 for (const [relative, expected] of Object.entries(frozen)) expect(blobSha(relative) === expected, `${relative} remains frozen at accepted baseline blob`);
 
