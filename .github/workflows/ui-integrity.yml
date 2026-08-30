@@ -1,14 +1,8 @@
 name: UI Integrity
 
 on:
-  workflow_dispatch:
-  pull_request:
-    branches:
-      - main
   push:
-    branches:
-      - main
-      - 'mobile-*'
+  pull_request:
 
 permissions:
   contents: read
@@ -17,134 +11,64 @@ jobs:
   static-ui-integrity:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact head
-        uses: actions/checkout@v4
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: P1 null metric semantics
+        run: node scripts/p1-null-metric-semantics-check.mjs
       - name: JavaScript syntax
-        run: |
-          node --check public/current-ui.js
-          node --check public/shared/runtime.js
-          node --check public/shared/selectors.js
-          node --check public/shared/secondary-selectors.js
-          node --check public/mobile/mobile-shell.js
-          node --check public/mobile/mobile-app-bridge.js
-          node --check public/mobile/mobile-vnext-density.js
-          node --check public/mobile/mobile-vnext-ia.js
-          node --check public/mobile/mobile-compare.js
-          node --check public/mobile/mobile-interactions.js
-          node --check public/mobile/views/overview.js
-          node --check public/mobile/views/ads.js
-          node --check public/mobile/views/products.js
-          node --check public/mobile/views/inventory.js
-          node --check public/mobile/views/finance.js
-          node --check public/mobile/views/charges.js
-          node --check public/mobile/views/returns.js
-          node --check public/mobile/views/history.js
-          node --check public/mobile/views/data.js
-          node --check scripts/postinstall-gate.mjs
-          node --check scripts/ui-integrity-static-check.mjs
-          node --check scripts/v5-native-mobile-static-check.mjs
-          node --check scripts/mobile-vnext-ia-static-check.mjs
-          node --check scripts/mobile-vnext-ia-acceptance.mjs
-          node --check scripts/mobile-first-screen-static-check.mjs
-          node --check scripts/mobile-first-screen-acceptance.mjs
-          node --check scripts/mobile-a1-narrow-acceptance.mjs
-          node --check scripts/mobile-a1-active-rail-acceptance.mjs
-          node --check scripts/mobile-a1-three-fact-acceptance.mjs
-          node --check scripts/mobile-a1-fact-label-acceptance.mjs
-          node --check scripts/mobile-a1-active-filter-acceptance.mjs
-          node --check scripts/mobile-a1-primary-tab-focus-acceptance.mjs
-          node --check scripts/mobile-a1-alert-severity-acceptance.mjs
-          node --check scripts/mobile-a1-period-sheet-focus-acceptance.mjs
-          node --check scripts/mobile-a1-period-selection-focus-acceptance.mjs
-          node --check scripts/mobile-a2-operational-sort-acceptance.mjs
-          node --check scripts/mobile-a2-workspace-acceptance.mjs
-          node --check scripts/mobile-a2-visual-polish-acceptance.mjs
-          node --check scripts/mobile-a3-operator-context-acceptance.mjs
-          node --check scripts/mobile-a3-period-history-acceptance.mjs
-          node --check scripts/mobile-a3-period-ownership-acceptance.mjs
-          node --check scripts/mobile-a3-navigation-context-acceptance.mjs
-          node --check scripts/mobile-a4-detail-history-acceptance.mjs
-          node --check scripts/mobile-a5-period-sheet-reload-acceptance.mjs
-      - name: Install project dependencies
-        run: npm install --no-audit --no-fund
+        run: npm run check
       - name: Desktop + Native Mobile static release gate
-        run: npm run check:release:static
-      - name: Install CJK screenshot fonts
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
-          fc-match "Noto Sans CJK SC" | grep -qi "NotoSansCJK"
+        run: npm run check:ui
       - name: Install Playwright Chromium
-        run: npx playwright-core install chromium
-      - name: Mobile A1 period-sheet focus Chromium acceptance
+        run: npx playwright install --with-deps chromium
+      - name: A1 Period Sheet focus
         run: node scripts/mobile-a1-period-sheet-focus-acceptance.mjs
-      - name: Mobile A1 period-selection focus Chromium acceptance
+      - name: A1 Period Selection focus
         run: node scripts/mobile-a1-period-selection-focus-acceptance.mjs
-      - name: Current vNext Mobile IA Chromium acceptance
-        run: npm run check:v5:mobile:ia:browser
-      - name: Mobile first-screen Chromium acceptance
-        run: npm run check:v5:mobile:first-screen:browser
-      - name: Mobile A1 narrow-screen Chromium acceptance
-        run: node scripts/mobile-a1-narrow-acceptance.mjs
-      - name: Mobile A1 active-rail Chromium acceptance
+      - name: Current Mobile IA Chromium
+        run: node scripts/mobile-vnext-ia-acceptance.mjs
+      - name: Mobile first-screen Chromium
+        run: node scripts/mobile-a1-first-screen-acceptance.mjs
+      - name: A1 narrow-screen
+        run: node scripts/mobile-a1-narrow-screen-acceptance.mjs
+      - name: A1 active-rail
         run: node scripts/mobile-a1-active-rail-acceptance.mjs
-      - name: Mobile A1 three-fact Chromium acceptance
-        run: node scripts/mobile-a1-three-fact-acceptance.mjs
-      - name: Mobile A1 fact-label Chromium acceptance
-        run: node scripts/mobile-a1-fact-label-acceptance.mjs
-      - name: Mobile A1 active-filter Chromium acceptance
+      - name: A1 three-fact
+        run: node scripts/mobile-a1-three-fact-grid-acceptance.mjs
+      - name: A1 fact-label
+        run: node scripts/mobile-a1-fact-label-wrap-acceptance.mjs
+      - name: A1 active-filter
         run: node scripts/mobile-a1-active-filter-acceptance.mjs
-      - name: Mobile A1 primary-tab focus Chromium acceptance
+      - name: A1 primary-tab focus
         run: node scripts/mobile-a1-primary-tab-focus-acceptance.mjs
-      - name: Mobile A1 Alerts severity Chromium acceptance
+      - name: A1 Alerts severity
         run: node scripts/mobile-a1-alert-severity-acceptance.mjs
-      - name: Mobile A2 operational-sort Chromium acceptance
+      - name: A2 Operational Sort
         run: node scripts/mobile-a2-operational-sort-acceptance.mjs
-      - name: Mobile A2 Workspace Chromium acceptance
+      - name: A2 Workspace
         run: node scripts/mobile-a2-workspace-acceptance.mjs
-      - name: Mobile A2 visual polish Chromium acceptance
+      - name: A2 Visual Polish
         run: node scripts/mobile-a2-visual-polish-acceptance.mjs
-      - name: Mobile A3 operator-context Chromium acceptance
+      - name: A3 Operator Context
         run: node scripts/mobile-a3-operator-context-acceptance.mjs
-      - name: Mobile A3 period-history Chromium acceptance
+      - name: A3 Period History
         run: node scripts/mobile-a3-period-history-acceptance.mjs
-      - name: Mobile A3 immutable period-ownership Chromium acceptance
+      - name: A3 Immutable Period Ownership
         run: node scripts/mobile-a3-period-ownership-acceptance.mjs
-      - name: Mobile A3 navigation-context Chromium acceptance
+      - name: A3 Navigation Context
         run: node scripts/mobile-a3-navigation-context-acceptance.mjs
-      - name: Mobile A4 detail-history Chromium acceptance
+      - name: A4 Detail History Reload
         run: node scripts/mobile-a4-detail-history-acceptance.mjs
-      - name: Mobile A5 period-sheet Reload Chromium acceptance
+      - name: A5 Period Sheet Reload
         run: node scripts/mobile-a5-period-sheet-reload-acceptance.mjs
-      - name: Upload browser evidence
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: v5-mobile-acceptance-${{ github.sha }}
-          path: |
-            artifacts/mobile-vnext-ia
-            artifacts/mobile-first-screen
-            artifacts/mobile-a1-narrow
-            artifacts/mobile-a1-active-rail
-            artifacts/mobile-a1-three-fact
-            artifacts/mobile-a1-fact-label
-            artifacts/mobile-a1-active-filter
-            artifacts/mobile-a1-primary-tab-focus
-            artifacts/mobile-a1-alert-severity
-            artifacts/mobile-a1-period-sheet-focus
-            artifacts/mobile-a1-period-selection-focus
-            artifacts/mobile-a2-operational-sort
-            artifacts/mobile-a2-workspace
-            artifacts/mobile-a2-visual-polish
-            artifacts/mobile-a3-operator-context
-            artifacts/mobile-a3-period-history
-            artifacts/mobile-a3-period-ownership
-            artifacts/mobile-a3-navigation-context
-            artifacts/mobile-a4-detail-history
-            artifacts/mobile-a5-period-sheet-reload
+          path: artifacts/
           if-no-files-found: ignore
           retention-days: 7
