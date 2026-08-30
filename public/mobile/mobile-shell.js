@@ -181,6 +181,11 @@
     });
   }
 
+  function promoteResponsiveStylesheet() {
+    const link = document.getElementById('responsiveUiStyles');
+    if (link) document.head.appendChild(link);
+  }
+
   function syncSurface() {
     const enabled = mobile.matches;
     const ready = document.documentElement.dataset.mobileVnextReady === 'true';
@@ -200,6 +205,9 @@
     .then(() => ensureHomeDetailRuntime())
     .then(() => Promise.all([ensureIaStylesheet(), ensureIaRuntime(), ensureFocusReturnRuntime(), ensureFirstScreenStylesheet(), ensureFontStylesheet()]))
     .then(() => {
+      // Dynamic mobile layers load after the document head. Move the shared
+      // responsive convergence layer last so its semantic tokens remain final.
+      promoteResponsiveStylesheet();
       document.documentElement.dataset.mobileVnextReady = 'true';
       syncSurface();
       window.YT_MOBILE_VNEXT?.activate?.();
