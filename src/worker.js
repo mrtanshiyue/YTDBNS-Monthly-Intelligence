@@ -48,12 +48,23 @@ async function apiDashboard(env,storeId,from,to){
       FROM daily_metrics WHERE store_id=? AND date BETWEEN ? AND ? ORDER BY date`,storeId,from,to);
   }
   const monthly=await all(env.DB,`SELECT * FROM monthly_metrics WHERE store_id=? AND month BETWEEN ? AND ? ORDER BY month`,storeId,from.slice(0,7),to.slice(0,7));
+  const nullableSum=(rows,key)=>{const values=rows.map(row=>row[key]).filter(value=>value!=null);return values.length?values.reduce((sum,value)=>sum+Number(value||0),0):null;};
   let sessions=s.sessions==null?null:Number(s.sessions),businessSales=null,businessUnits=null;
-  if(fullMonthRange(from,to)){
-    if(sessions==null) sessions=monthly.reduce((a,r)=>a+(r.sessions||0),0);businessSales=monthly.reduce((a,r)=>a+(r.business_sales||0),0);businessUnits=monthly.reduce((a,r)=>a+(r.business_units||0),0);
+  const fullMonth=fullMonthRange(from,to);
+  if(fullMonth){
+    if(sessions==null) sessions=nullableSum(monthly,'sessions');
+    businessSales=nullableSum(monthly,'business_sales');
+    businessUnits=nullableSum(monthly,'business_units');
   }
-  const adSpend=Number(s.ad_spend||0),adSales=Number(s.ad_sales||0),sales=Number(s.sales||0),profit=Number(s.contribution_profit||0);
-  const summary={...s,sales,adSpend,adSales,acos:adSales?adSpend/adSales:0,tacos:sales?adSpend/sales:0,profitMargin:sales?profit/sales:0,sessions,businessSales,businessUnits,rangeDays:days,grain,trafficGrain:sessions!=null?(s.sessions==null?'month':'day'):'unavailable'};
+  const monthlyAdSpend=fullMonth?nullableSum(monthly,'ad_spend'):undefined;
+  const monthlyAdSales=fullMonth?nullableSum(monthly,'ad_sales'):undefined;
+  const adSpend=fullMonth&&monthlyAdSpend==null?null:(s.ad_spend==null?null:Number(s.ad_spend));
+  const adSales=fullMonth&&monthlyAdSales==null?null:(s.ad_sales==null?null:Number(s.ad_sales));
+  const sales=s.sales==null?null:Number(s.sales),profit=s.contribution_profit==null?null:Number(s.contribution_profit);
+  const acos=adSpend==null||adSales==null?null:(adSales?adSpend/adSales:0);
+  const tacos=adSpend==null||sales==null?null:(sales?adSpend/sales:0);
+  const profitMargin=sales==null||profit==null?null:(sales?profit/sales:0);
+  const summary={...s,sales,adSpend,adSales,acos,tacos,profitMargin,sessions,businessSales,businessUnits,rangeDays:days,grain,trafficGrain:sessions!=null?(s.sessions==null?'month':'day'):'unavailable'};
   return ok({summary,series,monthly,from,to});
 }
 
