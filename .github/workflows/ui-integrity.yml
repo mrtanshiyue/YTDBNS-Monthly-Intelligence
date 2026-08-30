@@ -23,6 +23,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: P1 null metric semantics
+        run: node scripts/p1-null-metric-semantics-check.mjs
       - name: JavaScript syntax
         run: |
           node --check public/current-ui.js
