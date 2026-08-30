@@ -671,6 +671,12 @@
       padding-inline: 10px !important;
     }
   }
+
+  @media (max-width: 380px) {
+    body.mobile-vnext-active .vnext-live {
+      font-size: 0 !important;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
