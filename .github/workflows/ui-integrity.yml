@@ -25,6 +25,8 @@ jobs:
           node-version: '22'
       - name: P1 null metric semantics
         run: node scripts/p1-null-metric-semantics-check.mjs
+      - name: P1 partial import preservation
+        run: node scripts/p1-partial-import-preservation-check.mjs
       - name: JavaScript syntax
         run: |
           node --check public/current-ui.js
